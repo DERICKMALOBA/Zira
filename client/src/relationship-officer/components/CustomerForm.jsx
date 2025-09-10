@@ -1,5 +1,5 @@
-// src/components/CustomerForm.jsx
 import React, { useState, useEffect } from "react";
+import { supabase } from "../../supabaseClient"; // make sure you have this
 
 const CustomerForm = ({ leadData, onClose }) => {
   const [securityItems, setSecurityItems] = useState([
@@ -8,38 +8,102 @@ const CustomerForm = ({ leadData, onClose }) => {
 
   const [formData, setFormData] = useState({
     prefix: "",
-    firstName: "",
-    surname: "",
+     Firstname: "",
+    Surname: "",
+    maritalStatus: "",
+    residenceStatus: "",
     mobile: "",
+    idNumber: "",
+    postalAddress: "",
+    code: "",
+    town: "",
+    county: "",
     businessName: "",
+    yearEstablished: "",
     businessLocation: "",
+    road: "",
+    landmark: "",
+    hasLocalAuthorityLicense: "",
+    guarantor: {
+      prefix: "",
+      maritalStatus: "",
+      gender: "",
+      mobile: "",
+      postalAddress: "",
+      code: "",
+      occupation: "",
+      relationship: "",
+    },
+    nextOfKin: {
+      name: "",
+      relationship: "",
+      mobile: "",
+    },
   });
 
-  // Prefill from leadData when modal opens
-  useEffect(() => {
-    if (leadData) {
-      setFormData({
-        prefix: "",
-        firstName: leadData.name.split(" ")[0] || "",
-        surname: leadData.name.split(" ")[1] || "",
-        mobile: leadData.phone || "",
-        businessName: leadData.business || "",
-        businessLocation: leadData.location || "",
-      });
-    }
-  }, [leadData]);
+  // Prefill from leads
+ useEffect(() => {
+  if (leadData) {
+    setFormData((prev) => ({
+      ...prev,
+      Firstname:leadData.Firstname || "",
+      Surname: leadData.Surname || "",
+      mobile: leadData.mobile || leadData.phone || "",
+      businessName: leadData.business_name || "",
+      businessLocation: leadData.business_location || "",
+    }));
+  }
+}, [leadData]);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  // Add more security items dynamically
   const addSecurityItem = () => {
     setSecurityItems([
       ...securityItems,
       { item: "", description: "", identification: "", value: "" },
     ]);
+  }
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const { error } = await supabase.from("customers").insert([
+      {
+        prefix: formData.prefix,
+        FirstName: formData.FirstName,
+        Surname: formData.Surname,
+        marital_status: formData.maritalStatus,
+        residence_status: formData.residenceStatus,
+        mobile: formData.mobile,
+        id_number: formData.idNumber,
+        postal_address: formData.postalAddress,
+        code: formData.code,
+        town: formData.town,
+        county: formData.county,
+        business_name: formData.businessName,
+        year_established: formData.yearEstablished,
+        business_location: formData.businessLocation,
+        road: formData.road,
+        landmark: formData.landmark,
+        has_local_authority_license:
+          formData.hasLocalAuthorityLicense === "Yes",
+        security_items: securityItems,
+        guarantor: formData.guarantor,
+        next_of_kin: formData.nextOfKin,
+      },
+    ]);
+
+    if (error) {
+      console.error("Error saving customer:", error.message);
+      alert("Failed to save customer.");
+    } else {
+      alert("Customer saved successfully!");
+      onClose();
+    }
   };
 
   return (
@@ -73,11 +137,15 @@ const CustomerForm = ({ leadData, onClose }) => {
               <input
                 type="text"
                 placeholder="First Name"
+                 value={formData.Firstname}
+                    onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="text"
                 placeholder="Surname"
+                  value={formData.Surname}
+                     onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <select className="border p-2 rounded w-full">
@@ -96,6 +164,7 @@ const CustomerForm = ({ leadData, onClose }) => {
                 type="text"
                 placeholder="Mobile Number"
                 onChange={handleChange}
+                 value={formData.mobile}
                 className="border p-2 rounded w-full"
               />
               <input
@@ -140,27 +209,34 @@ const CustomerForm = ({ leadData, onClose }) => {
               <input
                 type="text"
                 placeholder="Business Name"
+                  value={formData.businessName}
+                     onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="number"
                 placeholder="Year Established"
+                   onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="text"
                 placeholder="Business Location"
+                value={formData.businessLocation}
+                  onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="text"
                 placeholder="Road"
+                   onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="text"
                 placeholder="Landmark (e.g. Mosque)"
                 className="border p-2 rounded w-full"
+                   onChange={handleChange}
               />
               <select className="border p-2 rounded w-full">
                 <option>Have Local Authority Licence?</option>
@@ -183,21 +259,25 @@ const CustomerForm = ({ leadData, onClose }) => {
                 <input
                   type="text"
                   placeholder="Item"
+                     onChange={handleChange}
                   className="border p-2 rounded w-full"
                 />
                 <input
                   type="text"
                   placeholder="Description"
+                     onChange={handleChange}
                   className="border p-2 rounded w-full"
                 />
                 <input
                   type="text"
                   placeholder="Identification (e.g. Serial No.)"
+                     onChange={handleChange}
                   className="border p-2 rounded w-full"
                 />
                 <input
                   type="number"
                   placeholder="Est. Market Value (KES)"
+                     onChange={handleChange}
                   className="border p-2 rounded w-full"
                 />
               </div>
@@ -235,26 +315,31 @@ const CustomerForm = ({ leadData, onClose }) => {
               <input
                 type="text"
                 placeholder="Mobile Number"
+                   onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="text"
                 placeholder="Postal Address"
+                   onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="text"
                 placeholder="Code"
+                   onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="text"
                 placeholder="Occupation"
+                    onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="text"
                 placeholder="Relationship with Borrower"
+                    onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
             </div>
@@ -269,16 +354,19 @@ const CustomerForm = ({ leadData, onClose }) => {
               <input
                 type="text"
                 placeholder="Name"
+                   onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="text"
                 placeholder="Relationship"
+                   onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
               <input
                 type="text"
                 placeholder="Mobile Number"
+                   onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
             </div>
@@ -286,7 +374,7 @@ const CustomerForm = ({ leadData, onClose }) => {
 
           {/* SUBMIT BUTTON */}
           <div className="flex justify-end">
-            <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button onClick={handleSubmit} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               Submit Application
             </button>
           </div>
