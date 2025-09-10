@@ -1,133 +1,129 @@
 // src/pages/relationship-officer/Leads.jsx
-import React, { useState,useEffect } from "react";
-import CustomerForm from "../relationship-officer/components/CustomerForm";
+import React, { useState } from "react";
 
 const Leads = () => {
-  const [leads, setLeads] = useState([]);
-  const [selectedLead, setSelectedLead] = useState(null);
-  const [showLeadForm, setShowLeadForm] = useState(false);
-  const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [leads, setLeads] = useState([
+    {
+      id: 1,
+      name: "John Doe",
+      phone: "0712345678",
+      business: "Electronics Shop",
+      location: "Nairobi",
+      status: "Hot",
+    },
+    {
+      id: 2,
+      name: "Mary Jane",
+      phone: "0798765432",
+      business: "Clothing Store",
+      location: "Mombasa",
+      status: "Warm",
+    },
+  ]);
+
+  const [showForm, setShowForm] = useState(false);
   const [newLead, setNewLead] = useState({
-    Firstname: "",
-    Surname: "",
+    name: "",
     phone: "",
     business: "",
     location: "",
     status: "Cold",
   });
 
-  // ✅ Fetch leads from Supabase on mount
-  useEffect(() => {
-    const fetchLeads = async () => {
-      const { data, error } = await supabase.from("leads").select("*");
-      if (error) console.error("Error fetching leads:", error);
-      else setLeads(data);
-    };
-    fetchLeads();
-  }, []);
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setNewLead({ ...newLead, [name]: value });
   };
 
-  // ✅ Save to Supabase
-  const addLead = async (e) => {
+  const addLead = (e) => {
     e.preventDefault();
-    const { data, error } = await supabase.from("leads").insert([newLead]);
-    if (error) {
-      console.error("Error saving lead:", error);
-      return;
+    setLeads([...leads, { id: Date.now(), ...newLead }]);
+    setNewLead({ name: "", phone: "", business: "", location: "", status: "Cold" });
+    setShowForm(false);
+  };
+
+  const convertToCustomer = (id) => {
+    alert(`Lead ${id} converted to customer!`);
+  };
+
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case "Hot":
+        return "bg-red-100 text-red-600";
+      case "Warm":
+        return "bg-yellow-100 text-yellow-600";
+      case "Cold":
+        return "bg-blue-100 text-blue-600";
+      default:
+        return "bg-gray-100 text-gray-600";
     }
-    setLeads([...leads, data[0]]); // update local state
-    setNewLead({ Firstname: "", Surname: "", phone: "", business: "", location: "", status: "Cold" });
-    setShowLeadForm(false);
   };
-
-  const handleConvertToCustomer = async (lead) => {
-    setSelectedLead(lead);
-    setShowCustomerForm(true);
-
-    // ✅ Insert into "customers" table
-    const { error } = await supabase.from("customers").insert([{
-      Firstname: lead.Firstname,
-      Surname: lead.Surname,
-      phone: lead.phone,
-      business: lead.business,
-      location: lead.location,
-      status: lead.status,
-    }]);
-
-    if (error) console.error("Error converting to customer:", error);
-    else console.log("Customer saved successfully");
-  };
-
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900">My Leads</h1>
         <button
-          onClick={() => setShowLeadForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          onClick={() => setShowForm(true)}
+          className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg shadow hover:bg-indigo-700 transition"
         >
           + Add Lead
         </button>
       </div>
 
-      {/* Leads Count */}
-      <p className="mb-4 text-gray-600">Total Leads: {leads.length}</p>
-
       {/* Leads Table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full border border-gray-200 bg-white rounded-lg shadow-md">
-          <thead className="bg-gray-100 text-gray-700 text-sm uppercase">
+      <div className="overflow-x-auto bg-white shadow rounded-lg">
+        <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left">Name</th>
-              <th className="px-4 py-3 text-left">Phone</th>
-              <th className="px-4 py-3 text-left">Business</th>
-              <th className="px-4 py-3 text-left">Location</th>
-              <th className="px-4 py-3 text-left">Status</th>
-              <th className="px-4 py-3 text-center">Actions</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Name</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Phone</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Business</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Location</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
+              <th className="px-4 py-3 text-right font-medium text-gray-600">Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-gray-200">
             {leads.map((lead) => (
-              <tr key={lead.id} className="border-b hover:bg-gray-50">
+              <tr key={lead.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3">{lead.name}</td>
                 <td className="px-4 py-3">{lead.phone}</td>
                 <td className="px-4 py-3">{lead.business}</td>
                 <td className="px-4 py-3">{lead.location}</td>
-                <td>
+                <td className="px-4 py-3">
                   <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      lead.status === "Hot"
-                        ? "bg-red-100 text-red-700"
-                        : lead.status === "Warm"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-blue-100 text-blue-700"
-                    }`}
+                    className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusStyle(
+                      lead.status
+                    )}`}
                   >
                     {lead.status}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-3 text-right">
                   <button
-                    onClick={() => setShowCustomerForm(true)}
-                    className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    onClick={() => convertToCustomer(lead.id)}
+                    className="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition"
                   >
-                    Convert to Customer
+                    Convert
                   </button>
                 </td>
               </tr>
             ))}
+            {leads.length === 0 && (
+              <tr>
+                <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
+                  No leads available
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-        {/* Modal Form */}
-      {showLeadForm && (
+      {/* Modal Form */}
+      {showForm && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
           <div className="bg-white w-full max-w-lg rounded-lg shadow-lg p-6 relative">
             <h2 className="text-lg font-bold mb-4">Add New Lead</h2>
@@ -192,7 +188,7 @@ const Leads = () => {
               <div className="flex justify-end gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowLeadForm(false)}
+                  onClick={() => setShowForm(false)}
                   className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
                 >
                   Cancel
@@ -208,9 +204,6 @@ const Leads = () => {
           </div>
         </div>
       )}
-
-      {/* Import and Render Customer Form */}
-      {showCustomerForm && <CustomerForm onClose={() => setShowCustomerForm(false)} />}
     </div>
   );
 };

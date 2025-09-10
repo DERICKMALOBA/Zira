@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import Sidebar from "./components/sidebar";
 import Header from "./components/Header";
+import OfficerSidebar from './relationship-officer/components/OfficerSidebar'
 import Dashboard from "./pages/Dashboard";
 import Accounting from "./pages/accounting/Accounting";
 import CreditSettings from "./pages/Credit-settings/CreditSettings";
@@ -28,14 +29,19 @@ function App() {
   return (
     <Router>
       <div className="flex h-screen bg-gray-100 overflow-hidden">
-        {/* Sidebar - Always in document flow */}
-        <div
-          className={`flex-shrink-0 ${
-            sidebarOpen ? "w-64" : "w-0"
-          } transition-all duration-300 ease-in-out overflow-hidden`}
-        >
-          <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-        </div>
+        {/* Conditional Sidebar based on route */}
+              <Routes>
+                <Route path="/officer/*" element={
+                  <div className={`flex-shrink-0 ${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden`}>
+                    <OfficerSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+                  </div>
+                } />
+                <Route path="*" element={
+                  <div className={`flex-shrink-0 ${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 ease-in-out overflow-hidden`}>
+                    <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+                  </div>
+                } />
+              </Routes>
 
         {/* Main content area */}
         <div className="flex flex-col flex-1 min-w-0">

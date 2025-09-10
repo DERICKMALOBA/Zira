@@ -137,7 +137,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       <nav className="p-4 space-y-1">
         {navigation.map((item) => (
           <div key={item.name} className="relative">
-            {/* Main Navigation Item */}
+       
          {/* Main Navigation Item */}
 {item.children ? (
   <div
