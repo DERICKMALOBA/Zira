@@ -77,38 +77,12 @@ const Leads = () => {
   };
 
   // Convert lead to customer
-  const handleConvertToCustomer = async (lead) => {
-    setIsSaving(true);
-    setSelectedLead(lead);
-    setShowCustomerForm(true);
-const { error } = await supabase
-  .from("customers")
-  .insert([
-    {
-      Firstname:lead.Firstname,
-      Surname:lead.Surname,
-      mobile:lead.mobile,           
-      business_name: lead.business_name,
-      business_location:lead.business_location, 
-    },
-  ]);
+ 
+const handleConvertToCustomer = (lead) => {
+  setSelectedLead(lead);
+  setShowCustomerForm(true);
+};
 
-if (error) {
-  console.error("Error converting to customer:", error);
-} else {
-  console.log("Lead converted to customer successfully");
-}
-
-
-    setIsSaving(false);
-
-    if (error) {
-      toast.error("Error converting to customer");
-      console.error("Error converting to customer:", error);
-    } else {
-      toast.success("Customer saved successfully");
-    }
-  };
 
   //  Filter leads by name or phone
   const filteredLeads = leads.filter(
