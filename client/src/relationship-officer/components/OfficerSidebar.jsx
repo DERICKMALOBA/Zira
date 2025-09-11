@@ -41,7 +41,7 @@ const OfficerSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       color: 'text-orange-400',
       bgColor: 'bg-orange-400/10',
       children: [
-        { name: 'View Customers', href: '/officer/customers/view', icon: Users },
+        { name: 'View Customers', href: '/officer/customers', icon: Users },
         { name: 'New Applications', href: '/officer/customers/applications', icon: FileText },
         { name: 'Pending Verifications', href: '/officer/customers/verifications', icon: ClipboardList },
       ],

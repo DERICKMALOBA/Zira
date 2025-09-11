@@ -1,33 +1,108 @@
 // src/pages/relationship-officer/Dashboard.jsx
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '../supabaseClient'
 import StatsCards from './components/StatsCards'
 import RecentActivity from './components/RecentActivity'
 import ConversionChart from './components/CoversionChart'
 
 const OfficerDashboard = () => {
   const [stats, setStats] = useState({
-    totalLeads: 45,
-    totalCustomers: 28,
-    totalLoans: 15,
-    conversionRate: 62.2,
-    activeLeads: { hot: 12, warm: 18, cold: 15 }
+    totalLeads: 0,
+    totalCustomers: 0,
+    totalLoans: 0,
+    conversionRate: 0,
+    activeLeads: { hot: 0, warm: 0, cold: 0 }
   })
   
-  const [recentActivity, setRecentActivity] = useState([
-    { id: 1, full_name: 'John Doe', phone: '+254712345678', status: 'hot', created_at: new Date() },
-    { id: 2, full_name: 'Jane Smith', phone: '+254723456789', status: 'warm', created_at: new Date(Date.now() - 86400000) },
-    { id: 3, full_name: 'Mike Johnson', phone: '+254734567890', status: 'cold', created_at: new Date(Date.now() - 172800000) },
-    { id: 4, full_name: 'Sarah Wilson', phone: '+254745678901', status: 'hot', created_at: new Date(Date.now() - 259200000) },
-    { id: 5, full_name: 'David Brown', phone: '+254756789012', status: 'warm', created_at: new Date(Date.now() - 345600000) }
-  ])
+  const [recentActivity, setRecentActivity] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true)
+        
+        // Fetch leads data
+        const { data: leadsData, error: leadsError } = await supabase
+          .from('leads')
+          .select('*')
+        
+        if (leadsError) throw leadsError
+        
+        // Fetch customers data
+        const { data: customersData, error: customersError } = await supabase
+          .from('customers')
+          .select('*')
+        
+        if (customersError) throw customersError
+        
+        // Fetch loans data (assuming you have a loans table)
+        const { data: loansData} = await supabase
+          .from('loans')
+          .select('*')
+        
+        // Count leads by status
+        const hotLeads = leadsData.filter(lead => lead.status === 'Hot').length
+        const warmLeads = leadsData.filter(lead => lead.status === 'Warm').length
+        const coldLeads = leadsData.filter(lead => lead.status === 'Cold').length
+        
+        // Calculate conversion rate
+        const conversionRate = customersData.length > 0 
+          ? (customersData.length / (customersData.length + leadsData.length)) * 100 
+          : 0
+        
+        // Get recent leads (last 5)
+        const recentLeads = leadsData
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0, 5)
+          .map(lead => ({
+            id: lead.id,
+            full_name: `${lead.Firstname || ''} ${lead.Surname || ''}`.trim(),
+            phone: lead.mobile || lead.phone || 'N/A',
+            status: lead.status?.toLowerCase() || 'cold',
+            created_at: lead.created_at ? new Date(lead.created_at) : new Date()
+          }))
+        
+        // Update stats
+        setStats({
+          totalLeads: leadsData.length,
+          totalCustomers: customersData.length,
+          totalLoans: loansData?.length || 0,
+          conversionRate: parseFloat(conversionRate.toFixed(1)),
+          activeLeads: { 
+            hot: hotLeads, 
+            warm: warmLeads, 
+            cold: coldLeads 
+          }
+        })
+        
+        // Update recent activity
+        setRecentActivity(recentLeads)
+        
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    )
+  }
 
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Relationship Officer Dashboard</h1>
-        <p className="text-gray-600">Welcome back! Here's your performance overview.</p>
+    
+        <p className="text-gray-600 text-center">Welcome back! Here's your performance overview.</p>
       </div>
 
       {/* Statistics Cards */}

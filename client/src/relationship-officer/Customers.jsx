@@ -1,7 +1,6 @@
 
 import  { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
-import { Plus } from "lucide-react";
 import CustomersTable from "./components/CustomerTable";
 import CustomerDetailsModal from "./components/CustomerDetailsModal.jsx";
 import EditCustomer from "./components/EditCustomer.jsx";
@@ -67,18 +66,11 @@ function Customers() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Customers ({customers.length})</h1>
-        <button
-          onClick={() => {
-            setEditCustomer(null);
-            setShowForm(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus size={20} /> Add Customer
-        </button>
-      </div>
+     <div className="mb-8 text-center">
+             <h1 className="text-green-600 font-serif mb-2 mt-0 text-xl ">Customers' Table</h1>
+              <p className="text-gray-600 mb-6">Manage your customers here.</p>
+     </div>
+   
 
       {/* Table */}
       <CustomersTable

@@ -2,61 +2,36 @@
 import React from 'react'
 
 const ConversionChart = ({ stats }) => {
-  const { hot, warm, cold } = stats.activeLeads
-  const totalLeads = hot + warm + cold
-
-  const getPercentage = (value) => {
-    return totalLeads > 0 ? ((value / totalLeads) * 100).toFixed(0) : 0
-  }
+  const { conversionRate } = stats
 
   return (
-    <div className="space-y-4">
-      {/* Progress Bars */}
-      <div>
-        <div className="flex justify-between text-sm mb-1">
-          <span className="text-red-600 font-medium">Hot Leads</span>
-          <span>{hot} ({getPercentage(hot)}%)</span>
+    <div className="flex items-center justify-center h-64">
+      <div className="text-center">
+        <div className="relative inline-block">
+          <svg className="w-32 h-32" viewBox="0 0 36 36">
+            <path
+              d="M18 2.0845
+                a 15.9155 15.9155 0 0 1 0 31.831
+                a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="#eee"
+              strokeWidth="3"
+            />
+            <path
+              d="M18 2.0845
+                a 15.9155 15.9155 0 0 1 0 31.831
+                a 15.9155 15.9155 0 0 1 0 -31.831"
+              fill="none"
+              stroke="#4f46e5"
+              strokeWidth="3"
+              strokeDasharray={`${conversionRate}, 100`}
+            />
+          </svg>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+            <span className="text-2xl font-bold text-gray-900">{conversionRate}%</span>
+          </div>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-red-500 h-2 rounded-full"
-            style={{ width: `${getPercentage(hot)}%` }}
-          ></div>
-        </div>
-      </div>
-
-      <div>
-        <div className="flex justify-between text-sm mb-1">
-          <span className="text-yellow-600 font-medium">Warm Leads</span>
-          <span>{warm} ({getPercentage(warm)}%)</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-yellow-400 h-2 rounded-full"
-            style={{ width: `${getPercentage(warm)}%` }}
-          ></div>
-        </div>
-      </div>
-
-      <div>
-        <div className="flex justify-between text-sm mb-1">
-          <span className="text-gray-600 font-medium">Cold Leads</span>
-          <span>{cold} ({getPercentage(cold)}%)</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-gray-400 h-2 rounded-full"
-            style={{ width: `${getPercentage(cold)}%` }}
-          ></div>
-        </div>
-      </div>
-
-      {/* Conversion Rate */}
-      <div className="pt-4 border-t border-gray-200">
-        <div className="text-center">
-          <p className="text-2xl font-bold text-gray-900">{stats.conversionRate}%</p>
-          <p className="text-sm text-gray-600">Overall Conversion Rate</p>
-        </div>
+        <p className="mt-4 text-sm text-gray-600">Lead to Customer Conversion Rate</p>
       </div>
     </div>
   )
