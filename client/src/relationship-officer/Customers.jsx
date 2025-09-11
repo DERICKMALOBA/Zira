@@ -1,9 +1,8 @@
 
-import React, { useEffect, useState } from "react";
+import  { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
 import { Plus } from "lucide-react";
 import CustomersTable from "./components/CustomerTable";
-import CustomerForm from "./components/CustomerForm";
 import CustomerDetailsModal from "./components/CustomerDetailsModal.jsx";
 import EditCustomer from "./components/EditCustomer.jsx";
 
@@ -86,7 +85,7 @@ function Customers() {
         customers={customers}
         loading={loading}
         onEdit={(c) => {
-          setEditCustomer(c);
+          setEditCustomer(c.id);
           setShowForm(true);
         }}
         onDelete={deleteCustomer}
@@ -96,19 +95,19 @@ function Customers() {
       {/* Modals */}
       {showForm && (
         <EditCustomer
-          leadData={editCustomer}
+         customerId={editCustomer}
           onClose={() => {
             setShowForm(false);
             fetchCustomers();
           }}
         />
       )}
-      {viewCustomer && (
-        <CustomerDetailsModal
-          customer={viewCustomer}
-          onClose={() => setViewCustomer(null)}
-        />
-      )}
+  {viewCustomer && (
+  <CustomerDetailsModal
+    customer={viewCustomer}   
+    onClose={() => setViewCustomer(null)}
+  />
+)}
     </div>
   );
 }

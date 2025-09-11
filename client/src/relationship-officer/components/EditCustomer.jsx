@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 
-const EditCustomerForm = ({ customerData, onClose }) => {
+
+const parseNumber = (val) => {
+  if (val === null || val === undefined || val === "" || val === "undefined") {
+    return null;
+  }
+  const n = Number(val);
+  return isNaN(n) ? null : n;
+};
+
+const EditCustomerForm = ({ customerId, onClose }) => {
   const [securityItems, setSecurityItems] = useState([]);
   const [formData, setFormData] = useState({
     prefix: "",
@@ -38,70 +47,133 @@ const EditCustomerForm = ({ customerData, onClose }) => {
     },
   });
 
-  // Prefill from DB data
+  // Fetch existing customer data
   useEffect(() => {
-    if (customerData) {
-      setFormData({
-        prefix: customerData.prefix || "",
-        Firstname: customerData.Firstname || "",
-        Surname: customerData.Surname || "",
-        maritalStatus: customerData.marital_status || "",
-        residenceStatus: customerData.residence_status || "",
-        mobile: customerData.mobile || "",
-        idNumber: customerData.id_number || "",
-        postalAddress: customerData.postal_address || "",
-        code: customerData.code || "",
-        town: customerData.town || "",
-        county: customerData.county || "",
-        businessName: customerData.business_name || "",
-        yearEstablished: customerData.year_established || "",
-        businessLocation: customerData.business_location || "",
-        road: customerData.road || "",
-        landmark: customerData.landmark || "",
-        hasLocalAuthorityLicense: customerData.has_local_authority_license
-          ? "Yes"
-          : "No",
-        guarantor: customerData.guarantor || {
-          prefix: "",
-          maritalStatus: "",
-          gender: "",
-          mobile: "",
-          postalAddress: "",
-          code: "",
-          occupation: "",
-          relationship: "",
-        },
-        nextOfKin: customerData.next_of_kin || {
-          name: "",
-          relationship: "",
-          mobile: "",
-        },
-      });
+    if (!customerId) return;
 
-      setSecurityItems(customerData.security_items || []);
-    }
-  }, [customerData]);
+    const fetchCustomerData = async () => {
+      try {
+        console.log("[EditCustomerForm] Fetching data for customerId:", customerId);
 
-  // Handle top-level form changes
+        // Fetch customer
+        const { data: customer, error: custError } = await supabase
+          .from("customers")
+          .select("*")
+          .eq("id", customerId)
+          .single();
+
+        if (custError) throw custError;
+        console.log("Fetched customer:", customer);
+
+        setFormData((prev) => ({
+          ...prev,
+          prefix: customer.prefix || "",
+          Firstname: customer.Firstname || "",
+          Surname: customer.Surname || "",
+          maritalStatus: customer.marital_status || "",
+          residenceStatus: customer.residence_status || "",
+          mobile: customer.mobile || "",
+          idNumber: customer.id_number ? customer.id_number.toString() : "",
+          postalAddress: customer.postal_address || "",
+          code: customer.code ? customer.code.toString() : "",
+          town: customer.town || "",
+          county: customer.county || "",
+          businessName: customer.business_name || "",
+          yearEstablished: customer.year_established
+            ? customer.year_established.toString()
+            : "",
+          businessLocation: customer.business_location || "",
+          road: customer.road || "",
+          landmark: customer.landmark || "",
+          hasLocalAuthorityLicense: customer.has_local_authority_license ? "Yes" : "No",
+        }));
+
+        // Fetch guarantor
+        const { data: guarantor } = await supabase
+          .from("guarantors")
+          .select("*")
+          .eq("customer_id", customerId)
+          .single();
+        console.log("Fetched guarantor:", guarantor);
+
+        if (guarantor) {
+          setFormData((prev) => ({
+            ...prev,
+            guarantor: {
+              prefix: guarantor.prefix || "",
+              maritalStatus: guarantor.marital_status || "",
+              gender: guarantor.gender || "",
+              mobile: guarantor.mobile || "",
+              postalAddress: guarantor.postal_address || "",
+              code: guarantor.code ? guarantor.code.toString() : "",
+              occupation: guarantor.occupation || "",
+              relationship: guarantor.relationship || "",
+            },
+          }));
+        }
+
+        // Fetch next of kin
+        const { data: nextOfKin } = await supabase
+          .from("next_of_kin")
+          .select("*")
+          .eq("customer_id", customerId)
+          .single();
+        console.log("Fetched nextOfKin:", nextOfKin);
+
+        if (nextOfKin) {
+          setFormData((prev) => ({
+            ...prev,
+            nextOfKin: {
+              name: nextOfKin.name || "",
+              relationship: nextOfKin.relationship || "",
+              mobile: nextOfKin.mobile || "",
+            },
+          }));
+        }
+
+        // Fetch security items
+        const { data: security } = await supabase
+          .from("security_items")
+          .select("*")
+          .eq("customer_id", customerId);
+        console.log("Fetched security items:", security);
+
+        setSecurityItems(
+          security && security.length
+            ? security.map((s) => ({
+                item: s.item || "",
+                description: s.description || "",
+                identification: s.identification || "",
+                value: s.value ? s.value.toString() : "",
+              }))
+            : [{ item: "", description: "", identification: "", value: "" }]
+        );
+      } catch (err) {
+        console.error("Error fetching customer data:", err.message);
+      }
+    };
+
+    fetchCustomerData();
+  }, [customerId]);
+
+  // Change handlers
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value || "" }));
   };
 
-  // Handle nested objects
   const handleNestedChange = (e, section) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [section]: { ...prev[section], [name]: value },
+      [section]: { ...prev[section], [name]: value || "" },
     }));
   };
 
-  // Handle security items
   const handleSecurityChange = (e, index) => {
     const { name, value } = e.target;
     const newItems = [...securityItems];
-    newItems[index][name] = value;
+    newItems[index][name] = value || "";
     setSecurityItems(newItems);
   };
 
@@ -112,103 +184,109 @@ const EditCustomerForm = ({ customerData, onClose }) => {
     ]);
   };
 
+  // Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const customerId = customerData.id;
+    try {
+      console.log("[EditCustomerForm] Submitting form...");
 
-    // 1. Update customers
-    const { error: updateError } = await supabase
-      .from("customers")
-      .update({
-        prefix: formData.prefix,
-        Firstname: formData.Firstname,
-        Surname: formData.Surname,
-        marital_status: formData.maritalStatus,
-        residence_status: formData.residenceStatus,
-        mobile: formData.mobile,
-        id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
-        postal_address: formData.postalAddress,
-        code: formData.code ? parseInt(formData.code) : null,
-        town: formData.town,
-        county: formData.county,
-        business_name: formData.businessName,
-        year_established: formData.yearEstablished
-          ? parseInt(formData.yearEstablished)
-          : null,
-        business_location: formData.businessLocation,
-        road: formData.road,
-        landmark: formData.landmark,
-        has_local_authority_license:
-          formData.hasLocalAuthorityLicense === "Yes",
-      })
-      .eq("id", customerId);
+      // Customer update
+      const customerUpdate = {
+        prefix: formData.prefix || null,
+        
+        Firstname: formData.Firstname || null,
+        Surname: formData.Surname || null,
+        marital_status: formData.maritalStatus || null,
+        residence_status: formData.residenceStatus || null,
+        mobile: formData.mobile || null,
+        id_number: parseNumber(formData.idNumber),
+        postal_address: formData.postalAddress || null,
+        code: parseNumber(formData.code),
+        town: formData.town || null,
+        county: formData.county || null,
+        business_name: formData.businessName || null,
+        year_established: parseNumber(formData.yearEstablished),
+        business_location: formData.businessLocation || null,
+        road: formData.road || null,
+        landmark: formData.landmark || null,
+        has_local_authority_license: formData.hasLocalAuthorityLicense === "Yes",
+      };
+      console.log("Customer update data:", customerUpdate);
 
-    if (updateError) {
-      console.error("Error updating customer:", updateError.message);
-      alert("Failed to update customer.");
-      return;
-    }
+      const { error: custError } = await supabase
+        .from("customers")
+        .update(customerUpdate)
+        .eq("id", customerId);
+      if (custError) throw custError;
 
-    // 2. Upsert guarantor
-    if (formData.guarantor?.mobile) {
-      await supabase.from("guarantors").upsert(
-        {
-          customer_id: customerId,
-          ...formData.guarantor,
-        },
-        { onConflict: "customer_id" }
-      );
-    }
-
-    // 3. Upsert next of kin
-    if (formData.nextOfKin?.mobile) {
-      await supabase.from("next_of_kin").upsert(
-        {
-          customer_id: customerId,
-          ...formData.nextOfKin,
-        },
-        { onConflict: "customer_id" }
-      );
-    }
-
-    // 4. Replace borrower security items
-    await supabase.from("security_items").delete().eq("customer_id", customerId);
-    if (securityItems.length > 0) {
-      const itemsToInsert = securityItems.map((s) => ({
+      // Guarantor update
+      const guarantorUpdate = {
         customer_id: customerId,
-        item: s.item,
-        description: s.description,
-        identification: s.identification,
-        value: s.value ? parseFloat(s.value) : null,
-      }));
-      await supabase.from("security_items").insert(itemsToInsert);
-    }
+        prefix: formData.guarantor.prefix || null,
+        marital_status: formData.guarantor.maritalStatus || null,
+        gender: formData.guarantor.gender || null,
+        mobile: formData.guarantor.mobile || null,
+        postal_address: formData.guarantor.postalAddress || null,
+        code: parseNumber(formData.guarantor.code),
+        occupation: formData.guarantor.occupation || null,
+        relationship: formData.guarantor.relationship || null,
+      };
+      console.log("Guarantor update data:", guarantorUpdate);
 
-    alert("Customer updated successfully!");
-    onClose();
+      const { error: guarError } = await supabase
+        .from("guarantors")
+        .upsert(guarantorUpdate, { onConflict: "customer_id" });
+      if (guarError) throw guarError;
+
+      // Next of Kin update
+      const nextOfKinUpdate = {
+        customer_id: customerId,
+        name: formData.nextOfKin.name || null,
+        relationship: formData.nextOfKin.relationship || null,
+        mobile: formData.nextOfKin.mobile || null,
+      };
+      console.log("Next of Kin update data:", nextOfKinUpdate);
+
+      const { error: kinError } = await supabase
+        .from("next_of_kin")
+        .upsert(nextOfKinUpdate, { onConflict: "customer_id" });
+      if (kinError) throw kinError;
+
+      // Security items update
+      await supabase.from("security_items").delete().eq("customer_id", customerId);
+      for (const item of securityItems) {
+        if (item.item || item.description || item.identification || item.value) {
+          const securityItem = {
+            customer_id: customerId,
+            item: item.item || null,
+            description: item.description || null,
+            identification: item.identification || null,
+            value: parseNumber(item.value),
+          };
+          console.log("Security item:", securityItem);
+          await supabase.from("security_items").insert(securityItem);
+        }
+      }
+
+      alert("Customer details updated successfully!");
+      onClose();
+    } catch (err) {
+      console.error("Update error:", err.message);
+      alert("Failed to update: " + err.message);
+    }
   };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
       <div className="bg-white w-full max-w-6xl h-[90vh] overflow-y-auto rounded-lg shadow-lg p-6">
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">
-            Mular Credit Limited - Edit Customer
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-lg font-bold"
-          >
-            ✕
-          </button>
+          <h2 className="text-xl font-bold">Mular Credit Limited - Edit Customer</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-lg font-bold">✕</button>
         </div>
 
-        {/* The same form as Add but populated */}
-        <form className="space-y-8">
-          {/* PERSONAL DETAILS */}
-          <section>
+        <form className="space-y-8" onSubmit={handleSubmit}>
+            <section>
             <h3 className="text-lg font-semibold mb-4 border-b pb-2">
               Personal Details
             </h3>
@@ -314,7 +392,6 @@ const EditCustomerForm = ({ customerData, onClose }) => {
               />
             </div>
           </section>
-
           {/* BUSINESS INFORMATION */}
           <section>
             <h3 className="text-lg font-semibold mb-4 border-b pb-2">
@@ -541,14 +618,10 @@ const EditCustomerForm = ({ customerData, onClose }) => {
               />
             </div>
           </section>
-          
-          {/* SUBMIT BUTTON */}
+
           <div className="flex justify-end">
-            <button
-              onClick={handleSubmit}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
-              Update Customer
+            <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              Update
             </button>
           </div>
         </form>

@@ -1,19 +1,28 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../../supabaseClient"; // make sure you have this
+import { supabase } from "../../supabaseClient";
 
 const CustomerForm = ({ leadData, onClose }) => {
   const [securityItems, setSecurityItems] = useState([
     { item: "", description: "", identification: "", value: "" },
   ]);
+  const [guarantorSecurityItems, setGuarantorSecurityItems] = useState([
+    { item: "", description: "", identification: "", value: "" },
+  ]);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     prefix: "",
     Firstname: "",
+    Middlename: "",
     Surname: "",
     maritalStatus: "",
     residenceStatus: "",
     mobile: "",
+    dateOfBirth: "",
+    gender: "",
     idNumber: "",
+    residentialStatus: "",
     postalAddress: "",
     code: "",
     town: "",
@@ -21,12 +30,16 @@ const CustomerForm = ({ leadData, onClose }) => {
     businessName: "",
     yearEstablished: "",
     businessLocation: "",
+    daily_Sales: "",
     road: "",
     landmark: "",
     hasLocalAuthorityLicense: "",
     guarantor: {
       prefix: "",
       maritalStatus: "",
+      Middlename: "",
+      dateOfBirth: "",
+      residentialStatus: "",
       gender: "",
       mobile: "",
       postalAddress: "",
@@ -55,10 +68,154 @@ const CustomerForm = ({ leadData, onClose }) => {
     }
   }, [leadData]);
 
+  // Check if a value is unique in the database
+  const checkUniqueValue = async (table, field, value, excludeId = null) => {
+    let query = supabase
+      .from(table)
+      .select(field)
+      .eq(field, value);
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error(`Error checking unique ${field}:`, error);
+      return false;
+    }
+    
+    return data.length === 0;
+  };
+
+  // Validate date is at least 18 years old
+  const isAtLeast18YearsOld = (dateString) => {
+    if (!dateString) return true; // Skip validation if empty
+    
+    const birthDate = new Date(dateString);
+    const today = new Date();
+    const eighteenYearsAgo = new Date(
+      today.getFullYear() - 18,
+      today.getMonth(),
+      today.getDate()
+    );
+    
+    return birthDate <= eighteenYearsAgo;
+  };
+
+  // Validation function
+  const validateForm = async () => {
+    const newErrors = {};
+
+    // Required fields validation
+    if (!formData.Firstname) newErrors.Firstname = "First name is required";
+    if (!formData.Surname) newErrors.Surname = "Surname is required";
+    if (!formData.mobile) newErrors.mobile = "Mobile number is required";
+    if (!formData.idNumber) newErrors.idNumber = "ID number is required";
+
+    // Mobile number format validation
+    if (
+      formData.mobile &&
+      !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))
+    ) {
+      newErrors.mobile = "Please enter a valid mobile number";
+    }
+
+    // ID number validation
+    if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
+      newErrors.idNumber = "Please enter a valid ID number";
+    }
+
+    // Date of birth validation - must be at least 18 years old
+    if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
+      newErrors.dateOfBirth = "Customer must be at least 18 years old";
+    }
+
+    // Guarantor date of birth validation
+    if (formData.guarantor.dateOfBirth && !isAtLeast18YearsOld(formData.guarantor.dateOfBirth)) {
+      newErrors.guarantorDateOfBirth = "Guarantor must be at least 18 years old";
+    }
+
+    // Validate security items
+    securityItems.forEach((item, index) => {
+      if (item.value && isNaN(parseFloat(item.value))) {
+        newErrors[`securityValue_${index}`] = "Value must be a number";
+      }
+    });
+
+    // Validate guarantor security items
+    guarantorSecurityItems.forEach((item, index) => {
+      if (item.value && isNaN(parseFloat(item.value))) {
+        newErrors[`guarantorSecurityValue_${index}`] = "Value must be a number";
+      }
+    });
+
+    // Check for unique mobile number (only if no format error)
+    if (formData.mobile && !newErrors.mobile) {
+      const isMobileUnique = await checkUniqueValue("customers", "mobile", formData.mobile);
+      if (!isMobileUnique) {
+        newErrors.mobile = "Mobile number already exists in our system";
+      }
+    }
+
+    // Check for unique ID number (only if no format error)
+    if (formData.idNumber && !newErrors.idNumber) {
+      const isIdUnique = await checkUniqueValue("customers", "id_number", formData.idNumber);
+      if (!isIdUnique) {
+        newErrors.idNumber = "ID number already exists in our system";
+      }
+    }
+
+    // Check for unique guarantor mobile number if provided
+    if (formData.guarantor.mobile && !newErrors.guarantorMobile) {
+      const isGuarantorMobileUnique = await checkUniqueValue("guarantors", "mobile", formData.guarantor.mobile);
+      if (!isGuarantorMobileUnique) {
+        newErrors.guarantorMobile = "Guarantor mobile number already exists in our system";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   // Handle top-level form changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Clear error when field is edited
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleGuarantorSecurityChange = (e, index) => {
+    const { name, value } = e.target;
+    const newItems = [...guarantorSecurityItems];
+    newItems[index][name] = value;
+    setGuarantorSecurityItems(newItems);
+
+    // Clear error when field is edited
+    const errorKey = `guarantorSecurityValue_${index}`;
+    if (errors[errorKey]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        return newErrors;
+      });
+    }
+  };
+
+  const addGuarantorSecurityItem = () => {
+    setGuarantorSecurityItems([
+      ...guarantorSecurityItems,
+      { item: "", description: "", identification: "", value: "" },
+    ]);
   };
 
   // Handle nested objects (guarantor, nextOfKin)
@@ -68,6 +225,15 @@ const CustomerForm = ({ leadData, onClose }) => {
       ...prev,
       [section]: { ...prev[section], [name]: value },
     }));
+
+    // Clear error when field is edited
+    if (errors[`${section}${name}`]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[`${section}${name}`];
+        return newErrors;
+      });
+    }
   };
 
   // Handle security items
@@ -76,6 +242,16 @@ const CustomerForm = ({ leadData, onClose }) => {
     const newItems = [...securityItems];
     newItems[index][name] = value;
     setSecurityItems(newItems);
+
+    // Clear error when field is edited
+    const errorKey = `securityValue_${index}`;
+    if (errors[errorKey]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        return newErrors;
+      });
+    }
   };
 
   const addSecurityItem = () => {
@@ -88,90 +264,149 @@ const CustomerForm = ({ leadData, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1. Insert into customers
-    const { data: customerData, error: customerError } = await supabase
-      .from("customers")
-      .insert([
-        {
-          prefix: formData.prefix || null,
-          Firstname: formData.Firstname || null,
-          Surname: formData.Surname || null,
-          marital_status: formData.maritalStatus || null,
-          residence_status: formData.residenceStatus || null,
-          mobile: formData.mobile || null,
-          id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
-          postal_address: formData.postalAddress || null,
-          code: formData.code ? parseInt(formData.code) : null,
-          town: formData.town || null,
-          county: formData.county || null,
-          business_name: formData.businessName || null,
-          year_established: formData.yearEstablished
-            ? parseInt(formData.yearEstablished)
-            : null,
-          business_location: formData.businessLocation || null,
-          road: formData.road || null,
-          landmark: formData.landmark || null,
-          has_local_authority_license:
-            formData.hasLocalAuthorityLicense === "Yes",
-        },
-      ])
-      .select("id")
-      .single();
-
-    if (customerError) {
-      console.error("Error saving customer:", customerError.message);
-      alert("Failed to save customer.");
+    const isValid = await validateForm();
+    if (!isValid) {
+      alert("Please fix the errors in the form before submitting.");
       return;
     }
 
-    const customerId = customerData.id;
+    setIsSubmitting(true);
 
-    // 2. Insert guarantor
-    if (formData.guarantor?.mobile) {
-      await supabase.from("guarantors").insert([
-        {
-          customer_id: customerId,
-          prefix: formData.guarantor.prefix || null,
-          marital_status: formData.guarantor.maritalStatus || null,
-          gender: formData.guarantor.gender || null,
-          mobile: formData.guarantor.mobile || null,
-          postal_address: formData.guarantor.postalAddress || null,
-          code: formData.guarantor.code
-            ? parseInt(formData.guarantor.code)
-            : null,
-          occupation: formData.guarantor.occupation || null,
-          relationship: formData.guarantor.relationship || null,
-        },
-      ]);
+    try {
+      // 1. Insert into customers
+      const { data: customerData, error: customerError } = await supabase
+        .from("customers")
+        .insert([
+          {
+            prefix: formData.prefix || null,
+            Firstname: formData.Firstname || null,
+            Surname: formData.Surname || null,
+            Middlename: formData.Middlename || null,
+            marital_status: formData.maritalStatus || null,
+            residence_status: formData.residenceStatus || null,
+            mobile: formData.mobile || null,
+            date_of_birth: formData.dateOfBirth || null,
+            gender: formData.gender || null,
+            id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
+            postal_address: formData.postalAddress || null,
+            code: formData.code ? parseInt(formData.code) : null,
+            town: formData.town || null,
+            county: formData.county || null,
+            business_name: formData.businessName || null,
+            business_type: formData.businessType || null,
+            daily_Sales: formData.daily_Sales
+              ? parseFloat(formData.daily_Sales)
+              : null,
+            year_established: formData.yearEstablished
+              ? parseInt(formData.yearEstablished)
+              : null,
+            business_location: formData.businessLocation || null,
+            road: formData.road || null,
+            landmark: formData.landmark || null,
+            has_local_authority_license:
+              formData.hasLocalAuthorityLicense === "Yes",
+          },
+        ])
+        .select("id")
+        .single();
+
+      if (customerError) {
+        console.error("Error saving customer:", customerError.message);
+        alert("Failed to save customer: " + customerError.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const customerId = customerData.id;
+
+      // 2. Insert guarantor (only if mobile is provided)
+      let guarantorId = null;
+      if (formData.guarantor?.mobile) {
+        const { data: guarantorData, error: guarantorError } = await supabase
+          .from("guarantors")
+          .insert([
+            {
+              customer_id: customerId,
+              prefix: formData.guarantor.prefix || null,
+              marital_status: formData.guarantor.maritalStatus || null,
+              gender: formData.guarantor.gender || null,
+              mobile: formData.guarantor.mobile || null,
+              residence_status: formData.guarantor.residenceStatus || null,
+              postal_address: formData.guarantor.postalAddress || null,
+              code: formData.guarantor.code
+                ? parseInt(formData.guarantor.code)
+                : null,
+              occupation: formData.guarantor.occupation || null,
+              relationship: formData.guarantor.relationship || null,
+              date_of_birth: formData.guarantor.dateOfBirth || null,
+              Middlename: formData.guarantor.Middlename || null,
+            },
+          ])
+          .select("id")
+          .single();
+
+        if (guarantorError) {
+          console.error("Error saving guarantor:", guarantorError.message);
+          // Continue with other operations even if guarantor fails
+        } else {
+          guarantorId = guarantorData.id;
+        }
+
+        // Insert guarantor security items if we have a guarantor ID
+        if (guarantorId && guarantorSecurityItems.length > 0) {
+          const gItemsToInsert = guarantorSecurityItems
+            .filter((item) => item.item || item.description) // Only include items with some data
+            .map((s) => ({
+              guarantor_id: guarantorId,
+              item: s.item || null,
+              description: s.description || null,
+              identification: s.identification || null,
+              estimated_market_value: s.value ? parseFloat(s.value) : null,
+            }));
+
+          if (gItemsToInsert.length > 0) {
+            await supabase.from("guarantor_security").insert(gItemsToInsert);
+          }
+        }
+      }
+
+      // 3. Insert next of kin (only if mobile is provided)
+      if (formData.nextOfKin?.mobile) {
+        await supabase.from("next_of_kin").insert([
+          {
+            customer_id: customerId,
+            name: formData.nextOfKin.name || null,
+            relationship: formData.nextOfKin.relationship || null,
+            mobile: formData.nextOfKin.mobile || null,
+          },
+        ]);
+      }
+
+      // 4. Insert borrower security items (only items with some data)
+      if (securityItems.length > 0) {
+        const itemsToInsert = securityItems
+          .filter((item) => item.item || item.description) // Only include items with some data
+          .map((s) => ({
+            customer_id: customerId,
+            item: s.item || null,
+            description: s.description || null,
+            identification: s.identification || null,
+            value: s.value ? parseFloat(s.value) : null,
+          }));
+
+        if (itemsToInsert.length > 0) {
+          await supabase.from("security_items").insert(itemsToInsert);
+        }
+      }
+
+      alert("Customer & related details saved successfully!");
+      onClose();
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      alert("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // 3. Insert next of kin
-    if (formData.nextOfKin?.mobile) {
-      await supabase.from("next_of_kin").insert([
-        {
-          customer_id: customerId,
-          name: formData.nextOfKin.name || null,
-          relationship: formData.nextOfKin.relationship || null,
-          mobile: formData.nextOfKin.mobile || null,
-        },
-      ]);
-    }
-
-    // 4. Insert borrower security items
-    if (securityItems.length > 0) {
-      const itemsToInsert = securityItems.map((s) => ({
-        customer_id: customerId,
-        item: s.item || null,
-        description: s.description || null,
-        identification: s.identification || null,
-        value: s.value ? parseFloat(s.value) : null,
-      }));
-
-      await supabase.from("security_items").insert(itemsToInsert);
-    }
-
-    alert("Customer & related details saved successfully!");
-    onClose();
   };
 
   return (
@@ -185,6 +420,7 @@ const CustomerForm = ({ leadData, onClose }) => {
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 text-lg font-bold"
+            disabled={isSubmitting}
           >
             ✕
           </button>
@@ -197,105 +433,204 @@ const CustomerForm = ({ leadData, onClose }) => {
               Personal Details
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <select
-                name="prefix"
-                value={formData.prefix}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              >
-                <option value="">Select Prefix</option>
-                <option>Mr</option>
-                <option>Mrs</option>
-                <option>Ms</option>
-              </select>
-              <input
-                type="text"
-                name="Firstname"
-                placeholder="First Name"
-                value={formData.Firstname}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="Surname"
-                placeholder="Surname"
-                value={formData.Surname}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-              <select
-                name="maritalStatus"
-                value={formData.maritalStatus}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              >
-                <option value="">Select Marital Status</option>
-                <option>Single</option>
-                <option>Married</option>
-                <option>Separated/Divorced</option>
-                <option>Other</option>
-              </select>
-              <select
-                name="residenceStatus"
-                value={formData.residenceStatus}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              >
-                <option value="">Residence Status</option>
-                <option>Own</option>
-                <option>Rent</option>
-                <option>Family</option>
-                <option>Other</option>
-              </select>
-              <input
-                type="text"
-                name="mobile"
-                placeholder="Mobile Number"
-                onChange={handleChange}
-                value={formData.mobile}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="idNumber"
-                placeholder="ID Number"
-                value={formData.idNumber}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="postalAddress"
-                placeholder="Postal Address"
-                value={formData.postalAddress}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="code"
-                placeholder="Code"
-                value={formData.code}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="town"
-                placeholder="Town / City"
-                value={formData.town}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="county"
-                placeholder="County"
-                value={formData.county}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
+              <div>
+                <select
+                  name="prefix"
+                  value={formData.prefix}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                >
+                  <option value="">Select Prefix</option>
+                  <option>Mr</option>
+                  <option>Mrs</option>
+                  <option>Ms</option>
+                </select>
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="Firstname"
+                  placeholder="First Name *"
+                  value={formData.Firstname}
+                  onChange={handleChange}
+                  className={`border p-2 rounded w-full ${
+                    errors.Firstname ? "border-red-500" : ""
+                  }`}
+                  required
+                />
+                {errors.Firstname && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.Firstname}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="Surname"
+                  placeholder="Surname *"
+                  value={formData.Surname}
+                  onChange={handleChange}
+                  className={`border p-2 rounded w-full ${
+                    errors.Surname ? "border-red-500" : ""
+                  }`}
+                  required
+                />
+                {errors.Surname && (
+                  <p className="text-red-500 text-xs mt-1">{errors.Surname}</p>
+                )}
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="Middlename"
+                  placeholder="Middle Name"
+                  value={formData.Middlename}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                />
+              </div>
+
+              <div>
+                <select
+                  name="maritalStatus"
+                  value={formData.maritalStatus}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                >
+                  <option value="">Select Marital Status</option>
+                  <option>Single</option>
+                  <option>Married</option>
+                  <option>Separated/Divorced</option>
+                  <option>Other</option>
+                </select>
+              </div>
+
+              <div>
+                <select
+                  name="residenceStatus"
+                  value={formData.residenceStatus}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                >
+                  <option value="">Residence Status</option>
+                  <option>Own</option>
+                  <option>Rent</option>
+                  <option>Family</option>
+                  <option>Other</option>
+                </select>
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="mobile"
+                  placeholder="Mobile Number *"
+                  onChange={handleChange}
+                  value={formData.mobile}
+                  className={`border p-2 rounded w-full ${
+                    errors.mobile ? "border-red-500" : ""
+                  }`}
+                  required
+                />
+                {errors.mobile && (
+                  <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>
+                )}
+              </div>
+
+              <div>
+                <input
+                  type="date"
+                  name="dateOfBirth"
+                  placeholder="Date of Birth"
+                  value={formData.dateOfBirth}
+                  onChange={handleChange}
+                  className={`border p-2 rounded w-full ${
+                    errors.dateOfBirth ? "border-red-500" : ""
+                  }`}
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                />
+                {errors.dateOfBirth && (
+                  <p className="text-red-500 text-xs mt-1">{errors.dateOfBirth}</p>
+                )}
+              </div>
+
+              <div>
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                >
+                  <option value="">Select Gender</option>
+                  <option>Male</option>
+                  <option>Female</option>
+                </select>
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="idNumber"
+                  placeholder="ID Number *"
+                  value={formData.idNumber}
+                  onChange={handleChange}
+                  className={`border p-2 rounded w-full ${
+                    errors.idNumber ? "border-red-500" : ""
+                  }`}
+                  required
+                />
+                {errors.idNumber && (
+                  <p className="text-red-500 text-xs mt-1">{errors.idNumber}</p>
+                )}
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="postalAddress"
+                  placeholder="Postal Address"
+                  value={formData.postalAddress}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                />
+              </div>
+
+              <div>
+                <input
+                  type="number"
+                  name="code"
+                  placeholder="Code"
+                  value={formData.code}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="town"
+                  placeholder="Town / City"
+                  value={formData.town}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                />
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  name="county"
+                  placeholder="County"
+                  value={formData.county}
+                  onChange={handleChange}
+                  className="border p-2 rounded w-full"
+                />
+              </div>
             </div>
           </section>
 
@@ -313,6 +648,15 @@ const CustomerForm = ({ leadData, onClose }) => {
                 onChange={handleChange}
                 className="border p-2 rounded w-full"
               />
+
+              <input
+                type="text"
+                name="businessType"
+                placeholder="Business Type (e.g. Retail, Wholesale)"
+                value={formData.businessType}
+                onChange={handleChange}
+                className="border p-2 rounded w-full"
+              />
               <input
                 type="number"
                 name="yearEstablished"
@@ -320,7 +664,18 @@ const CustomerForm = ({ leadData, onClose }) => {
                 value={formData.yearEstablished}
                 onChange={handleChange}
                 className="border p-2 rounded w-full"
+                min="1900"
+                max={new Date().getFullYear()}
               />
+              <input
+                type="number"
+                name="daily_Sales"
+                placeholder="Daily Sales (KES)"
+                value={formData.daily_Sales}
+                onChange={handleChange}
+                className="border p-2 rounded w-full"
+              />
+
               <input
                 type="text"
                 name="businessLocation"
@@ -364,48 +719,59 @@ const CustomerForm = ({ leadData, onClose }) => {
               Borrower Security
             </h3>
             {securityItems.map((item, index) => (
-              <div
-                key={index}
-                className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3"
-              >
-                <input
-                  type="text"
-                  name="item"
-                  placeholder="Item"
-                  value={item.item}
-                  onChange={(e) => handleSecurityChange(e, index)}
-                  className="border p-2 rounded w-full"
-                />
-                <input
-                  type="text"
-                  name="description"
-                  placeholder="Description"
-                  value={item.description}
-                  onChange={(e) => handleSecurityChange(e, index)}
-                  className="border p-2 rounded w-full"
-                />
-                <input
-                  type="text"
-                  name="identification"
-                  placeholder="Identification (e.g. Serial No.)"
-                  value={item.identification}
-                  onChange={(e) => handleSecurityChange(e, index)}
-                  className="border p-2 rounded w-full"
-                />
-                <input
-                  type="number"
-                  name="value"
-                  placeholder="Est. Market Value (KES)"
-                  value={item.value}
-                  onChange={(e) => handleSecurityChange(e, index)}
-                  className="border p-2 rounded w-full"
-                />
+              <div key={index} className="mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
+                  <input
+                    type="text"
+                    name="item"
+                    placeholder="Item"
+                    value={item.item}
+                    onChange={(e) => handleSecurityChange(e, index)}
+                    className="border p-2 rounded w-full"
+                  />
+                  <input
+                    type="text"
+                    name="description"
+                    placeholder="Description"
+                    value={item.description}
+                    onChange={(e) => handleSecurityChange(e, index)}
+                    className="border p-2 rounded w-full"
+                  />
+                  <input
+                    type="text"
+                    name="identification"
+                    placeholder="Identification (e.g. Serial No.)"
+                    value={item.identification}
+                    onChange={(e) => handleSecurityChange(e, index)}
+                    className="border p-2 rounded w-full"
+                  />
+                  <div>
+                    <input
+                      type="number"
+                      name="value"
+                      placeholder="Est. Market Value (KES)"
+                      value={item.value}
+                      onChange={(e) => handleSecurityChange(e, index)}
+                      className={`border p-2 rounded w-full ${
+                        errors[`securityValue_${index}`] ? "border-red-500" : ""
+                      }`}
+                      min="0"
+                      step="0.01"
+                    />
+                    {errors[`securityValue_${index}`] && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors[`securityValue_${index}`]}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
             <button
               type="button"
               onClick={addSecurityItem}
               className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+              disabled={isSubmitting}
             >
               + Add Item
             </button>
@@ -450,14 +816,57 @@ const CustomerForm = ({ leadData, onClose }) => {
                 <option>Male</option>
                 <option>Female</option>
               </select>
+              <div>
+                <input
+                  type="text"
+                  name="mobile"
+                  placeholder="Mobile Number"
+                  value={formData.guarantor.mobile}
+                  onChange={(e) => handleNestedChange(e, "guarantor")}
+                  className={`border p-2 rounded w-full ${
+                    errors.guarantorMobile ? "border-red-500" : ""
+                  }`}
+                />
+                {errors.guarantorMobile && (
+                  <p className="text-red-500 text-xs mt-1">{errors.guarantorMobile}</p>
+                )}
+              </div>
               <input
                 type="text"
-                name="mobile"
-                placeholder="Mobile Number"
-                value={formData.guarantor.mobile}
+                name="Middlename"
+                placeholder="Middle Name"
+                value={formData.guarantor.Middlename}
                 onChange={(e) => handleNestedChange(e, "guarantor")}
                 className="border p-2 rounded w-full"
               />
+              <div>
+                <input
+                  type="date"
+                  name="dateOfBirth"
+                  placeholder="Date of Birth"
+                  value={formData.guarantor.dateOfBirth}
+                  onChange={(e) => handleNestedChange(e, "guarantor")}
+                  className={`border p-2 rounded w-full ${
+                    errors.guarantorDateOfBirth ? "border-red-500" : ""
+                  }`}
+                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                />
+                {errors.guarantorDateOfBirth && (
+                  <p className="text-red-500 text-xs mt-1">{errors.guarantorDateOfBirth}</p>
+                )}
+              </div>
+              <select
+                name="residenceStatus"
+                value={formData.guarantor.residenceStatus}
+                onChange={(e) => handleNestedChange(e, "guarantor")}
+                className="border p-2 rounded w-full"
+              >
+                <option value="">Residence Status</option>
+                <option>Own</option>
+                <option>Rent</option>
+                <option>Family</option>
+                <option>Other</option>
+              </select>
               <input
                 type="text"
                 name="postalAddress"
@@ -467,7 +876,7 @@ const CustomerForm = ({ leadData, onClose }) => {
                 className="border p-2 rounded w-full"
               />
               <input
-                type="text"
+                type="number"
                 name="code"
                 placeholder="Code"
                 value={formData.guarantor.code}
@@ -491,6 +900,72 @@ const CustomerForm = ({ leadData, onClose }) => {
                 className="border p-2 rounded w-full"
               />
             </div>
+          </section>
+
+          {/* GUARANTOR SECURITY */}
+          <section>
+            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
+              Guarantor Security
+            </h3>
+            {guarantorSecurityItems.map((item, index) => (
+              <div key={index} className="mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
+                  <input
+                    type="text"
+                    name="item"
+                    placeholder="Item"
+                    value={item.item}
+                    onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                    className="border p-2 rounded w-full"
+                  />
+                  <input
+                    type="text"
+                    name="description"
+                    placeholder="Description"
+                    value={item.description}
+                    onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                    className="border p-2 rounded w-full"
+                  />
+                  <input
+                    type="text"
+                    name="identification"
+                    placeholder="Identification (e.g. Serial No.)"
+                    value={item.identification}
+                    onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                    className="border p-2 rounded w-full"
+                  />
+                  <div>
+                    <input
+                      type="number"
+                      name="value"
+                      placeholder="Est. Market Value (KES)"
+                      value={item.value}
+                      onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                      className={`border p-2 rounded w-full ${
+                        errors[`guarantorSecurityValue_${index}`]
+                          ? "border-red-500"
+                          : ""
+                      }`}
+                      min="0"
+                      step="0.01"
+                    />
+                    {errors[`guarantorSecurityValue_${index}`] && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {errors[`guarantorSecurityValue_${index}`]}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addGuarantorSecurityItem}
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+              disabled={isSubmitting}
+            >
+              + Add Guarantor Item
+            </button>
           </section>
 
           {/* NEXT OF KIN */}
@@ -530,9 +1005,10 @@ const CustomerForm = ({ leadData, onClose }) => {
           <div className="flex justify-end">
             <button
               onClick={handleSubmit}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              disabled={isSubmitting}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
             >
-              Submit Application
+              {isSubmitting ? "Submitting..." : "Submit Application"}
             </button>
           </div>
         </form>

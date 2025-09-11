@@ -11,11 +11,11 @@ const Leads = () => {
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(""); // ✅ search state
+  const [searchTerm, setSearchTerm] = useState("");
   const [newLead, setNewLead] = useState({
     Firstname: "",
     Surname: "",
-      mobile: "",
+    mobile: "",
     business_name: "",
     business_location: "",
     status: "Cold",
@@ -23,17 +23,18 @@ const Leads = () => {
 
   // Fetch leads
   useEffect(() => {
-    const fetchLeads = async () => {
-      const { data, error } = await supabase.from("leads").select("*");
-      if (error) {
-        toast.error("Failed to fetch leads");
-        console.error("Error fetching leads:", error);
-      } else {
-        setLeads(data);
-      }
-    };
     fetchLeads();
   }, []);
+
+  const fetchLeads = async () => {
+    const { data, error } = await supabase.from("leads").select("*");
+    if (error) {
+      toast.error("Failed to fetch leads");
+      console.error("Error fetching leads:", error);
+    } else {
+      setLeads(data);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -54,7 +55,6 @@ const Leads = () => {
 
     if (error) {
       if (error.code === "23505") {
-        // unique violation (Postgres)
         toast.error("Lead with this phone number already exists!");
       } else {
         toast.error("Error saving lead");
@@ -67,7 +67,7 @@ const Leads = () => {
     setNewLead({
       Firstname: "",
       Surname: "",
-        mobile: "",
+      mobile: "",
       business_name: "",
       business_location: "",
       status: "Cold",
@@ -77,14 +77,36 @@ const Leads = () => {
   };
 
   // Convert lead to customer
- 
-const handleConvertToCustomer = (lead) => {
-  setSelectedLead(lead);
-  setShowCustomerForm(true);
-};
+  const handleConvertToCustomer = (lead) => {
+    setSelectedLead(lead);
+    setShowCustomerForm(true);
+  };
 
+  // Handle successful customer conversion
+  const handleCustomerConversionSuccess = async (leadId) => {
+    try {
+      // Delete the lead from the database
+      const { error } = await supabase
+        .from("leads")
+        .delete()
+        .eq("id", leadId);
 
-  //  Filter leads by name or phone
+      if (error) {
+        console.error("Error deleting lead:", error);
+        toast.error("Failed to remove lead after conversion");
+        return;
+      }
+
+      // Remove the lead from the local state
+      setLeads(leads.filter(lead => lead.id !== leadId));
+      toast.success("Lead successfully converted to customer and removed from leads");
+    } catch (error) {
+      console.error("Error handling lead conversion:", error);
+      toast.error("Error processing lead conversion");
+    }
+  };
+
+  // Filter leads by name or phone
   const filteredLeads = leads.filter(
     (lead) =>
       lead.Firstname.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -114,7 +136,7 @@ const handleConvertToCustomer = (lead) => {
           type="text"
           placeholder="Search by name or phone..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.targetValue)}
           className="w-full px-3 py-2 border rounded-lg focus:ring focus:ring-indigo-200 focus:border-indigo-500"
         />
       </div>
@@ -131,7 +153,7 @@ const handleConvertToCustomer = (lead) => {
               <th className="px-4 py-3 text-left">Surname</th>
               <th className="px-4 py-3 text-left">Phone</th>
               <th className="px-4 py-3 text-left">Business Name</th>
-              <th className="px-4 py-3 text-left"> Business Location</th>
+              <th className="px-4 py-3 text-left">Business Location</th>
               <th className="px-4 py-3 text-left">Status</th>
               <th className="px-4 py-3 text-center">Actions</th>
             </tr>
@@ -160,14 +182,9 @@ const handleConvertToCustomer = (lead) => {
                 <td className="px-4 py-3 text-center">
                   <button
                     onClick={() => handleConvertToCustomer(lead)}
-                    disabled={isSaving}
-                    className={`px-3 py-1 rounded-lg text-white ${
-                      isSaving
-                        ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-green-600 hover:bg-green-700"
-                    }`}
+                    className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700"
                   >
-                    {isSaving ? "Saving..." : "Convert to Customer"}
+                    Convert to Customer
                   </button>
                 </td>
               </tr>
@@ -182,7 +199,6 @@ const handleConvertToCustomer = (lead) => {
           <div className="bg-white w-full max-w-lg rounded-lg shadow-lg p-6 relative">
             <h2 className="text-lg font-bold mb-4">Add New Lead</h2>
             <form onSubmit={addLead} className="space-y-4">
-              {/* Inputs... */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Firstname
@@ -237,7 +253,7 @@ const handleConvertToCustomer = (lead) => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                   Business Location
+                  Business Location
                 </label>
                 <input
                   type="text"
@@ -292,7 +308,12 @@ const handleConvertToCustomer = (lead) => {
       {showCustomerForm && (
         <CustomerForm
           leadData={selectedLead}
-          onClose={() => setShowCustomerForm(false)}
+          onClose={() => {
+            setShowCustomerForm(false);
+            if (selectedLead) {
+              handleCustomerConversionSuccess(selectedLead.id);
+            }
+          }}
         />
       )}
     </div>
