@@ -12,6 +12,9 @@ function Customers() {
   const [editCustomer, setEditCustomer] = useState(null);
   const [viewCustomer, setViewCustomer] = useState(null);
 
+
+
+
   // Fetch customers
   const fetchCustomers = async () => {
     setLoading(true);
@@ -32,36 +35,53 @@ function Customers() {
     if (!error) setCustomers(customers.filter((c) => c.id !== id));
   };
 
-  // Fetch single customer details + relations
-  const fetchCustomerDetails = async (id) => {
-    const { data: customer } = await supabase
-      .from("customers")
-      .select("*")
-      .eq("id", id)
-      .single();
+  
+ // Fetch single customer details + relations
+const fetchCustomerDetails = async (id) => {
+  const { data: customer, error: customerError } = await supabase
+    .from("customers")
+    .select("*")
+    .eq("id", id)
+    .single();
+    console.log("customer data ",customer);
 
-    const { data: guarantors } = await supabase
-      .from("guarantors")
-      .select("*")
-      .eq("customer_id", id);
+  if (customerError) {
+    console.error("Error fetching customer:", customerError.message);
+    return;
+  }
 
-    const { data: nextOfKin } = await supabase
-      .from("next_of_kin")
-      .select("*")
-      .eq("customer_id", id);
+  const { data: guarantors } = await supabase
+    .from("guarantors")
+    .select("*")
+    .eq("customer_id", id);
 
-    const { data: security } = await supabase
-      .from("borrower_security")
-      .select("*")
-      .eq("customer_id", id);
+  const { data: nextOfKin } = await supabase
+    .from("next_of_kin")
+    .select("*")
+    .eq("customer_id", id);
 
-    setViewCustomer({
-      ...customer,
-      guarantors: guarantors || [],
-      nextOfKin: nextOfKin || [],
-      security: security || [],
-    });
-  };
+  const { data: borrower_security } = await supabase
+    .from("borrower_security")
+    .select("*")
+    .eq("customer_id", id);
+
+  const { data: guarantor_security } = await supabase
+    .from("guarantor_security")
+    .select("*")
+    .eq("customer_id", id);
+    console.log("guarantor ",guarantor_security);
+
+  setViewCustomer({
+    ...customer,
+    guarantors: guarantors || [],
+    nextOfKin: nextOfKin || [],
+    borrowerSecurity: borrower_security || [], // Make sure this matches
+    guarantorSecurity: guarantor_security || []
+  });
+};
+
+
+
 
   return (
     <div className="p-6">

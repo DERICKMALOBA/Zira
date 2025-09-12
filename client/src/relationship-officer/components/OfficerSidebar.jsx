@@ -65,28 +65,28 @@ const OfficerSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       bgColor: 'bg-green-400/10',
       noChildren: true, // direct NavLink
     },
-    {
-      name: 'Communications',
-      href: '/officer/communications',
-      icon: PhoneCall,
-      color: 'text-cyan-400',
-      bgColor: 'bg-cyan-400/10',
-      children: [
-        { name: 'Callbacks', href: '/officer/communications/callbacks', icon: PhoneCall },
-        { name: 'Customer Follow-ups', href: '/officer/communications/followups', icon: PhoneCall },
-      ],
-    },
-    {
-      name: 'Reports',
-      href: '/officer/reports',
-      icon: BarChart3,
-      color: 'text-cyan-400',
-      bgColor: 'bg-cyan-400/10',
-      children: [
-        { name: 'Daily Summary', href: '/officer/reports/daily', icon: BarChart3 },
-        { name: 'Performance Metrics', href: '/officer/reports/performance', icon: BarChart3 },
-      ],
-    },
+    // {
+    //   name: 'Communications',
+    //   href: '/officer/communications',
+    //   icon: PhoneCall,
+    //   color: 'text-cyan-400',
+    //   bgColor: 'bg-cyan-400/10',
+    //   children: [
+    //     { name: 'Callbacks', href: '/officer/communications/callbacks', icon: PhoneCall },
+    //     { name: 'Customer Follow-ups', href: '/officer/communications/followups', icon: PhoneCall },
+    //   ],
+    // },
+    // {
+    //   name: 'Reports',
+    //   href: '/officer/reports',
+    //   icon: BarChart3,
+    //   color: 'text-cyan-400',
+    //   bgColor: 'bg-cyan-400/10',
+    //   children: [
+    //     { name: 'Daily Summary', href: '/officer/reports/daily', icon: BarChart3 },
+    //     { name: 'Performance Metrics', href: '/officer/reports/performance', icon: BarChart3 },
+    //   ],
+    // },
   ];
 
   return (

@@ -6,6 +6,7 @@ import AddCustomer from "./AddCustomer";
 function CustomersTable({ customers, loading, onEdit, onDelete, onView }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
+  
 
   if (loading) {
     return (
