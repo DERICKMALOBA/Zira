@@ -6,20 +6,26 @@ function CustomerDetailsModal({ customer, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg w-3/4 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">
+      <div className="bg-white p-8 rounded-xl w-4/5 max-h-[90vh] overflow-y-auto shadow-2xl">
+        {/* HEADER */}
+        <div className="flex justify-between items-center border-b pb-4 mb-6">
+          <h2 className="text-2xl  text-center font-bold text-green-600">
             {customer.prefix} {customer.Firstname} {customer.Surname}
           </h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-lg font-bold">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-700 text-xl font-bold"
+          >
             ✕
           </button>
         </div>
 
         {/* PERSONAL INFO */}
-        <section className="mb-6">
-          <h3 className="font-semibold mb-2">Personal Details</h3>
-          <div className="grid grid-cols-2 gap-4">
+        <section className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-1">
+            Personal Information
+          </h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
             <p><strong>Mobile:</strong> {customer.mobile}</p>
             <p><strong>ID Number:</strong> {customer.id_number}</p>
             <p><strong>Town:</strong> {customer.town}</p>
@@ -29,9 +35,11 @@ function CustomerDetailsModal({ customer, onClose }) {
         </section>
 
         {/* BUSINESS INFO */}
-        <section className="mb-6">
-          <h3 className="font-semibold mb-2">Business Info</h3>
-          <div className="grid grid-cols-2 gap-4">
+        <section className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-1">
+            Business Information
+          </h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
             <p><strong>Business:</strong> {customer.business_name}</p>
             <p><strong>Year Established:</strong> {customer.year_established}</p>
             <p><strong>Location:</strong> {customer.business_location}</p>
@@ -40,44 +48,96 @@ function CustomerDetailsModal({ customer, onClose }) {
           </div>
         </section>
 
-        {/* GUARANTORS */}
-        <section className="mb-6">
-          <h3 className="font-semibold mb-2">Guarantors</h3>
-          {customer.guarantors?.length > 0 ? (
-            <ul className="list-disc ml-6">
-              {customer.guarantors.map((g) => (
-                <li key={g.id}>
-                  {g.prefix} {g.name} – {g.mobile}, {g.occupation}
-                </li>
+        {/* BORROWER SECURITY */}
+        <section className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-1">
+            Borrower Security
+          </h3>
+          {customer.security?.length > 0 ? (
+            <div className="space-y-2 text-sm">
+              {customer.security.map((s) => (
+                <div
+                  key={s.id}
+                  className="p-3 border rounded-lg bg-gray-50"
+                >
+                  <p><strong>Item:</strong> {s.item}</p>
+                  <p><strong>Identification:</strong> {s.identification}</p>
+                  <p><strong>Value:</strong> KES {s.value}</p>
+                </div>
               ))}
-            </ul>
-          ) : <p>No guarantors found.</p>}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No security items found.</p>
+          )}
+        </section>
+
+        {/* GUARANTORS */}
+        <section className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-1">
+            Guarantors
+          </h3>
+          {customer.guarantors?.length > 0 ? (
+            <div className="space-y-2 text-sm">
+              {customer.guarantors.map((g) => (
+                <div
+                  key={g.id}
+                  className="p-3 border rounded-lg bg-gray-50"
+                >
+                  <p><strong>Name:</strong> {g.prefix} {g.name}</p>
+                  <p><strong>Mobile:</strong> {g.mobile}</p>
+                  <p><strong>Occupation:</strong> {g.occupation}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No guarantors found.</p>
+          )}
+        </section>
+
+        {/* GUARANTORS SECURITY */}
+        <section className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-1">
+            Guarantors Security
+          </h3>
+          {customer.guarantorSecurity?.length > 0 ? (
+            <div className="space-y-2 text-sm">
+              {customer.guarantorSecurity.map((s) => (
+                <div
+                  key={s.id}
+                  className="p-3 border rounded-lg bg-gray-50"
+                >
+                  <p><strong>Item:</strong> {s.item}</p>
+                  <p><strong>Identification:</strong> {s.identification}</p>
+                  <p><strong>Value:</strong> KES {s.value}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No guarantor security items found.</p>
+          )}
         </section>
 
         {/* NEXT OF KIN */}
         <section className="mb-6">
-          <h3 className="font-semibold mb-2">Next of Kin</h3>
+          <h3 className="text-lg font-semibold text-gray-700 mb-3 border-b pb-1">
+            Next of Kin
+          </h3>
           {customer.nextOfKin?.length > 0 ? (
-            <ul className="list-disc ml-6">
+            <div className="space-y-2 text-sm">
               {customer.nextOfKin.map((n) => (
-                <li key={n.id}>{n.name} – {n.mobile}, {n.relationship}</li>
+                <div
+                  key={n.id}
+                  className="p-3 border rounded-lg bg-gray-50"
+                >
+                  <p><strong>Name:</strong> {n.name}</p>
+                  <p><strong>Mobile:</strong> {n.mobile}</p>
+                  <p><strong>Relationship:</strong> {n.relationship}</p>
+                </div>
               ))}
-            </ul>
-          ) : <p>No next of kin found.</p>}
-        </section>
-
-        {/* SECURITY */}
-        <section className="mb-6">
-          <h3 className="font-semibold mb-2">Borrower Security</h3>
-          {customer.security?.length > 0 ? (
-            <ul className="list-disc ml-6">
-              {customer.security.map((s) => (
-                <li key={s.id}>
-                  {s.item} ({s.identification}) – KES {s.value}
-                </li>
-              ))}
-            </ul>
-          ) : <p>No security items found.</p>}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm">No next of kin found.</p>
+          )}
         </section>
       </div>
     </div>

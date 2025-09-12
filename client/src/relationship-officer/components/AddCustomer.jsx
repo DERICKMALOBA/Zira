@@ -1,10 +1,9 @@
-import  { useState, useEffect } from "react";
+import { useState } from "react";
 import { supabase } from "../../supabaseClient";
-import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 
-
-const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
+const AddCustomer = ({ onClose }) => {
   const [securityItems, setSecurityItems] = useState([
     { item: "", description: "", identification: "", value: "" },
   ]);
@@ -63,36 +62,25 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
     },
   });
 
-  // Prefill from leads
-  useEffect(() => {
-    if (leadData) {
-      setFormData((prev) => ({
-        ...prev,
-        Firstname: leadData.Firstname || "",
-        Surname: leadData.Surname || "",
-        mobile: leadData.mobile || leadData.phone || "",
-        businessName: leadData.business_name || "",
-        businessLocation: leadData.business_location || "",
-      }));
-    }
-  }, [leadData]);
+  // Check if a value is unique in the database across multiple tables
+  const checkUniqueValue = async (tables, field, value) => {
+    for (const table of tables) {
+      const { data, error } = await supabase
+        .from(table)
+        .select(field)
+        .eq(field, value);
 
-  // Check if a value is unique in the database
-  const checkUniqueValue = async (table, field, value, excludeId = null) => {
-    let query = supabase.from(table).select(field).eq(field, value);
+      if (error) {
+        console.error(`Error checking unique ${field} in ${table}:`, error);
+        return false;
+      }
 
-    if (excludeId) {
-      query = query.neq("id", excludeId);
+      if (data && data.length > 0) {
+        return false; // Value exists in this table
+      }
     }
 
-    const { data, error } = await query;
-
-    if (error) {
-      console.error(`Error checking unique ${field}:`, error);
-      return false;
-    }
-
-    return data.length === 0;
+    return true; // Value is unique across all tables
   };
 
   // Validate date is at least 18 years old
@@ -161,10 +149,10 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
       }
     });
 
-    // Check for unique mobile number (only if no format error)
+    // Check for unique mobile number across all relevant tables
     if (formData.mobile && !newErrors.mobile) {
       const isMobileUnique = await checkUniqueValue(
-        "customers",
+        ["customers", "guarantors", "next_of_kin"],
         "mobile",
         formData.mobile
       );
@@ -173,10 +161,10 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
       }
     }
 
-    // Check for unique ID number (only if no format error)
+    // Check for unique ID number across all relevant tables
     if (formData.idNumber && !newErrors.idNumber) {
       const isIdUnique = await checkUniqueValue(
-        "customers",
+        ["customers", "guarantors", "next_of_kin"],
         "id_number",
         formData.idNumber
       );
@@ -186,15 +174,54 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
     }
 
     // Check for unique guarantor mobile number if provided
-    if (formData.guarantor.mobile && !newErrors.guarantorMobile) {
+    if (formData.guarantor.mobile) {
       const isGuarantorMobileUnique = await checkUniqueValue(
-        "guarantors",
+        ["customers", "guarantors", "next_of_kin"],
         "mobile",
         formData.guarantor.mobile
       );
       if (!isGuarantorMobileUnique) {
         newErrors.guarantorMobile =
           "Guarantor mobile number already exists in our system";
+      }
+    }
+
+    // Check for unique guarantor ID number if provided
+    if (formData.guarantor.idNumber) {
+      const isGuarantorIdUnique = await checkUniqueValue(
+        ["customers", "guarantors", "next_of_kin"],
+        "id_number",
+        formData.guarantor.idNumber
+      );
+      if (!isGuarantorIdUnique) {
+        newErrors.guarantorIdNumber =
+          "Guarantor ID number already exists in our system";
+      }
+    }
+
+    // Check for unique next of kin mobile number if provided
+    if (formData.nextOfKin.mobile) {
+      const isNextOfKinMobileUnique = await checkUniqueValue(
+        ["customers", "guarantors", "next_of_kin"],
+        "mobile",
+        formData.nextOfKin.mobile
+      );
+      if (!isNextOfKinMobileUnique) {
+        newErrors.nextOfKinMobile =
+          "Next of kin mobile number already exists in our system";
+      }
+    }
+
+    // Check for unique next of kin ID number if provided
+    if (formData.nextOfKin.idNumber) {
+      const isNextOfKinIdUnique = await checkUniqueValue(
+        ["customers", "guarantors", "next_of_kin"],
+        "id_number",
+        formData.nextOfKin.idNumber
+      );
+      if (!isNextOfKinIdUnique) {
+        newErrors.nextOfKinIdNumber =
+          "Next of kin ID number already exists in our system";
       }
     }
 
@@ -250,10 +277,11 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
     }));
 
     // Clear error when field is edited
-    if (errors[`${section}${name}`]) {
+    const errorKey = `${section}${name}`;
+    if (errors[errorKey]) {
       setErrors((prev) => {
         const newErrors = { ...prev };
-        delete newErrors[`${section}${name}`];
+        delete newErrors[errorKey];
         return newErrors;
       });
     }
@@ -289,7 +317,15 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
 
     const isValid = await validateForm();
     if (!isValid) {
-      alert("Please fix the errors in the form before submitting.");
+      toast.error("Please fix the errors in the form before submitting.", {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: "colored",
+      });
       return;
     }
 
@@ -334,17 +370,50 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
         .single();
 
       if (customerError) {
-        console.error("Error saving customer:", customerError.message);
-        alert("Failed to save customer: " + customerError.message);
+        toast.error("Please fix the errors in the form before submitting.", {
+          position: "top-right",
+          autoClose: 4000,
+          theme: "colored",
+        });
         setIsSubmitting(false);
         return;
       }
 
       const customerId = customerData.id;
 
-      // 2. Insert guarantor (only if mobile is provided)
+      // 2. Insert next of kin (only if at least one field is provided)
+      const nextOfKinFieldsFilled = Object.values(formData.nextOfKin).some(
+        (val) => val && val.trim() !== ""
+      );
+
+      if (nextOfKinFieldsFilled) {
+        const { error: nextOfKinError } = await supabase
+          .from("next_of_kin")
+          .insert([
+            {
+              customer_id: customerId,
+              Firstname: formData.nextOfKin.Firstname || null,
+              Surname: formData.nextOfKin.Surname || null,
+              Middlename: formData.nextOfKin.Middlename || null,
+              id_number: formData.nextOfKin.idNumber || null,
+              relationship: formData.nextOfKin.relationship || null,
+              mobile: formData.nextOfKin.mobile || null,
+            },
+          ]);
+
+        if (nextOfKinError) {
+          console.error("Error saving next of kin:", nextOfKinError.message);
+          alert("Failed to save next of kin: " + nextOfKinError.message);
+        }
+      }
+
+      // 3. Insert guarantor (only if at least one field is provided)
+      const guarantorFieldsFilled = Object.values(formData.guarantor).some(
+        (val) => val && val.trim() !== ""
+      );
+
       let guarantorId = null;
-      if (formData.guarantor?.mobile) {
+      if (guarantorFieldsFilled) {
         const { data: guarantorData, error: guarantorError } = await supabase
           .from("guarantors")
           .insert([
@@ -353,8 +422,7 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
               prefix: formData.guarantor.prefix || null,
               Firstname: formData.guarantor.Firstname || null,
               Surname: formData.guarantor.Surname || null,
-              id_number: formData.guarantor.idNumber,
-
+              id_number: formData.guarantor.idNumber || null,
               marital_status: formData.guarantor.maritalStatus || null,
               gender: formData.guarantor.gender || null,
               mobile: formData.guarantor.mobile || null,
@@ -374,15 +442,23 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
 
         if (guarantorError) {
           console.error("Error saving guarantor:", guarantorError.message);
-          // Continue with other operations even if guarantor fails
+          toast.error("error saving guarantor", {
+            position: "top-right",
+            autoClose: 4000,
+            theme: "colored",
+          });
         } else {
           guarantorId = guarantorData.id;
-        }
 
-        // Insert guarantor security items if we have a guarantor ID
-        if (guarantorId && guarantorSecurityItems.length > 0) {
+          // Save guarantor security if provided
           const gItemsToInsert = guarantorSecurityItems
-            .filter((item) => item.item || item.description) // Only include items with some data
+            .filter(
+              (item) =>
+                item.item ||
+                item.description ||
+                item.identification ||
+                item.value
+            )
             .map((s) => ({
               guarantor_id: guarantorId,
               item: s.item || null,
@@ -392,63 +468,67 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
             }));
 
           if (gItemsToInsert.length > 0) {
-            await supabase.from("guarantor_security").insert(gItemsToInsert);
+            const { error: guarantorSecurityError } = await supabase
+              .from("guarantor_security")
+              .insert(gItemsToInsert);
+
+            if (guarantorSecurityError) {
+              console.error(
+                "Error saving guarantor security:",
+                guarantorSecurityError.message
+              );
+              toast.error("error saving guarantor security.", {
+                position: "top-right",
+                autoClose: 4000,
+                theme: "colored",
+              });
+            }
           }
         }
       }
 
-      // 3. Insert next of kin (only if mobile is provided)
-      if (formData.nextOfKin?.mobile) {
-        await supabase.from("next_of_kin").insert([
-          {
-            customer_id: customerId,
-            Firstname: formData.nextOfKin.Firstname || null,
-            Surname: formData.nextOfKin.Surname || null,
-            Middlename: formData.nextOfKin.Middlename || null,
-            id_number: formData.nextOfKin.idNumber || null,
-            relationship: formData.nextOfKin.relationship || null,
-            mobile: formData.nextOfKin.mobile || null,
-          },
-        ]);
-      }
-
       // 4. Insert borrower security items (only items with some data)
-      if (securityItems.length > 0) {
-        const itemsToInsert = securityItems
-          .filter((item) => item.item || item.description) // Only include items with some data
-          .map((s) => ({
-            customer_id: customerId,
-            item: s.item || null,
-            description: s.description || null,
-            identification: s.identification || null,
-            value: s.value ? parseFloat(s.value) : null,
-          }));
+      const itemsToInsert = securityItems
+        .filter(
+          (item) =>
+            item.item || item.description || item.identification || item.value
+        )
+        .map((s) => ({
+          customer_id: customerId,
+          item: s.item || null,
+          description: s.description || null,
+          identification: s.identification || null,
+          value: s.value ? parseFloat(s.value) : null,
+        }));
 
-        if (itemsToInsert.length > 0) {
-          await supabase.from("security_items").insert(itemsToInsert);
+      if (itemsToInsert.length > 0) {
+        const { error: securityError } = await supabase
+          .from("security_items")
+          .insert(itemsToInsert);
+
+        if (securityError) {
+          console.error("Error saving security items:", securityError.message);
+          toast.error("Error saving security items.", {
+            position: "top-right",
+            autoClose: 4000,
+            theme: "colored",
+          });
         }
       }
 
-      alert("Customer & related details saved successfully!");
-      if (leadData?.id) {
-      const { error: deleteError } = await supabase
-        .from("leads")
-        .delete()
-        .eq("id", leadData.id);
+toast.success("Customer & all related details saved successfully!", {
+  position: "top-right",
+  autoClose: 4000,
+  hideProgressBar: false,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: true,
+  theme: "colored",
+});
 
-      if (deleteError) {
-        console.error("Error deleting lead:", deleteError.message);
-        toast.error("Customer saved, but failed to remove lead.");
-      } else {
-        toast.success("Customer & related details saved successfully!");
-        if (onConversionSuccess) {
-          onConversionSuccess(leadData.id); // notify Leads.jsx
-        }
-      }
-    }
+
 
       onClose();
-
     } catch (error) {
       console.error("Unexpected error:", error);
       alert("An unexpected error occurred. Please try again.");
@@ -882,11 +962,18 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
               <input
                 type="text"
                 name="idNumber"
-                placeholder="id number"
+                placeholder="ID Number"
                 value={formData.guarantor.idNumber}
                 onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
+                className={`border p-2 rounded w-full ${
+                  errors.guarantorIdNumber ? "border-red-500" : ""
+                }`}
               />
+              {errors.guarantorIdNumber && (
+                <p className="text-red-500 text-xs mt-1 col-span-full">
+                  {errors.guarantorIdNumber}
+                </p>
+              )}
 
               <select
                 name="gender"
@@ -1074,7 +1161,7 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
                 onChange={(e) => handleNestedChange(e, "nextOfKin")}
                 className="border p-2 rounded w-full"
               />
-               <input
+              <input
                 type="text"
                 name="Surname"
                 placeholder="Surname"
@@ -1082,14 +1169,21 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
                 onChange={(e) => handleNestedChange(e, "nextOfKin")}
                 className="border p-2 rounded w-full"
               />
-                <input
+              <input
                 type="text"
                 name="idNumber"
-                placeholder="id Number"
+                placeholder="ID Number"
                 value={formData.nextOfKin.idNumber}
                 onChange={(e) => handleNestedChange(e, "nextOfKin")}
-                className="border p-2 rounded w-full"
+                className={`border p-2 rounded w-full ${
+                  errors.nextOfKinIdNumber ? "border-red-500" : ""
+                }`}
               />
+              {errors.nextOfKinIdNumber && (
+                <p className="text-red-500 text-xs mt-1 col-span-full">
+                  {errors.nextOfKinIdNumber}
+                </p>
+              )}
               <input
                 type="text"
                 name="relationship"
@@ -1098,11 +1192,28 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
                 onChange={(e) => handleNestedChange(e, "nextOfKin")}
                 className="border p-2 rounded w-full"
               />
+              <div>
+                <input
+                  type="text"
+                  name="mobile"
+                  placeholder="Mobile Number"
+                  value={formData.nextOfKin.mobile}
+                  onChange={(e) => handleNestedChange(e, "nextOfKin")}
+                  className={`border p-2 rounded w-full ${
+                    errors.nextOfKinMobile ? "border-red-500" : ""
+                  }`}
+                />
+                {errors.nextOfKinMobile && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.nextOfKinMobile}
+                  </p>
+                )}
+              </div>
               <input
                 type="text"
-                name="mobile"
-                placeholder="Mobile Number"
-                value={formData.nextOfKin.mobile}
+                name="Middlename"
+                placeholder="Middle Name"
+                value={formData.nextOfKin.Middlename}
                 onChange={(e) => handleNestedChange(e, "nextOfKin")}
                 className="border p-2 rounded w-full"
               />
@@ -1114,7 +1225,7 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
             <button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
             >
               {isSubmitting ? "Submitting..." : "Submit Application"}
             </button>
@@ -1125,4 +1236,4 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
   );
 };
 
-export default CustomerForm;
+export default AddCustomer;

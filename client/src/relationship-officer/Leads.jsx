@@ -1,5 +1,5 @@
 // src/pages/relationship-officer/Leads.jsx
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import CustomerForm from "../relationship-officer/components/CustomerForm";
 import { supabase } from "../supabaseClient";
 import { toast, ToastContainer } from "react-toastify";
@@ -41,46 +41,101 @@ const Leads = () => {
     setNewLead({ ...newLead, [name]: value });
   };
 
-  // Save new lead
-  const addLead = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
 
-    const { data, error } = await supabase
-      .from("leads")
-      .insert([newLead])
-      .select();
+  // --- helper to check uniqueness ---
+const checkUniqueMobile = async (mobile) => {
+  const { data, error } = await supabase
+    .from("leads")
+    .select("id")
+    .eq("mobile", mobile);
 
+  if (error) {
+    console.error("Error checking mobile uniqueness:", error);
+    return false; // fail safe: treat as duplicate
+  }
+
+  return data.length === 0; // true if unique
+};
+
+// --- Save new lead ---
+const addLead = async (e) => {
+  e.preventDefault();
+  setIsSaving(true);
+
+  // --- validation ---
+  if (!/^[0-9]{10,15}$/.test(newLead.mobile.replace(/\D/g, ""))) {
+    toast.error("Please enter a valid mobile number (10–15 digits).");
     setIsSaving(false);
+    return;
+  }
 
-    if (error) {
-      if (error.code === "23505") {
-        toast.error("Lead with this phone number already exists!");
-      } else {
-        toast.error("Error saving lead");
-      }
-      console.error("Error saving lead:", error);
-      return;
-    }
+  const isUnique = await checkUniqueMobile(newLead.mobile);
+  if (!isUnique) {
+    toast.error("A lead with this phone number already exists!");
+    setIsSaving(false);
+    return;
+  }
 
-    setLeads([...leads, data[0]]);
-    setNewLead({
-      Firstname: "",
-      Surname: "",
-      mobile: "",
-      business_name: "",
-      business_location: "",
-      status: "Cold",
-    });
-    setShowLeadForm(false);
-    toast.success("Lead saved successfully");
-  };
+  // --- insert lead if valid ---
+  const { data, error } = await supabase
+    .from("leads")
+    .insert([newLead])
+    .select();
+
+  setIsSaving(false);
+
+  if (error) {
+    toast.error("Error saving lead");
+    console.error("Error saving lead:", error);
+    return;
+  }
+
+  setLeads([...leads, data[0]]);
+  setNewLead({
+    Firstname: "",
+    Surname: "",
+    mobile: "",
+    business_name: "",
+    business_location: "",
+    status: "Cold",
+  });
+  setShowLeadForm(false);
+  toast.success("Lead saved successfully");
+};
+
+  // // Save new lead
+  // const addLead = async (e) => {
+  //   e.preventDefault();
+  //   setIsSaving(true);
+    
+
+  //   const { data} = await supabase
+  //     .from("leads")
+  //     .insert([newLead])
+  //     .select();
+
+  //   setIsSaving(false);
+
+  
+
+  //   setLeads([...leads, data[0]]);
+  //   setNewLead({
+  //     Firstname: "",
+  //     Surname: "",
+  //     mobile: "",
+  //     business_name: "",
+  //     business_location: "",
+  //     status: "Cold",
+  //   });
+  //   setShowLeadForm(false);
+  //   toast.success("Lead saved successfully");
+  // };
 
   // Convert lead to customer
-  const handleConvertToCustomer = (lead) => {
-    setSelectedLead(lead);
-    setShowCustomerForm(true);
-  };
+ const handleConvertToCustomer = (lead) => {
+  setSelectedLead(lead);
+  setShowCustomerForm(true);
+};
 
   // Handle successful customer conversion
   const handleCustomerConversionSuccess = async (leadId) => {
@@ -124,7 +179,7 @@ const Leads = () => {
         <h1 className="text-2xl font-bold text-gray-900">My Leads</h1>
         <button
           onClick={() => setShowLeadForm(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
         >
           + Add Lead
         </button>
@@ -293,7 +348,7 @@ const Leads = () => {
                   className={`px-4 py-2 text-white rounded-lg ${
                     isSaving
                       ? "bg-gray-400 cursor-not-allowed"
-                      : "bg-indigo-600 hover:bg-indigo-700"
+                      : "bg-green-600 hover:bg-green-700"
                   }`}
                 >
                   {isSaving ? "Saving..." : "Save Lead"}
@@ -305,17 +360,14 @@ const Leads = () => {
       )}
 
       {/* Customer Form */}
-      {showCustomerForm && (
-        <CustomerForm
-          leadData={selectedLead}
-          onClose={() => {
-            setShowCustomerForm(false);
-            if (selectedLead) {
-              handleCustomerConversionSuccess(selectedLead.id);
-            }
-          }}
-        />
-      )}
+    {showCustomerForm && (
+  <CustomerForm
+    leadData={selectedLead}
+    onClose={() => setShowCustomerForm(false)}
+    onConversionSuccess={(leadId) => handleCustomerConversionSuccess(leadId)}
+  />
+)}
+
     </div>
   );
 };

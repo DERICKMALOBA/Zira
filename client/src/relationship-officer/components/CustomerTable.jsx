@@ -1,11 +1,12 @@
 // src/components/CustomersTable.jsx
-import  { useState } from "react";
+import { useState } from "react";
 import { Pencil, Trash2, Eye, Search, Users, Plus } from "lucide-react";
+import AddCustomer from "./AddCustomer"; 
 
-function CustomersTable({ customers, loading, onEdit, onDelete, onView}) {
+function CustomersTable({ customers, loading, onEdit, onDelete, onView }) {
   const [searchTerm, setSearchTerm] = useState("");
-const [showForm, setShowForm] = useState(false);
-const [editCustomer, setEditCustomer] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-10">
@@ -13,14 +14,23 @@ const [editCustomer, setEditCustomer] = useState(null);
       </div>
     );
   }
+if (!customers || customers.length === 0) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 space-y-4">
+      <p className="text-gray-500 text-sm">No customers found.</p>
+      <button
+        onClick={() => setShowForm(true)}
+        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+      >
+        <Plus size={18} /> Add Customer
+      </button>
 
-  if (!customers || customers.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-10">
-        <p className="text-gray-500 text-sm">No customers found.</p>
-      </div>
-    );
-  }
+      {/* ✅ AddCustomer Modal */}
+      {showForm && <AddCustomer onClose={() => setShowForm(false)} />}
+    </div>
+  );
+}
+
 
   // 🔍 Filter customers by name, phone, or id
   const filteredCustomers = customers.filter(
@@ -41,7 +51,7 @@ const [editCustomer, setEditCustomer] = useState(null);
           <span>Total: {customers.length}</span>
         </div>
 
-        {/* Search Bar (centered by flex-grow) */}
+        {/* Search Bar */}
         <div className="flex-1 flex justify-center">
           <div className="relative w-72">
             <input
@@ -58,13 +68,10 @@ const [editCustomer, setEditCustomer] = useState(null);
           </div>
         </div>
 
-        {/* Add Customer */}
-       <button
-          onClick={() => {
-            setEditCustomer(null);
-            setShowForm(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-blue-700"
+        {/* Add Customer Button */}
+        <button
+          onClick={() => setShowForm(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
         >
           <Plus size={18} /> Add Customer
         </button>
@@ -134,6 +141,9 @@ const [editCustomer, setEditCustomer] = useState(null);
           </tbody>
         </table>
       </div>
+
+      {/* ✅ AddCustomer Modal */}
+      {showForm && <AddCustomer onClose={() => setShowForm(false)} />}
     </div>
   );
 }
