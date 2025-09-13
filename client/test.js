@@ -1,12 +1,18 @@
-import React, { useState, useEffect } from "react";
-import { supabase } from "../../supabaseClient";
+// src/components/LoanVerificationForm.jsx
+import { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-const EditCustomerForm = ({ customerData, onClose }) => {
-  const [securityItems, setSecurityItems] = useState([]);
+const LoanVerificationForm = ({ customerId,  onComplete, onClose }) => {
+
   const [formData, setFormData] = useState({
     prefix: "",
     Firstname: "",
+    Middlename: "",
     Surname: "",
+    dateOfBirth: "",
+    gender: "",
     maritalStatus: "",
     residenceStatus: "",
     mobile: "",
@@ -23,8 +29,13 @@ const EditCustomerForm = ({ customerData, onClose }) => {
     hasLocalAuthorityLicense: "",
     guarantor: {
       prefix: "",
+      Firstname: "",
+      Middlename: "",
+      Surname: "",
+      idNumber: "",
       maritalStatus: "",
       gender: "",
+      dateOfBirth: "",
       mobile: "",
       postalAddress: "",
       code: "",
@@ -32,76 +43,173 @@ const EditCustomerForm = ({ customerData, onClose }) => {
       relationship: "",
     },
     nextOfKin: {
-      name: "",
+      Firstname: "",
+      Surname: "",
+      Middlename: "",
+      idNumber: "",
       relationship: "",
       mobile: "",
     },
   });
 
-  // Prefill from DB data
+  const [securityItems, setSecurityItems] = useState([
+    { item: "", description: "", identification: "", value: "" },
+  ]);
+  const [guarantorSecurityItems, setGuarantorSecurityItems] = useState([
+    { item: "", description: "", identification: "", value: "" },
+  ]);
+
+  // Fetch existing customer data
   useEffect(() => {
-    if (customerData) {
-      setFormData({
-        prefix: customerData.prefix || "",
-        Firstname: customerData.Firstname || "",
-        Surname: customerData.Surname || "",
-        maritalStatus: customerData.marital_status || "",
-        residenceStatus: customerData.residence_status || "",
-        mobile: customerData.mobile || "",
-        idNumber: customerData.id_number || "",
-        postalAddress: customerData.postal_address || "",
-        code: customerData.code || "",
-        town: customerData.town || "",
-        county: customerData.county || "",
-        businessName: customerData.business_name || "",
-        yearEstablished: customerData.year_established || "",
-        businessLocation: customerData.business_location || "",
-        road: customerData.road || "",
-        landmark: customerData.landmark || "",
-        hasLocalAuthorityLicense: customerData.has_local_authority_license
-          ? "Yes"
-          : "No",
-        guarantor: customerData.guarantor || {
-          prefix: "",
-          maritalStatus: "",
-          gender: "",
-          mobile: "",
-          postalAddress: "",
-          code: "",
-          occupation: "",
-          relationship: "",
-        },
-        nextOfKin: customerData.next_of_kin || {
-          name: "",
-          relationship: "",
-          mobile: "",
-        },
-      });
+    if (!customerId) return;
 
-      setSecurityItems(customerData.security_items || []);
-    }
-  }, [customerData]);
+    const fetchCustomerData = async () => {
+      try {
+        // Fetch customer
+        const { data: customer, error: custError } = await supabase
+          .from("customers")
+          .select("*")
+          .eq("id", customerId)
+          .single();
+        if (custError) throw custError;
 
-  // Handle top-level form changes
+        setFormData((prev) => ({
+          ...prev,
+          prefix: customer.prefix || "",
+          Firstname: customer.Firstname || "",
+          Middlename: customer.Middlename || "",
+          Surname: customer.Surname || "",
+          dateOfBirth: customer.date_of_birth || "",
+          gender: customer.gender || "",
+          maritalStatus: customer.marital_status || "",
+          residenceStatus: customer.residence_status || "",
+          mobile: customer.mobile || "",
+          idNumber: customer.id_number ? customer.id_number.toString() : "",
+          postalAddress: customer.postal_address || "",
+          code: customer.code ? customer.code.toString() : "",
+          town: customer.town || "",
+          county: customer.county || "",
+          businessName: customer.business_name || "",
+          yearEstablished: customer.year_established
+            ? customer.year_established.toString()
+            : "",
+          businessLocation: customer.business_location || "",
+          road: customer.road || "",
+          landmark: customer.landmark || "",
+          hasLocalAuthorityLicense: customer.has_local_authority_license
+            ? "Yes"
+            : "No",
+        }));
+
+        // Fetch guarantor
+        const { data: guarantor } = await supabase
+          .from("guarantors")
+          .select("*")
+          .eq("customer_id", customerId)
+          .single();
+        if (guarantor) {
+          setFormData((prev) => ({
+            ...prev,
+            guarantor: {
+              prefix: guarantor.prefix || "",
+              Firstname: guarantor.Firstname || "",
+              Middlename: guarantor.Middlename || "",
+              Surname: guarantor.Surname || "",
+              idNumber: guarantor.id_number
+                ? guarantor.id_number.toString()
+                : "",
+              maritalStatus: guarantor.marital_status || "",
+              gender: guarantor.gender || "",
+              dateOfBirth: guarantor.date_of_birth || "",
+              mobile: guarantor.mobile || "",
+              postalAddress: guarantor.postal_address || "",
+              code: guarantor.code ? guarantor.code.toString() : "",
+              occupation: guarantor.occupation || "",
+              relationship: guarantor.relationship || "",
+            },
+          }));
+
+          // Fetch guarantor security
+          const { data: gSecurity } = await supabase
+            .from("guarantor_security")
+            .select("*")
+            .eq("guarantor_id", guarantor.id);
+
+          setGuarantorSecurityItems(
+            gSecurity && gSecurity.length
+              ? gSecurity.map((item) => ({
+                  item: item.item || "",
+                  description: item.description || "",
+                  identification: item.identification || "",
+                  value: item.estimated_market_value
+                    ? item.estimated_market_value.toString()
+                    : "",
+                }))
+              : [{ item: "", description: "", identification: "", value: "" }]
+          );
+        }
+
+        // Fetch next of kin
+        const { data: nextOfKin } = await supabase
+          .from("next_of_kin")
+          .select("*")
+          .eq("customer_id", customerId)
+          .single();
+        if (nextOfKin) {
+          setFormData((prev) => ({
+            ...prev,
+            nextOfKin: {
+              Firstname: nextOfKin.Firstname || "",
+              Surname: nextOfKin.Surname || "",
+              Middlename: nextOfKin.Middlename || "",
+              idNumber: nextOfKin.id_number
+                ? nextOfKin.id_number.toString()
+                : "",
+              relationship: nextOfKin.relationship || "",
+              mobile: nextOfKin.mobile || "",
+            },
+          }));
+        }
+
+        // Fetch borrower security
+        const { data: security } = await supabase
+          .from("security_items")
+          .select("*")
+          .eq("customer_id", customerId);
+
+        setSecurityItems(
+          security && security.length
+            ? security.map((s) => ({
+                item: s.item || "",
+                description: s.description || "",
+                identification: s.identification || "",
+                value: s.value ? s.value.toString() : "",
+              }))
+            : [{ item: "", description: "", identification: "", value: "" }]
+        );
+      } catch (err) {
+        console.error("Error fetching customer data:", err.message);
+      }
+    };
+
+    fetchCustomerData();
+  }, [customerId]);
+
+  // Handlers
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle nested objects
-  const handleNestedChange = (e, section) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [section]: { ...prev[section], [name]: value },
-    }));
+  const handleNestedChange = (e, parent) => {
+    setFormData({
+      ...formData,
+      [parent]: { ...formData[parent], [e.target.name]: e.target.value },
+    });
   };
 
-  // Handle security items
   const handleSecurityChange = (e, index) => {
-    const { name, value } = e.target;
     const newItems = [...securityItems];
-    newItems[index][name] = value;
+    newItems[index][e.target.name] = e.target.value;
     setSecurityItems(newItems);
   };
 
@@ -114,85 +222,47 @@ const EditCustomerForm = ({ customerData, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    try {
+      // Example update query
+      const { error } = await supabase
+        .from("customers")
+        .update({
+          prefix: formData.prefix,
+          Firstname: formData.Firstname,
+          Surname: formData.Surname,
+          // add other fields as needed
+        })
+        .eq("id", customerId);
 
-    const customerId = customerData.id;
-
-    // 1. Update customers
-    const { error: updateError } = await supabase
-      .from("customers")
-      .update({
-        prefix: formData.prefix,
-        Firstname: formData.Firstname,
-        Surname: formData.Surname,
-        marital_status: formData.maritalStatus,
-        residence_status: formData.residenceStatus,
-        mobile: formData.mobile,
-        id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
-        postal_address: formData.postalAddress,
-        code: formData.code ? parseInt(formData.code) : null,
-        town: formData.town,
-        county: formData.county,
-        business_name: formData.businessName,
-        year_established: formData.yearEstablished
-          ? parseInt(formData.yearEstablished)
-          : null,
-        business_location: formData.businessLocation,
-        road: formData.road,
-        landmark: formData.landmark,
-        has_local_authority_license:
-          formData.hasLocalAuthorityLicense === "Yes",
-      })
-      .eq("id", customerId);
-
-    if (updateError) {
-      console.error("Error updating customer:", updateError.message);
-      alert("Failed to update customer.");
-      return;
+      if (error) throw error;
+      toast.success("Customer updated successfully!");
+      if (onComplete) onComplete();
+    } catch (err) {
+      console.error("Error updating customer:", err.message);
+      toast.error("Failed to update customer");
     }
-
-    // 2. Upsert guarantor
-    if (formData.guarantor?.mobile) {
-      await supabase.from("guarantors").upsert(
-        {
-          customer_id: customerId,
-          ...formData.guarantor,
-        },
-        { onConflict: "customer_id" }
-      );
-    }
-
-    // 3. Upsert next of kin
-    if (formData.nextOfKin?.mobile) {
-      await supabase.from("next_of_kin").upsert(
-        {
-          customer_id: customerId,
-          ...formData.nextOfKin,
-        },
-        { onConflict: "customer_id" }
-      );
-    }
-
-    // 4. Replace borrower security items
-    await supabase.from("security_items").delete().eq("customer_id", customerId);
-    if (securityItems.length > 0) {
-      const itemsToInsert = securityItems.map((s) => ({
-        customer_id: customerId,
-        item: s.item,
-        description: s.description,
-        identification: s.identification,
-        value: s.value ? parseFloat(s.value) : null,
-      }));
-      await supabase.from("security_items").insert(itemsToInsert);
-    }
-
-    alert("Customer updated successfully!");
-    onClose();
   };
 
+
+ 
+
+ 
+
+
+
+ 
+
+
+
+ 
+
+
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
+     
+       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
       <div className="bg-white w-full max-w-6xl h-[90vh] overflow-y-auto rounded-lg shadow-lg p-6">
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">
             Mular Credit Limited - Edit Customer
@@ -205,9 +275,7 @@ const EditCustomerForm = ({ customerData, onClose }) => {
           </button>
         </div>
 
-        {/* The same form as Add but populated */}
-        <form className="space-y-8">
-          {/* PERSONAL DETAILS */}
+        <form className="space-y-8" onSubmit={handleSubmit}>
           <section>
             <h3 className="text-lg font-semibold mb-4 border-b pb-2">
               Personal Details
@@ -314,7 +382,6 @@ const EditCustomerForm = ({ customerData, onClose }) => {
               />
             </div>
           </section>
-
           {/* BUSINESS INFORMATION */}
           <section>
             <h3 className="text-lg font-semibold mb-4 border-b pb-2">
@@ -509,6 +576,80 @@ const EditCustomerForm = ({ customerData, onClose }) => {
             </div>
           </section>
 
+          {/* GUARANTOR SECURITY */}
+          <section>
+            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
+              Guarantor Security
+            </h3>
+            {guarantorSecurityItems.map((item, index) => (
+              <div
+                key={index}
+                className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3"
+              >
+                <input
+                  type="text"
+                  name="item"
+                  placeholder="Item"
+                  value={item.item}
+                  onChange={(e) => {
+                    const newItems = [...guarantorSecurityItems];
+                    newItems[index][e.target.name] = e.target.value;
+                    setGuarantorSecurityItems(newItems);
+                  }}
+                  className="border p-2 rounded w-full"
+                />
+                <input
+                  type="text"
+                  name="description"
+                  placeholder="Description"
+                  value={item.description}
+                  onChange={(e) => {
+                    const newItems = [...guarantorSecurityItems];
+                    newItems[index][e.target.name] = e.target.value;
+                    setGuarantorSecurityItems(newItems);
+                  }}
+                  className="border p-2 rounded w-full"
+                />
+                <input
+                  type="text"
+                  name="identification"
+                  placeholder="Identification"
+                  value={item.identification}
+                  onChange={(e) => {
+                    const newItems = [...guarantorSecurityItems];
+                    newItems[index][e.target.name] = e.target.value;
+                    setGuarantorSecurityItems(newItems);
+                  }}
+                  className="border p-2 rounded w-full"
+                />
+                <input
+                  type="number"
+                  name="value"
+                  placeholder="Est. Market Value (KES)"
+                  value={item.value}
+                  onChange={(e) => {
+                    const newItems = [...guarantorSecurityItems];
+                    newItems[index][e.target.name] = e.target.value;
+                    setGuarantorSecurityItems(newItems);
+                  }}
+                  className="border p-2 rounded w-full"
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                setGuarantorSecurityItems([
+                  ...guarantorSecurityItems,
+                  { item: "", description: "", identification: "", value: "" },
+                ])
+              }
+              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+            >
+              + Add Guarantor Security
+            </button>
+          </section>
+
           {/* NEXT OF KIN */}
           <section>
             <h3 className="text-lg font-semibold mb-4 border-b pb-2">
@@ -517,9 +658,34 @@ const EditCustomerForm = ({ customerData, onClose }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <input
                 type="text"
-                name="name"
-                placeholder="Name"
-                value={formData.nextOfKin.name}
+                name="Firstname"
+                placeholder="First Name"
+                value={formData.nextOfKin.Firstname}
+                onChange={(e) => handleNestedChange(e, "nextOfKin")}
+                className="border p-2 rounded w-full"
+              />
+              <input
+                type="text"
+                name="Surname"
+                placeholder="Surname Name"
+                value={formData.nextOfKin.Surname}
+                onChange={(e) => handleNestedChange(e, "nextOfKin")}
+                className="border p-2 rounded w-full"
+              />
+              <input
+                type="text"
+                name="Middlename"
+                placeholder="Middle Name"
+                value={formData.nextOfKin.Middlename}
+                onChange={(e) => handleNestedChange(e, "nextOfKin")}
+                className="border p-2 rounded w-full"
+              />
+
+              <input
+                type="text"
+                name="idNumber"
+                placeholder="ID Number"
+                value={formData.nextOfKin.idNumber}
                 onChange={(e) => handleNestedChange(e, "nextOfKin")}
                 className="border p-2 rounded w-full"
               />
@@ -541,20 +707,20 @@ const EditCustomerForm = ({ customerData, onClose }) => {
               />
             </div>
           </section>
-          
-          {/* SUBMIT BUTTON */}
+
           <div className="flex justify-end">
             <button
-              onClick={handleSubmit}
+              type="submit"
               className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
-              Update Customer
+              Update
             </button>
           </div>
         </form>
       </div>
     </div>
+    </div>
   );
 };
 
-export default EditCustomerForm;
+export default LoanVerificationForm;

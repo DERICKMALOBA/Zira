@@ -41,73 +41,71 @@ const Leads = () => {
     setNewLead({ ...newLead, [name]: value });
   };
 
-
   // --- helper to check uniqueness ---
-const checkUniqueMobile = async (mobile) => {
-  const { data, error } = await supabase
-    .from("leads")
-    .select("id")
-    .eq("mobile", mobile);
+  const checkUniqueMobile = async (mobile) => {
+    const { data, error } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("mobile", mobile);
 
-  if (error) {
-    console.error("Error checking mobile uniqueness:", error);
-    return false; // fail safe: treat as duplicate
-  }
+    if (error) {
+      console.error("Error checking mobile uniqueness:", error);
+      return false; // fail safe: treat as duplicate
+    }
 
-  return data.length === 0; // true if unique
-};
+    return data.length === 0; // true if unique
+  };
 
-// --- Save new lead ---
-const addLead = async (e) => {
-  e.preventDefault();
-  setIsSaving(true);
+  // --- Save new lead ---
+  const addLead = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
 
-  // --- validation ---
-  if (!/^[0-9]{10,15}$/.test(newLead.mobile.replace(/\D/g, ""))) {
-    toast.error("Please enter a valid mobile number (10–15 digits).");
+    // --- validation ---
+    if (!/^[0-9]{10,15}$/.test(newLead.mobile.replace(/\D/g, ""))) {
+      toast.error("Please enter a valid mobile number (10–15 digits).");
+      setIsSaving(false);
+      return;
+    }
+
+    const isUnique = await checkUniqueMobile(newLead.mobile);
+    if (!isUnique) {
+      toast.error("A lead with this phone number already exists!");
+      setIsSaving(false);
+      return;
+    }
+
+    // --- insert lead if valid ---
+    const { data, error } = await supabase
+      .from("leads")
+      .insert([newLead])
+      .select();
+
     setIsSaving(false);
-    return;
-  }
 
-  const isUnique = await checkUniqueMobile(newLead.mobile);
-  if (!isUnique) {
-    toast.error("A lead with this phone number already exists!");
-    setIsSaving(false);
-    return;
-  }
+    if (error) {
+      toast.error("Error saving lead");
+      console.error("Error saving lead:", error);
+      return;
+    }
 
-  // --- insert lead if valid ---
-  const { data, error } = await supabase
-    .from("leads")
-    .insert([newLead])
-    .select();
-
-  setIsSaving(false);
-
-  if (error) {
-    toast.error("Error saving lead");
-    console.error("Error saving lead:", error);
-    return;
-  }
-
-  setLeads([...leads, data[0]]);
-  setNewLead({
-    Firstname: "",
-    Surname: "",
-    mobile: "",
-    business_name: "",
-    business_location: "",
-    status: "Cold",
-  });
-  setShowLeadForm(false);
-  toast.success("Lead saved successfully");
-};
+    setLeads([...leads, data[0]]);
+    setNewLead({
+      Firstname: "",
+      Surname: "",
+      mobile: "",
+      business_name: "",
+      business_location: "",
+      status: "Cold",
+    });
+    setShowLeadForm(false);
+    toast.success("Lead saved successfully");
+  };
 
   // // Save new lead
   // const addLead = async (e) => {
   //   e.preventDefault();
   //   setIsSaving(true);
-    
 
   //   const { data} = await supabase
   //     .from("leads")
@@ -115,8 +113,6 @@ const addLead = async (e) => {
   //     .select();
 
   //   setIsSaving(false);
-
-  
 
   //   setLeads([...leads, data[0]]);
   //   setNewLead({
@@ -132,19 +128,16 @@ const addLead = async (e) => {
   // };
 
   // Convert lead to customer
- const handleConvertToCustomer = (lead) => {
-  setSelectedLead(lead);
-  setShowCustomerForm(true);
-};
+  const handleConvertToCustomer = (lead) => {
+    setSelectedLead(lead);
+    setShowCustomerForm(true);
+  };
 
   // Handle successful customer conversion
   const handleCustomerConversionSuccess = async (leadId) => {
     try {
       // Delete the lead from the database
-      const { error } = await supabase
-        .from("leads")
-        .delete()
-        .eq("id", leadId);
+      const { error } = await supabase.from("leads").delete().eq("id", leadId);
 
       if (error) {
         console.error("Error deleting lead:", error);
@@ -153,20 +146,24 @@ const addLead = async (e) => {
       }
 
       // Remove the lead from the local state
-      setLeads(leads.filter(lead => lead.id !== leadId));
-      toast.success("Lead successfully converted to customer and removed from leads");
+      setLeads(leads.filter((lead) => lead.id !== leadId));
+      toast.success(
+        "Lead successfully converted to customer and removed from leads"
+      );
     } catch (error) {
       console.error("Error handling lead conversion:", error);
       toast.error("Error processing lead conversion");
     }
   };
 
-  // Filter leads by name or phone
+  // 🔍 Filter customers by name, phone, or id
+  // Filtered leads
   const filteredLeads = leads.filter(
     (lead) =>
-      lead.Firstname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.Surname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.mobile.includes(searchTerm)
+      (lead.Firstname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lead.Surname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lead.mobile || "").toString().includes(searchTerm) ||
+      (lead.id_number || "").toString().includes(searchTerm)
   );
 
   return (
@@ -191,7 +188,7 @@ const addLead = async (e) => {
           type="text"
           placeholder="Search by name or phone..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.targetValue)}
+          onChange={(e) => setSearchTerm(e.target.value)} // ✅ fix here
           className="w-full px-3 py-2 border rounded-lg focus:ring focus:ring-indigo-200 focus:border-indigo-500"
         />
       </div>
@@ -360,14 +357,15 @@ const addLead = async (e) => {
       )}
 
       {/* Customer Form */}
-    {showCustomerForm && (
-  <CustomerForm
-    leadData={selectedLead}
-    onClose={() => setShowCustomerForm(false)}
-    onConversionSuccess={(leadId) => handleCustomerConversionSuccess(leadId)}
-  />
-)}
-
+      {showCustomerForm && (
+        <CustomerForm
+          leadData={selectedLead}
+          onClose={() => setShowCustomerForm(false)}
+          onConversionSuccess={(leadId) =>
+            handleCustomerConversionSuccess(leadId)
+          }
+        />
+      )}
     </div>
   );
 };

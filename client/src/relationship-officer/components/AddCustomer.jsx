@@ -30,6 +30,7 @@ const AddCustomer = ({ onClose }) => {
     town: "",
     county: "",
     businessName: "",
+    businessType: "",
     yearEstablished: "",
     businessLocation: "",
     daily_Sales: "",
@@ -59,6 +60,16 @@ const AddCustomer = ({ onClose }) => {
       idNumber: "",
       relationship: "",
       mobile: "",
+    },
+    loan: {
+      product: "",
+      principal: "",
+      durationWeeks: "",
+      processingFee: "",
+      registrationFee: "",
+      interestRate: "",
+      totalPayable: "",
+      status: "pending",
     },
   });
 
@@ -131,8 +142,7 @@ const AddCustomer = ({ onClose }) => {
       formData.guarantor.dateOfBirth &&
       !isAtLeast18YearsOld(formData.guarantor.dateOfBirth)
     ) {
-      newErrors.guarantorDateOfBirth =
-        "Guarantor must be at least 18 years old";
+      newErrors.guarantorDateOfBirth = "Guarantor must be at least 18 years old";
     }
 
     // Validate security items
@@ -312,6 +322,52 @@ const AddCustomer = ({ onClose }) => {
     ]);
   };
 
+  // Loan calculation functions
+  const calculateProcessingFee = (principal) => {
+    if (!principal) return 0;
+    return principal <= 10000 ? 500 : principal * 0.05;
+  };
+
+  const calculateRegistrationFee = (isNewCustomer) => {
+    return isNewCustomer ? 300 : 0;
+  };
+
+  const calculateInterestRate = (weeks) => {
+    if (!weeks) return 0;
+    const weeklyRate = 25 / 4; // 6.25% per week
+    return weeks * weeklyRate;
+  };
+
+  const calculateTotalPayable = ({ principal, interestRate }) => {
+    if (!principal || !interestRate) return 0;
+    const interestAmount = (principal * interestRate) / 100;
+    return principal + interestAmount;
+  };
+
+  // Whenever loan fields change, auto-calculate fees and total
+  const handleLoanChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => {
+      const updatedLoan = { ...prev.loan, [name]: value };
+
+      const principal = parseFloat(updatedLoan.principal) || 0;
+      const duration = parseInt(updatedLoan.durationWeeks) || 0;
+
+      updatedLoan.processingFee = calculateProcessingFee(principal);
+      updatedLoan.registrationFee = calculateRegistrationFee(true);
+      updatedLoan.interestRate = calculateInterestRate(duration);
+      updatedLoan.totalPayable = calculateTotalPayable({
+        principal,
+        interestRate: updatedLoan.interestRate,
+        processingFee: updatedLoan.processingFee,
+        registrationFee: updatedLoan.registrationFee,
+      });
+
+      return { ...prev, loan: updatedLoan };
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -370,7 +426,7 @@ const AddCustomer = ({ onClose }) => {
         .single();
 
       if (customerError) {
-        toast.error("Please fix the errors in the form before submitting.", {
+        toast.error("Error saving customer: " + customerError.message, {
           position: "top-right",
           autoClose: 4000,
           theme: "colored",
@@ -381,7 +437,39 @@ const AddCustomer = ({ onClose }) => {
 
       const customerId = customerData.id;
 
-      // 2. Insert next of kin (only if at least one field is provided)
+      // 2. Insert loan record (AFTER customerId is defined)
+      if (formData.loan.product) {
+        const { error: loanError } = await supabase.from("loans").insert([
+          {
+            customer_id: customerId,
+            product: formData.loan.product,
+            duration_weeks: formData.loan.durationWeeks
+              ? parseInt(formData.loan.durationWeeks)
+              : null,
+            processing_fee: formData.loan.processingFee
+              ? parseFloat(formData.loan.processingFee)
+              : null,
+            principal: formData.loan.principal
+              ? parseFloat(formData.loan.principal)
+              : null,
+            total_payable: formData.loan.totalPayable,
+            registration_fee: formData.loan.registrationFee
+              ? parseFloat(formData.loan.registrationFee)
+              : 0,
+            interest_rate: formData.loan.interestRate
+              ? parseFloat(formData.loan.interestRate)
+              : null,
+            status: formData.loan.status || "pending",
+          },
+        ]);
+
+        if (loanError) {
+          console.error("Error saving loan:", loanError.message);
+          toast.error("Failed to save loan info.");
+        }
+      }
+
+      // 3. Insert next of kin (only if at least one field is provided)
       const nextOfKinFieldsFilled = Object.values(formData.nextOfKin).some(
         (val) => val && val.trim() !== ""
       );
@@ -403,11 +491,11 @@ const AddCustomer = ({ onClose }) => {
 
         if (nextOfKinError) {
           console.error("Error saving next of kin:", nextOfKinError.message);
-          alert("Failed to save next of kin: " + nextOfKinError.message);
+          toast.error("Failed to save next of kin: " + nextOfKinError.message);
         }
       }
 
-      // 3. Insert guarantor (only if at least one field is provided)
+      // 4. Insert guarantor (only if at least one field is provided)
       const guarantorFieldsFilled = Object.values(formData.guarantor).some(
         (val) => val && val.trim() !== ""
       );
@@ -442,7 +530,7 @@ const AddCustomer = ({ onClose }) => {
 
         if (guarantorError) {
           console.error("Error saving guarantor:", guarantorError.message);
-          toast.error("error saving guarantor", {
+          toast.error("Error saving guarantor", {
             position: "top-right",
             autoClose: 4000,
             theme: "colored",
@@ -477,7 +565,7 @@ const AddCustomer = ({ onClose }) => {
                 "Error saving guarantor security:",
                 guarantorSecurityError.message
               );
-              toast.error("error saving guarantor security.", {
+              toast.error("Error saving guarantor security.", {
                 position: "top-right",
                 autoClose: 4000,
                 theme: "colored",
@@ -487,7 +575,7 @@ const AddCustomer = ({ onClose }) => {
         }
       }
 
-      // 4. Insert borrower security items (only items with some data)
+      // 5. Insert borrower security items (only items with some data)
       const itemsToInsert = securityItems
         .filter(
           (item) =>
@@ -516,26 +604,26 @@ const AddCustomer = ({ onClose }) => {
         }
       }
 
-toast.success("Customer & all related details saved successfully!", {
-  position: "top-right",
-  autoClose: 4000,
-  hideProgressBar: false,
-  closeOnClick: true,
-  pauseOnHover: true,
-  draggable: true,
-  theme: "colored",
-});
-
-
+      toast.success("Customer & all related details saved successfully!", {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: "colored",
+      });
 
       onClose();
     } catch (error) {
       console.error("Unexpected error:", error);
-      alert("An unexpected error occurred. Please try again.");
+      toast.error("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
@@ -912,6 +1000,132 @@ toast.success("Customer & all related details saved successfully!", {
               + Add Item
             </button>
           </section>
+
+
+          
+<section>
+  <h3 className="text-lg font-semibold mb-4 border-b pb-2">
+    Loan Information
+  </h3>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    {/* Principal */}
+
+<input
+  type="number"
+  name="principal"
+  placeholder="Principal Amount"
+  value={formData.loan.principal}
+  onChange={handleLoanChange}
+  className="border p-2 rounded w-full"
+/>
+    {/* Product */}
+    <select
+      name="product"
+      value={formData.loan.product}
+      onChange={(e) =>
+        setFormData((prev) => ({
+          ...prev,
+          loan: { ...prev.loan, product: e.target.value },
+        }))
+      }
+      className="border p-2 rounded w-full"
+    >
+      <option value="">Select Product</option>
+      <option value="Inuka">Inuka</option>
+      <option value="Kuza">Kuza</option>
+      <option value="Fadhili">Fadhili</option>
+    </select>
+
+    {/* Duration */}
+    <select
+      name="durationWeeks"
+      value={formData.loan.durationWeeks}
+      onChange={(e) => {
+        const weeks = parseInt(e.target.value) || 0;
+        setFormData((prev) => ({
+          ...prev,
+          loan: {
+            ...prev.loan,
+            durationWeeks: weeks,
+            interestRate: calculateInterestRate(weeks),
+          },
+        }));
+      }}
+      className="border p-2 rounded w-full"
+    >
+      <option value="">Duration (Weeks)</option>
+      {[4, 5, 6, 7, 8].map((week) => (
+        <option key={week} value={week}>
+          {week} weeks
+        </option>
+      ))}
+    </select>
+
+    {/* Auto-calculated Processing Fee */}
+    <input
+      type="number"
+      name="processingFee"
+      placeholder="Processing Fee"
+        onChange={handleLoanChange}
+      value={formData.loan.processingFee}
+      readOnly
+      className="border p-2 rounded w-full bg-gray-100"
+    />
+
+    {/* Auto-calculated Registration Fee (assume new customer true) */}
+    <input
+      type="number"
+      name="registrationFee"
+      placeholder="Registration Fee"
+        onChange={handleLoanChange}
+      value={formData.loan.registrationFee || calculateRegistrationFee(true)}
+      readOnly
+      className="border p-2 rounded w-full bg-gray-100"
+    />
+
+    {/* Auto-calculated Interest */}
+    <input
+      type="number"
+      name="interestRate"
+      placeholder="Interest Rate (%)"
+      value={formData.loan.interestRate}
+        onChange={handleLoanChange}
+      readOnly
+      className="border p-2 rounded w-full bg-gray-100"
+    />
+
+
+    <input
+  type="number"
+  name="totalPayable"
+  placeholder="Total Payable"
+  value={formData.loan.totalPayable || ""}
+    onChange={handleLoanChange}
+  readOnly
+  className="border p-2 rounded w-full bg-gray-200 font-semibold"
+/>
+
+
+
+    {/* Status */}
+    <select
+      name="status"
+      value={formData.loan.status}
+      onChange={(e) =>
+        setFormData((prev) => ({
+          ...prev,
+          loan: { ...prev.loan, status: e.target.value },
+        }))
+      }
+      className="border p-2 rounded w-full"
+    >
+      <option value="pending">Pending</option>
+      <option value="approved">Approved</option>
+      <option value="rejected">Rejected</option>
+    </select>
+  </div>
+</section>
+
 
           {/* GUARANTOR DETAILS */}
           <section>
