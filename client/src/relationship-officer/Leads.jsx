@@ -18,6 +18,7 @@ const Leads = () => {
     mobile: "",
     business_name: "",
     business_location: "",
+    business_type:"",
     status: "Cold",
   });
 
@@ -205,6 +206,8 @@ const Leads = () => {
               <th className="px-4 py-3 text-left">Surname</th>
               <th className="px-4 py-3 text-left">Phone</th>
               <th className="px-4 py-3 text-left">Business Name</th>
+                            <th className="px-4 py-3 text-left">Business Type</th>
+
               <th className="px-4 py-3 text-left">Business Location</th>
               <th className="px-4 py-3 text-left">Status</th>
               <th className="px-4 py-3 text-center">Actions</th>
@@ -217,6 +220,8 @@ const Leads = () => {
                 <td className="px-4 py-3">{lead.Surname}</td>
                 <td className="px-4 py-3">{lead.mobile}</td>
                 <td className="px-4 py-3">{lead.business_name}</td>
+                                <td className="px-4 py-3">{lead.business_type}</td>
+
                 <td className="px-4 py-3">{lead.business_location}</td>
                 <td>
                   <span
@@ -303,6 +308,21 @@ const Leads = () => {
                   className="w-full px-3 py-2 border rounded-lg"
                 />
               </div>
+
+    <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Business Type
+                </label>
+                <input
+                  type="text"
+                  name="business_type"
+                  value={newLead.business_type}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Business Location

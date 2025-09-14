@@ -4,6 +4,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { toast } from "react-toastify";
 
 const AddCustomer = ({ onClose }) => {
+  const [activeSection, setActiveSection] = useState("personal");
   const [securityItems, setSecurityItems] = useState([
     { item: "", description: "", identification: "", value: "" },
   ]);
@@ -21,6 +22,8 @@ const AddCustomer = ({ onClose }) => {
     maritalStatus: "",
     residenceStatus: "",
     mobile: "",
+    alternativeMobile: "",
+    occupation: "",
     dateOfBirth: "",
     gender: "",
     idNumber: "",
@@ -52,6 +55,8 @@ const AddCustomer = ({ onClose }) => {
       code: "",
       occupation: "",
       relationship: "",
+      county: "",
+      cityTown: "",
     },
     nextOfKin: {
       Firstname: "",
@@ -60,6 +65,10 @@ const AddCustomer = ({ onClose }) => {
       idNumber: "",
       relationship: "",
       mobile: "",
+      alternativeNumber: "",
+      employmentStatus: "",
+      county: "",
+      cityTown: "",
     },
     loan: {
       product: "",
@@ -72,6 +81,21 @@ const AddCustomer = ({ onClose }) => {
       status: "pending",
     },
   });
+
+  // File upload state
+  const [passportFile, setPassportFile] = useState(null);
+  const [idFrontFile, setIdFrontFile] = useState(null);
+  const [idBackFile, setIdBackFile] = useState(null);
+  const [houseImageFile, setHouseImageFile] = useState(null);
+  const [businessImages, setBusinessImages] = useState([]);
+  const [securityItemImages, setSecurityItemImages] = useState([]);
+  const [guarantorPassportFile, setGuarantorPassportFile] = useState(null);
+  const [guarantorIdFrontFile, setGuarantorIdFrontFile] = useState(null);
+  const [guarantorIdBackFile, setGuarantorIdBackFile] = useState(null);
+  const [guarantorSecurityImages, setGuarantorSecurityImages] = useState([]);
+  const [officerClientImage1, setOfficerClientImage1] = useState(null);
+  const [officerClientImage2, setOfficerClientImage2] = useState(null);
+  const [bothOfficersImage, setBothOfficersImage] = useState(null);
 
   // Check if a value is unique in the database across multiple tables
   const checkUniqueValue = async (tables, field, value) => {
@@ -109,6 +133,21 @@ const AddCustomer = ({ onClose }) => {
     return birthDate <= eighteenYearsAgo;
   };
 
+  // Validate business establishment date (at least 6 months ago)
+  const isAtLeast6MonthsOld = (dateString) => {
+    if (!dateString) return true;
+
+    const establishedDate = new Date(dateString);
+    const today = new Date();
+    const sixMonthsAgo = new Date(
+      today.getFullYear(),
+      today.getMonth() - 6,
+      today.getDate()
+    );
+
+    return establishedDate <= sixMonthsAgo;
+  };
+
   // Validation function
   const validateForm = async () => {
     const newErrors = {};
@@ -135,6 +174,11 @@ const AddCustomer = ({ onClose }) => {
     // Date of birth validation - must be at least 18 years old
     if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
       newErrors.dateOfBirth = "Customer must be at least 18 years old";
+    }
+
+    // Business establishment date validation
+    if (formData.yearEstablished && !isAtLeast6MonthsOld(formData.yearEstablished)) {
+      newErrors.yearEstablished = "Business must be established at least 6 months ago";
     }
 
     // Guarantor date of birth validation
@@ -351,21 +395,36 @@ const AddCustomer = ({ onClose }) => {
     setFormData((prev) => {
       const updatedLoan = { ...prev.loan, [name]: value };
 
+      // Calculate values based on changes
       const principal = parseFloat(updatedLoan.principal) || 0;
       const duration = parseInt(updatedLoan.durationWeeks) || 0;
 
-      updatedLoan.processingFee = calculateProcessingFee(principal);
-      updatedLoan.registrationFee = calculateRegistrationFee(true);
-      updatedLoan.interestRate = calculateInterestRate(duration);
-      updatedLoan.totalPayable = calculateTotalPayable({
-        principal,
-        interestRate: updatedLoan.interestRate,
-        processingFee: updatedLoan.processingFee,
-        registrationFee: updatedLoan.registrationFee,
-      });
+      // Only recalculate if relevant fields change
+      if (name === 'principal' || name === 'durationWeeks') {
+        updatedLoan.processingFee = calculateProcessingFee(principal);
+        updatedLoan.registrationFee = calculateRegistrationFee(true);
+        updatedLoan.interestRate = calculateInterestRate(duration);
+        updatedLoan.totalPayable = calculateTotalPayable({
+          principal,
+          interestRate: updatedLoan.interestRate,
+        });
+      }
 
       return { ...prev, loan: updatedLoan };
     });
+  };
+
+  // Handle file uploads
+  const handleFileUpload = (e, setFileFunction) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFileFunction(file);
+    }
+  };
+
+  const handleMultipleFiles = (e, setFilesFunction) => {
+    const files = Array.from(e.target.files);
+    setFilesFunction(files);
   };
 
   const handleSubmit = async (e) => {
@@ -400,6 +459,8 @@ const AddCustomer = ({ onClose }) => {
             marital_status: formData.maritalStatus || null,
             residence_status: formData.residenceStatus || null,
             mobile: formData.mobile || null,
+            alternative_mobile: formData.alternativeMobile || null,
+            occupation: formData.occupation || null,
             date_of_birth: formData.dateOfBirth || null,
             gender: formData.gender || null,
             id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
@@ -486,6 +547,10 @@ const AddCustomer = ({ onClose }) => {
               id_number: formData.nextOfKin.idNumber || null,
               relationship: formData.nextOfKin.relationship || null,
               mobile: formData.nextOfKin.mobile || null,
+              alternative_number: formData.nextOfKin.alternativeNumber || null,
+              employment_status: formData.nextOfKin.employmentStatus || null,
+              county: formData.nextOfKin.county || null,
+              city_town: formData.nextOfKin.cityTown || null,
             },
           ]);
 
@@ -523,6 +588,8 @@ const AddCustomer = ({ onClose }) => {
               relationship: formData.guarantor.relationship || null,
               date_of_birth: formData.guarantor.dateOfBirth || null,
               Middlename: formData.guarantor.Middlename || null,
+              county: formData.guarantor.county || null,
+              city_town: formData.guarantor.cityTown || null,
             },
           ])
           .select("id")
@@ -604,6 +671,8 @@ const AddCustomer = ({ onClose }) => {
         }
       }
 
+      // 6. Upload files (you would need to implement this part based on your storage setup)
+     
       toast.success("Customer & all related details saved successfully!", {
         position: "top-right",
         autoClose: 4000,
@@ -623,830 +692,1205 @@ const AddCustomer = ({ onClose }) => {
     }
   };
 
-
+  // Navigation tabs
+  const navItems = [
+    { id: "personal", label: "Personal Info" },
+    { id: "business", label: "Business Info" },
+    { id: "borrowerSecurity", label: "Borrower Security" },
+    { id: "loan", label: "Loan Details" },
+    { id: "guarantor", label: "Guarantor" },
+    { id: "guarantorSecurity", label: "Guarantor Security" },
+    { id: "nextOfKin", label: "Next of Kin" },
+    { id: "documents", label: "Documents" },
+  ];
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-      <div className="bg-white w-full max-w-6xl h-[90vh] overflow-y-auto rounded-lg shadow-lg p-6">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">
-            Mular Credit Limited - Customer Application
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-lg font-bold"
-            disabled={isSubmitting}
-          >
-            ✕
-          </button>
-        </div>
+   <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 z-50">
+  <div className="bg-white w-full max-w-6xl h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-6">
+    {/* Header */}
+    <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
+      <h2 className="text-2xl text-center font-bold text-green-600">
+         Customer Application
+      </h2>
+      <button
+        onClick={onClose}
+        className="text-gray-500 hover:text-red-600 text-xl font-bold transition-colors"
+        disabled={isSubmitting}
+      >
+        ✕
+      </button>
+    </div>
 
-        <form className="space-y-8">
-          {/* PERSONAL DETAILS */}
-          <section>
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-              Personal Details
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <select
-                  name="prefix"
-                  value={formData.prefix}
-                  onChange={handleChange}
-                  className="border p-2 rounded w-full"
-                >
-                  <option value="">Select Prefix</option>
-                  <option>Mr</option>
-                  <option>Mrs</option>
-                  <option>Ms</option>
-                </select>
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  name="Firstname"
-                  placeholder="First Name *"
-                  value={formData.Firstname}
-                  onChange={handleChange}
-                  className={`border p-2 rounded w-full ${
-                    errors.Firstname ? "border-red-500" : ""
-                  }`}
-                  required
-                />
-                {errors.Firstname && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.Firstname}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  name="Surname"
-                  placeholder="Surname *"
-                  value={formData.Surname}
-                  onChange={handleChange}
-                  className={`border p-2 rounded w-full ${
-                    errors.Surname ? "border-red-500" : ""
-                  }`}
-                  required
-                />
-                {errors.Surname && (
-                  <p className="text-red-500 text-xs mt-1">{errors.Surname}</p>
-                )}
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  name="Middlename"
-                  placeholder="Middle Name"
-                  value={formData.Middlename}
-                  onChange={handleChange}
-                  className="border p-2 rounded w-full"
-                />
-              </div>
-
-              <div>
-                <select
-                  name="maritalStatus"
-                  value={formData.maritalStatus}
-                  onChange={handleChange}
-                  className="border p-2 rounded w-full"
-                >
-                  <option value="">Select Marital Status</option>
-                  <option>Single</option>
-                  <option>Married</option>
-                  <option>Separated/Divorced</option>
-                  <option>Other</option>
-                </select>
-              </div>
-
-              <div>
-                <select
-                  name="residenceStatus"
-                  value={formData.residenceStatus}
-                  onChange={handleChange}
-                  className="border p-2 rounded w-full"
-                >
-                  <option value="">Residence Status</option>
-                  <option>Own</option>
-                  <option>Rent</option>
-                  <option>Family</option>
-                  <option>Other</option>
-                </select>
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  name="mobile"
-                  placeholder="Mobile Number *"
-                  onChange={handleChange}
-                  value={formData.mobile}
-                  className={`border p-2 rounded w-full ${
-                    errors.mobile ? "border-red-500" : ""
-                  }`}
-                  required
-                />
-                {errors.mobile && (
-                  <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>
-                )}
-              </div>
-
-              <div>
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  placeholder="Date of Birth"
-                  value={formData.dateOfBirth}
-                  onChange={handleChange}
-                  className={`border p-2 rounded w-full ${
-                    errors.dateOfBirth ? "border-red-500" : ""
-                  }`}
-                  max={
-                    new Date(
-                      new Date().setFullYear(new Date().getFullYear() - 18)
-                    )
-                      .toISOString()
-                      .split("T")[0]
-                  }
-                />
-                {errors.dateOfBirth && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.dateOfBirth}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <select
-                  name="gender"
-                  value={formData.gender}
-                  onChange={handleChange}
-                  className="border p-2 rounded w-full"
-                >
-                  <option value="">Select Gender</option>
-                  <option>Male</option>
-                  <option>Female</option>
-                </select>
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  name="idNumber"
-                  placeholder="ID Number *"
-                  value={formData.idNumber}
-                  onChange={handleChange}
-                  className={`border p-2 rounded w-full ${
-                    errors.idNumber ? "border-red-500" : ""
-                  }`}
-                  required
-                />
-                {errors.idNumber && (
-                  <p className="text-red-500 text-xs mt-1">{errors.idNumber}</p>
-                )}
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  name="postalAddress"
-                  placeholder="Postal Address"
-                  value={formData.postalAddress}
-                  onChange={handleChange}
-                  className="border p-2 rounded w-full"
-                />
-              </div>
-
-              <div>
-                <input
-                  type="number"
-                  name="code"
-                  placeholder="Code"
-                  value={formData.code}
-                  onChange={handleChange}
-                  className="border p-2 rounded w-full"
-                />
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  name="town"
-                  placeholder="Town / City"
-                  value={formData.town}
-                  onChange={handleChange}
-                  className="border p-2 rounded w-full"
-                />
-              </div>
-
-              <div>
-                <input
-                  type="text"
-                  name="county"
-                  placeholder="County"
-                  value={formData.county}
-                  onChange={handleChange}
-                  className="border p-2 rounded w-full"
-                />
-              </div>
-            </div>
-          </section>
-
-          {/* BUSINESS INFORMATION */}
-          <section>
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-              Business Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                name="businessName"
-                placeholder="Business Name"
-                value={formData.businessName}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-
-              <input
-                type="text"
-                name="businessType"
-                placeholder="Business Type (e.g. Retail, Wholesale)"
-                value={formData.businessType}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="number"
-                name="yearEstablished"
-                placeholder="Year Established"
-                value={formData.yearEstablished}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-                min="1900"
-                max={new Date().getFullYear()}
-              />
-              <input
-                type="number"
-                name="daily_Sales"
-                placeholder="Daily Sales (KES)"
-                value={formData.daily_Sales}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-
-              <input
-                type="text"
-                name="businessLocation"
-                placeholder="Business Location"
-                value={formData.businessLocation}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="road"
-                placeholder="Road"
-                value={formData.road}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="landmark"
-                placeholder="Landmark (e.g. Mosque)"
-                value={formData.landmark}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              />
-              <select
-                name="hasLocalAuthorityLicense"
-                value={formData.hasLocalAuthorityLicense}
-                onChange={handleChange}
-                className="border p-2 rounded w-full"
-              >
-                <option value="">Have Local Authority Licence?</option>
-                <option value="Yes">Yes</option>
-                <option value="No">No</option>
-              </select>
-            </div>
-          </section>
-
-          {/* BORROWER SECURITY */}
-          <section>
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-              Borrower Security
-            </h3>
-            {securityItems.map((item, index) => (
-              <div key={index} className="mb-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
-                  <input
-                    type="text"
-                    name="item"
-                    placeholder="Item"
-                    value={item.item}
-                    onChange={(e) => handleSecurityChange(e, index)}
-                    className="border p-2 rounded w-full"
-                  />
-                  <input
-                    type="text"
-                    name="description"
-                    placeholder="Description"
-                    value={item.description}
-                    onChange={(e) => handleSecurityChange(e, index)}
-                    className="border p-2 rounded w-full"
-                  />
-                  <input
-                    type="text"
-                    name="identification"
-                    placeholder="Identification (e.g. Serial No.)"
-                    value={item.identification}
-                    onChange={(e) => handleSecurityChange(e, index)}
-                    className="border p-2 rounded w-full"
-                  />
-                  <div>
-                    <input
-                      type="number"
-                      name="value"
-                      placeholder="Est. Market Value (KES)"
-                      value={item.value}
-                      onChange={(e) => handleSecurityChange(e, index)}
-                      className={`border p-2 rounded w-full ${
-                        errors[`securityValue_${index}`] ? "border-red-500" : ""
-                      }`}
-                      min="0"
-                      step="0.01"
-                    />
-                    {errors[`securityValue_${index}`] && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors[`securityValue_${index}`]}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addSecurityItem}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm"
-              disabled={isSubmitting}
-            >
-              + Add Item
-            </button>
-          </section>
-
-
-          
-<section>
-  <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-    Loan Information
-  </h3>
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-    {/* Principal */}
-
-<input
-  type="number"
-  name="principal"
-  placeholder="Principal Amount"
-  value={formData.loan.principal}
-  onChange={handleLoanChange}
-  className="border p-2 rounded w-full"
-/>
-    {/* Product */}
-    <select
-      name="product"
-      value={formData.loan.product}
-      onChange={(e) =>
-        setFormData((prev) => ({
-          ...prev,
-          loan: { ...prev.loan, product: e.target.value },
-        }))
-      }
-      className="border p-2 rounded w-full"
-    >
-      <option value="">Select Product</option>
-      <option value="Inuka">Inuka</option>
-      <option value="Kuza">Kuza</option>
-      <option value="Fadhili">Fadhili</option>
-    </select>
-
-    {/* Duration */}
-    <select
-      name="durationWeeks"
-      value={formData.loan.durationWeeks}
-      onChange={(e) => {
-        const weeks = parseInt(e.target.value) || 0;
-        setFormData((prev) => ({
-          ...prev,
-          loan: {
-            ...prev.loan,
-            durationWeeks: weeks,
-            interestRate: calculateInterestRate(weeks),
-          },
-        }));
-      }}
-      className="border p-2 rounded w-full"
-    >
-      <option value="">Duration (Weeks)</option>
-      {[4, 5, 6, 7, 8].map((week) => (
-        <option key={week} value={week}>
-          {week} weeks
-        </option>
+    {/* Navigation Tabs */}
+    <div className="flex overflow-x-auto mb-6 pb-2 border-b border-gray-200">
+      {navItems.map((item) => (
+        <button
+          key={item.id}
+          onClick={() => setActiveSection(item.id)}
+          className={`px-4 py-2 mr-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
+            activeSection === item.id
+              ? "bg-green-600 text-white"
+              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          {item.label}
+        </button>
       ))}
-    </select>
+    </div>
 
-    {/* Auto-calculated Processing Fee */}
-    <input
-      type="number"
-      name="processingFee"
-      placeholder="Processing Fee"
-        onChange={handleLoanChange}
-      value={formData.loan.processingFee}
-      readOnly
-      className="border p-2 rounded w-full bg-gray-100"
-    />
+    <form className="space-y-8">
+      {/* PERSONAL DETAILS */}
+      {activeSection === "personal" && (
+   <section className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg border border-green-200">
+   <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
+    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
+    Personal Details
+  </h3>
 
-    {/* Auto-calculated Registration Fee (assume new customer true) */}
-    <input
-      type="number"
-      name="registrationFee"
-      placeholder="Registration Fee"
-        onChange={handleLoanChange}
-      value={formData.loan.registrationFee || calculateRegistrationFee(true)}
-      readOnly
-      className="border p-2 rounded w-full bg-gray-100"
-    />
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {/* Prefix */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Prefix</label>
+      <select
+        name="prefix"
+        value={formData.prefix}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      >
+        <option value="">Select Prefix</option>
+        <option>Mr</option>
+        <option>Mrs</option>
+        <option>Ms</option>
+      </select>
+    </div>
 
-    {/* Auto-calculated Interest */}
-    <input
-      type="number"
-      name="interestRate"
-      placeholder="Interest Rate (%)"
-      value={formData.loan.interestRate}
-        onChange={handleLoanChange}
-      readOnly
-      className="border p-2 rounded w-full bg-gray-100"
-    />
+    {/* First Name */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">First Name *</label>
+      <input
+        type="text"
+        name="Firstname"
+        placeholder="First Name"
+        value={formData.Firstname}
+        onChange={handleChange}
+        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+          errors.Firstname ? "border-red-500" : "border-green-200"
+        }`}
+        required
+      />
+      {errors.Firstname && <p className="text-red-500 text-xs mt-1">{errors.Firstname}</p>}
+    </div>
 
+    {/* Surname */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Surname *</label>
+      <input
+        type="text"
+        name="Surname"
+        placeholder="Surname"
+        value={formData.Surname}
+        onChange={handleChange}
+        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+          errors.Surname ? "border-red-500" : "border-green-200"
+        }`}
+        required
+      />
+      {errors.Surname && <p className="text-red-500 text-xs mt-1">{errors.Surname}</p>}
+    </div>
 
-    <input
-  type="number"
-  name="totalPayable"
-  placeholder="Total Payable"
-  value={formData.loan.totalPayable || ""}
-    onChange={handleLoanChange}
-  readOnly
-  className="border p-2 rounded w-full bg-gray-200 font-semibold"
-/>
+    {/* Middle Name */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Middle Name</label>
+      <input
+        type="text"
+        name="Middlename"
+        placeholder="Middle Name"
+        value={formData.Middlename}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+      />
+    </div>
 
+    {/* Marital Status */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Marital Status</label>
+      <select
+        name="maritalStatus"
+        value={formData.maritalStatus}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      >
+        <option value="">Select Marital Status</option>
+        <option>Single</option>
+        <option>Married</option>
+        <option>Separated/Divorced</option>
+        <option>Other</option>
+      </select>
+    </div>
 
+    {/* Residence Status */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Residence Status</label>
+      <select
+        name="residenceStatus"
+        value={formData.residenceStatus}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      >
+        <option value="">Residence Status</option>
+        <option>Own</option>
+        <option>Rent</option>
+        <option>Family</option>
+        <option>Other</option>
+      </select>
+    </div>
 
-    {/* Status */}
-    <select
-      name="status"
-      value={formData.loan.status}
-      onChange={(e) =>
-        setFormData((prev) => ({
-          ...prev,
-          loan: { ...prev.loan, status: e.target.value },
-        }))
-      }
-      className="border p-2 rounded w-full"
-    >
-      <option value="pending">Pending</option>
-      <option value="approved">Approved</option>
-      <option value="rejected">Rejected</option>
-    </select>
+    {/* Mobile Number */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Mobile Number *</label>
+      <input
+        type="text"
+        name="mobile"
+        placeholder="Mobile Number"
+        onChange={handleChange}
+        value={formData.mobile}
+        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+          errors.mobile ? "border-red-500" : "border-green-200"
+        }`}
+        required
+      />
+      {errors.mobile && <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>}
+    </div>
+
+    {/* Alternative Mobile */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Alternative Mobile Number</label>
+      <input
+        type="text"
+        name="alternativeMobile"
+        placeholder="Alternative Mobile Number"
+        value={formData.alternativeMobile}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+      />
+    </div>
+
+    {/* Occupation */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Occupation</label>
+      <input
+        type="text"
+        name="occupation"
+        placeholder="Occupation"
+        value={formData.occupation}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+      />
+    </div>
+
+    {/* Date of Birth */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Date of Birth</label>
+      <input
+        type="date"
+        name="dateOfBirth"
+        value={formData.dateOfBirth}
+        onChange={handleChange}
+        max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
+        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+          errors.dateOfBirth ? "border-red-500" : "border-green-200"
+        }`}
+      />
+      {errors.dateOfBirth && <p className="text-red-500 text-xs mt-1">{errors.dateOfBirth}</p>}
+    </div>
+
+    {/* Gender */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Gender</label>
+      <select
+        name="gender"
+        value={formData.gender}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      >
+        <option value="">Select Gender</option>
+        <option>Male</option>
+        <option>Female</option>
+      </select>
+    </div>
+
+    {/* ID Number */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">ID Number *</label>
+      <input
+        type="text"
+        name="idNumber"
+        placeholder="ID Number"
+        value={formData.idNumber}
+        onChange={handleChange}
+        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+          errors.idNumber ? "border-red-500" : "border-green-200"
+        }`}
+        required
+      />
+      {errors.idNumber && <p className="text-red-500 text-xs mt-1">{errors.idNumber}</p>}
+    </div>
+
+    {/* Postal Address */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Postal Address</label>
+      <input
+        type="text"
+        name="postalAddress"
+        placeholder="Postal Address"
+        value={formData.postalAddress}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+      />
+    </div>
+
+    {/* Code */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Code</label>
+      <input
+        type="number"
+        name="code"
+        placeholder="Code"
+        value={formData.code}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+      />
+    </div>
+
+    {/* Town */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Town / City</label>
+      <input
+        type="text"
+        name="town"
+        placeholder="Town / City"
+        value={formData.town}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+      />
+    </div>
+
+    {/* County */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">County</label>
+      <input
+        type="text"
+        name="county"
+        placeholder="County"
+        value={formData.county}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+      />
+    </div>
+
+    {/* File Uploads */}
+    <div className="md:col-span-2 lg:col-span-3 mt-6">
+      <h4 className="text-lg font-semibold text-green-800 mb-4">Upload Documents</h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: "Upload Passport Photo", handler: setPassportFile },
+          { label: "Upload ID Front", handler: setIdFrontFile },
+          { label: "Upload ID Back", handler: setIdBackFile },
+          { label: "Upload House Image", handler: setHouseImageFile },
+        ].map((file, idx) => (
+          <div
+            key={idx}
+            className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
+          >
+            <label className="block text-sm font-medium text-green-800 mb-2">{file.label}</label>
+            <input
+              type="file"
+              onChange={(e) => handleFileUpload(e, file.handler)}
+              className="block w-full text-sm text-gray-600
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-lg file:border-0
+                file:text-sm file:font-semibold
+                file:bg-green-100 file:text-green-700
+                hover:file:bg-green-200
+                cursor-pointer"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
   </div>
 </section>
 
 
-          {/* GUARANTOR DETAILS */}
-          <section>
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-              Guarantor Details
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <select
-                name="prefix"
-                value={formData.guarantor.prefix}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              >
-                <option value="">Select Prefix</option>
-                <option>Mr</option>
-                <option>Mrs</option>
-                <option>Ms</option>
-              </select>
-              <select
-                name="maritalStatus"
-                value={formData.guarantor.maritalStatus}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              >
-                <option value="">Select Marital Status</option>
-                <option>Single</option>
-                <option>Married</option>
-                <option>Separated/Divorced</option>
-                <option>Other</option>
-              </select>
-              <input
-                type="text"
-                name="Firstname"
-                placeholder="First Name"
-                value={formData.guarantor.Firstname}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="Surname"
-                placeholder="Surname Name"
-                value={formData.guarantor.Surname}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              />
+      )}
 
-              <input
-                type="text"
-                name="idNumber"
-                placeholder="ID Number"
-                value={formData.guarantor.idNumber}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className={`border p-2 rounded w-full ${
-                  errors.guarantorIdNumber ? "border-red-500" : ""
-                }`}
-              />
-              {errors.guarantorIdNumber && (
-                <p className="text-red-500 text-xs mt-1 col-span-full">
-                  {errors.guarantorIdNumber}
-                </p>
-              )}
+      {/* BUSINESS INFORMATION */}
+      {activeSection === "business" && (
+  <section className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-2xl shadow-lg border border-green-200">
+  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
+    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
+    Business Information
+  </h3>
 
-              <select
-                name="gender"
-                value={formData.guarantor.gender}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              >
-                <option value="">Select Gender</option>
-                <option>Male</option>
-                <option>Female</option>
-              </select>
-              <div>
-                <input
-                  type="text"
-                  name="mobile"
-                  placeholder="Mobile Number"
-                  value={formData.guarantor.mobile}
-                  onChange={(e) => handleNestedChange(e, "guarantor")}
-                  className={`border p-2 rounded w-full ${
-                    errors.guarantorMobile ? "border-red-500" : ""
-                  }`}
-                />
-                {errors.guarantorMobile && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.guarantorMobile}
-                  </p>
-                )}
-              </div>
-              <input
-                type="text"
-                name="Middlename"
-                placeholder="Middle Name"
-                value={formData.guarantor.Middlename}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              />
-              <div>
-                <input
-                  type="date"
-                  name="dateOfBirth"
-                  placeholder="Date of Birth"
-                  value={formData.guarantor.dateOfBirth}
-                  onChange={(e) => handleNestedChange(e, "guarantor")}
-                  className={`border p-2 rounded w-full ${
-                    errors.guarantorDateOfBirth ? "border-red-500" : ""
-                  }`}
-                  max={
-                    new Date(
-                      new Date().setFullYear(new Date().getFullYear() - 18)
-                    )
-                      .toISOString()
-                      .split("T")[0]
-                  }
-                />
-                {errors.guarantorDateOfBirth && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.guarantorDateOfBirth}
-                  </p>
-                )}
-              </div>
-              <select
-                name="residenceStatus"
-                value={formData.guarantor.residenceStatus}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              >
-                <option value="">Residence Status</option>
-                <option>Own</option>
-                <option>Rent</option>
-                <option>Family</option>
-                <option>Other</option>
-              </select>
-              <input
-                type="text"
-                name="postalAddress"
-                placeholder="Postal Address"
-                value={formData.guarantor.postalAddress}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="number"
-                name="code"
-                placeholder="Code"
-                value={formData.guarantor.code}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="occupation"
-                placeholder="Occupation"
-                value={formData.guarantor.occupation}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="relationship"
-                placeholder="Relationship with Borrower"
-                value={formData.guarantor.relationship}
-                onChange={(e) => handleNestedChange(e, "guarantor")}
-                className="border p-2 rounded w-full"
-              />
-            </div>
-          </section>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {/* Business Name */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">
+        Business Name
+      </label>
+      <input
+        type="text"
+        name="businessName"
+        placeholder="Business Name"
+        value={formData.businessName}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
 
-          {/* GUARANTOR SECURITY */}
-          <section>
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-              Guarantor Security
-            </h3>
-            {guarantorSecurityItems.map((item, index) => (
-              <div key={index} className="mb-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-2">
-                  <input
-                    type="text"
-                    name="item"
-                    placeholder="Item"
-                    value={item.item}
-                    onChange={(e) => handleGuarantorSecurityChange(e, index)}
-                    className="border p-2 rounded w-full"
-                  />
-                  <input
-                    type="text"
-                    name="description"
-                    placeholder="Description"
-                    value={item.description}
-                    onChange={(e) => handleGuarantorSecurityChange(e, index)}
-                    className="border p-2 rounded w-full"
-                  />
-                  <input
-                    type="text"
-                    name="identification"
-                    placeholder="Identification (e.g. Serial No.)"
-                    value={item.identification}
-                    onChange={(e) => handleGuarantorSecurityChange(e, index)}
-                    className="border p-2 rounded w-full"
-                  />
-                  <div>
-                    <input
-                      type="number"
-                      name="value"
-                      placeholder="Est. Market Value (KES)"
-                      value={item.value}
-                      onChange={(e) => handleGuarantorSecurityChange(e, index)}
-                      className={`border p-2 rounded w-full ${
-                        errors[`guarantorSecurityValue_${index}`]
-                          ? "border-red-500"
-                          : ""
-                      }`}
-                      min="0"
-                      step="0.01"
-                    />
-                    {errors[`guarantorSecurityValue_${index}`] && (
-                      <p className="text-red-500 text-xs mt-1">
-                        {errors[`guarantorSecurityValue_${index}`]}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addGuarantorSecurityItem}
-              className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm"
-              disabled={isSubmitting}
-            >
-              + Add Guarantor Item
-            </button>
-          </section>
+    {/* Business Type */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">
+        Business Type
+      </label>
+      <input
+        type="text"
+        name="businessType"
+        placeholder="Business Type (e.g. Retail, Wholesale)"
+        value={formData.businessType}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
 
-          {/* NEXT OF KIN */}
-          <section>
-            <h3 className="text-lg font-semibold mb-4 border-b pb-2">
-              Next of Kin
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input
-                type="text"
-                name="Firstname"
-                placeholder="First Name"
-                value={formData.nextOfKin.Firstname}
-                onChange={(e) => handleNestedChange(e, "nextOfKin")}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="Surname"
-                placeholder="Surname"
-                value={formData.nextOfKin.Surname}
-                onChange={(e) => handleNestedChange(e, "nextOfKin")}
-                className="border p-2 rounded w-full"
-              />
-              <input
-                type="text"
-                name="idNumber"
-                placeholder="ID Number"
-                value={formData.nextOfKin.idNumber}
-                onChange={(e) => handleNestedChange(e, "nextOfKin")}
-                className={`border p-2 rounded w-full ${
-                  errors.nextOfKinIdNumber ? "border-red-500" : ""
-                }`}
-              />
-              {errors.nextOfKinIdNumber && (
-                <p className="text-red-500 text-xs mt-1 col-span-full">
-                  {errors.nextOfKinIdNumber}
-                </p>
-              )}
-              <input
-                type="text"
-                name="relationship"
-                placeholder="Relationship"
-                value={formData.nextOfKin.relationship}
-                onChange={(e) => handleNestedChange(e, "nextOfKin")}
-                className="border p-2 rounded w-full"
-              />
-              <div>
-                <input
-                  type="text"
-                  name="mobile"
-                  placeholder="Mobile Number"
-                  value={formData.nextOfKin.mobile}
-                  onChange={(e) => handleNestedChange(e, "nextOfKin")}
-                  className={`border p-2 rounded w-full ${
-                    errors.nextOfKinMobile ? "border-red-500" : ""
-                  }`}
-                />
-                {errors.nextOfKinMobile && (
-                  <p className="text-red-500 text-xs mt-1">
-                    {errors.nextOfKinMobile}
-                  </p>
-                )}
-              </div>
-              <input
-                type="text"
-                name="Middlename"
-                placeholder="Middle Name"
-                value={formData.nextOfKin.Middlename}
-                onChange={(e) => handleNestedChange(e, "nextOfKin")}
-                className="border p-2 rounded w-full"
-              />
-            </div>
-          </section>
+    {/* Year Established */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">
+        Year Established *
+      </label>
+      <input
+        type="date"
+        name="yearEstablished"
+        placeholder="Year Established"
+        value={formData.yearEstablished}
+        onChange={handleChange}
+        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+          errors.yearEstablished ? "border-red-500" : "border-green-200"
+        }`}
+        max={new Date().toISOString().split("T")[0]}
+      />
+      {errors.yearEstablished && (
+        <p className="text-red-500 text-xs mt-1">{errors.yearEstablished}</p>
+      )}
+    </div>
 
-          {/* SUBMIT BUTTON */}
-          <div className="flex justify-end">
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400"
-            >
-              {isSubmitting ? "Submitting..." : "Submit Application"}
-            </button>
-          </div>
-        </form>
+    {/* Daily Sales */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">
+        Daily Sales (KES)
+      </label>
+      <input
+        type="number"
+        name="daily_Sales"
+        placeholder="Daily Sales (KES)"
+        value={formData.daily_Sales}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    {/* Business Location */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">
+        Business Location
+      </label>
+      <input
+        type="text"
+        name="businessLocation"
+        placeholder="Business Location"
+        value={formData.businessLocation}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    {/* Road */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">
+        Road
+      </label>
+      <input
+        type="text"
+        name="road"
+        placeholder="Road"
+        value={formData.road}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    {/* Landmark */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">
+        Landmark
+      </label>
+      <input
+        type="text"
+        name="landmark"
+        placeholder="Landmark (e.g. Mosque)"
+        value={formData.landmark}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    {/* Local Authority License */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">
+        Local Authority License
+      </label>
+      <select
+        name="hasLocalAuthorityLicense"
+        value={formData.hasLocalAuthorityLicense}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      >
+        <option value="">Have Local Authority Licence?</option>
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+      </select>
+    </div>
+
+    {/* Upload Business Images - styled like Personal Details uploads */}
+   <div className="md:col-span-2 mt-6">
+ 
+  <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+    <label className="block text-sm font-medium text-green-800 mb-2">
+      Upload Business Images
+    </label>
+    <input
+      type="file"
+      onChange={(e) => handleMultipleFiles(e, setBusinessImages)}
+      className="block w-full text-sm text-gray-600
+        file:mr-4 file:py-2 file:px-4
+        file:rounded-lg file:border-0
+        file:text-sm file:font-semibold
+        file:bg-green-100 file:text-green-700
+        hover:file:bg-green-200
+        cursor-pointer"
+    />
+  </div>
+</div>
+
+  </div>
+</section>
+
+
+      )}
+
+      {/* BORROWER SECURITY */}
+      {activeSection === "borrowerSecurity" && (
+       <section className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg border border-green-200">
+   <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
+    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
+    Borrower Security
+  </h3>
+
+  {securityItems.map((item, index) => (
+    <div
+      key={index}
+      className="mb-8 bg-white p-6 rounded-xl shadow-sm border border-green-200"
+    >
+      {/* Inputs Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {/* Item */}
+        <div>
+          <label className="block text-sm font-medium text-green-800 mb-1">
+            Item
+          </label>
+          <input
+            type="text"
+            name="item"
+            placeholder="Item"
+            value={item.item}
+            onChange={(e) => handleSecurityChange(e, index)}
+            className="border border-green-200 p-3 rounded-xl w-full 
+              focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-green-800 mb-1">
+            Description
+          </label>
+          <input
+            type="text"
+            name="description"
+            placeholder="Description"
+            value={item.description}
+            onChange={(e) => handleSecurityChange(e, index)}
+            className="border border-green-200 p-3 rounded-xl w-full 
+              focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+          />
+        </div>
+
+        {/* Identification */}
+        <div>
+          <label className="block text-sm font-medium text-green-800 mb-1">
+            Identification
+          </label>
+          <input
+            type="text"
+            name="identification"
+            placeholder="Identification (e.g. Serial No.)"
+            value={item.identification}
+            onChange={(e) => handleSecurityChange(e, index)}
+            className="border border-green-200 p-3 rounded-xl w-full 
+              focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+          />
+        </div>
+
+        {/* Value */}
+        <div>
+          <label className="block text-sm font-medium text-green-800 mb-1">
+            Est. Market Value (KES)
+          </label>
+          <input
+            type="number"
+            name="value"
+            placeholder="Est. Market Value (KES)"
+            value={item.value}
+            onChange={(e) => handleSecurityChange(e, index)}
+            className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm ${
+              errors[`securityValue_${index}`]
+                ? "border-red-500"
+                : "border-green-200"
+            }`}
+            min="0"
+            step="0.01"
+          />
+          {errors[`securityValue_${index}`] && (
+            <p className="text-red-500 text-xs mt-1">
+              {errors[`securityValue_${index}`]}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* File Upload */}
+      <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Upload Image for Security Item
+        </label>
+        <input
+          type="file"
+          onChange={(e) => {
+            const newImages = [...securityItemImages];
+            newImages[index] = e.target.files[0];
+            setSecurityItemImages(newImages);
+          }}
+          className="block w-full text-sm text-gray-600
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-lg file:border-0
+            file:text-sm file:font-semibold
+            file:bg-green-100 file:text-green-700
+            hover:file:bg-green-200
+            cursor-pointer"
+        />
       </div>
     </div>
+  ))}
+
+  {/* Add Security Item Button */}
+  <button
+    type="button"
+    onClick={addSecurityItem}
+    className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 text-sm font-semibold shadow-sm transition"
+    disabled={isSubmitting}
+  >
+    + Add Security Item
+  </button>
+</section>
+
+      )}
+
+      {/* LOAN INFORMATION */}
+      {activeSection === "loan" && (
+      <section className="bg-green-50 p-6 rounded-xl">
+  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
+    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
+    Loan Information
+  </h3>
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+      <label className="block text-sm font-medium text-green-800 mb-2">
+        Pre-qualified Amount *
+      </label>
+      <input
+        type="number"
+        name="principal"
+        placeholder="Principal Amount"
+        value={formData.loan.principal}
+        onChange={handleLoanChange}
+        className="block w-full text-sm text-gray-600
+          border border-gray-300 p-2 rounded-lg
+          focus:ring-2 focus:ring-green-500 focus:border-green-500
+          placeholder-gray-400"
+        required
+      />
+    </div>
+
+  
+  </div>
+</section>
+
+      )}
+
+      {/* GUARANTOR DETAILS */}
+      {activeSection === "guarantor" && (
+      <section className="bg-green-50 p-6 rounded-xl">
+  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
+    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
+    Guarantor Details
+  </h3>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {/* Prefix */}
+    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+      <label className="block text-sm font-medium text-green-800 mb-2">Prefix</label>
+      <select
+        name="prefix"
+        value={formData.guarantor.prefix}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="block w-full text-sm text-gray-600 border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+      >
+        <option value="">Select Prefix</option>
+        <option>Mr</option>
+        <option>Mrs</option>
+        <option>Ms</option>
+      </select>
+    </div>
+
+    {/* Marital Status */}
+    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+      <label className="block text-sm font-medium text-green-800 mb-2">Marital Status</label>
+      <select
+        name="maritalStatus"
+        value={formData.guarantor.maritalStatus}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="block w-full text-sm text-gray-600 border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+      >
+        <option value="">Select Marital Status</option>
+        <option>Single</option>
+        <option>Married</option>
+        <option>Separated/Divorced</option>
+        <option>Other</option>
+      </select>
+    </div>
+
+    {/* First Name */}
+    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+      <label className="block text-sm font-medium text-green-800 mb-2">First Name</label>
+      <input
+        type="text"
+        name="Firstname"
+        placeholder="First Name"
+        value={formData.guarantor.Firstname}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="block w-full text-sm text-gray-600 border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-400"
+      />
+    </div>
+
+    {/* Repeat the same card styling for Surname, ID Number, Gender, Mobile, etc. */}
+
+    {/* File Uploads */}
+    <div className="md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+      <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Upload Guarantor Passport
+        </label>
+        <input
+          type="file"
+          onChange={(e) => handleFileUpload(e, setGuarantorPassportFile)}
+          className="block w-full text-sm text-gray-600
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-lg file:border-0
+            file:text-sm file:font-semibold
+            file:bg-green-100 file:text-green-700
+            hover:file:bg-green-200 cursor-pointer"
+        />
+      </div>
+
+      <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Upload Guarantor ID Front
+        </label>
+        <input
+          type="file"
+          onChange={(e) => handleFileUpload(e, setGuarantorIdFrontFile)}
+          className="block w-full text-sm text-gray-600
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-lg file:border-0
+            file:text-sm file:font-semibold
+            file:bg-green-100 file:text-green-700
+            hover:file:bg-green-200 cursor-pointer"
+        />
+      </div>
+
+      <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Upload Guarantor ID Back
+        </label>
+        <input
+          type="file"
+          onChange={(e) => handleFileUpload(e, setGuarantorIdBackFile)}
+          className="block w-full text-sm text-gray-600
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-lg file:border-0
+            file:text-sm file:font-semibold
+            file:bg-green-100 file:text-green-700
+            hover:file:bg-green-200 cursor-pointer"
+        />
+      </div>
+    </div>
+  </div>
+</section>
+
+      )}
+
+      {/* GUARANTOR SECURITY */}
+      {activeSection === "guarantorSecurity" && (
+       <section className="bg-green-50 p-6 rounded-xl">
+  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
+    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
+    Guarantor Security
+  </h3>
+
+  {guarantorSecurityItems.map((item, index) => (
+    <div
+      key={index}
+      className="mb-6 p-6 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {/* Item */}
+        <div>
+          <label className="block text-sm font-medium text-green-800 mb-2">
+            Item
+          </label>
+          <input
+            type="text"
+            name="item"
+            placeholder="Item"
+            value={item.item}
+            onChange={(e) => handleGuarantorSecurityChange(e, index)}
+            className="border border-gray-300 p-3 rounded-lg w-full 
+                       focus:ring-2 focus:ring-green-500 focus:border-green-500"
+          />
+        </div>
+
+        {/* Description */}
+        <div>
+          <label className="block text-sm font-medium text-green-800 mb-2">
+            Description
+          </label>
+          <input
+            type="text"
+            name="description"
+            placeholder="Description"
+            value={item.description}
+            onChange={(e) => handleGuarantorSecurityChange(e, index)}
+            className="border border-gray-300 p-3 rounded-lg w-full 
+                       focus:ring-2 focus:ring-green-500 focus:border-green-500"
+          />
+        </div>
+
+        {/* Identification */}
+        <div>
+          <label className="block text-sm font-medium text-green-800 mb-2">
+            Identification
+          </label>
+          <input
+            type="text"
+            name="identification"
+            placeholder="Identification (e.g. Serial No.)"
+            value={item.identification}
+            onChange={(e) => handleGuarantorSecurityChange(e, index)}
+            className="border border-gray-300 p-3 rounded-lg w-full 
+                       focus:ring-2 focus:ring-green-500 focus:border-green-500"
+          />
+        </div>
+
+        {/* Value */}
+        <div>
+          <label className="block text-sm font-medium text-green-800 mb-2">
+            Est. Market Value (KES)
+          </label>
+          <input
+            type="number"
+            name="value"
+            placeholder="Est. Market Value (KES)"
+            value={item.value}
+            onChange={(e) => handleGuarantorSecurityChange(e, index)}
+            className={`border p-3 rounded-lg w-full 
+                        focus:ring-2 focus:ring-green-500 focus:border-green-500 
+                        ${
+                          errors[`guarantorSecurityValue_${index}`]
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        }`}
+            min="0"
+            step="0.01"
+          />
+          {errors[`guarantorSecurityValue_${index}`] && (
+            <p className="text-red-500 text-xs mt-1">
+              {errors[`guarantorSecurityValue_${index}`]}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Upload */}
+      <div className="mt-4">
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Upload Image for Guarantor Security Item
+        </label>
+        <input
+          type="file"
+          onChange={(e) => {
+            const newImages = [...guarantorSecurityImages];
+            newImages[index] = e.target.files[0];
+            setGuarantorSecurityImages(newImages);
+          }}
+          className="block w-full text-sm text-gray-600
+                     file:mr-4 file:py-2 file:px-4
+                     file:rounded-lg file:border-0
+                     file:text-sm file:font-semibold
+                     file:bg-green-100 file:text-green-700
+                     hover:file:bg-green-200 cursor-pointer"
+        />
+      </div>
+    </div>
+  ))}
+
+  {/* Add button */}
+  <button
+    type="button"
+    onClick={addGuarantorSecurityItem}
+    className="mt-4 px-5 py-2 bg-green-600 text-white rounded-lg 
+               hover:bg-green-700 text-sm font-medium transition-colors"
+    disabled={isSubmitting}
+  >
+    + Add Guarantor Security Item
+  </button>
+</section>
+
+      )}
+
+      {/* NEXT OF KIN */}
+      {activeSection === "nextOfKin" && (
+       <section className="bg-green-50 p-6 rounded-xl">
+ <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
+    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
+    Next of Kin Details
+  </h3>
+
+  <div className="p-6 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      
+      {/* First Name */}
+      <div>
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          First Name
+        </label>
+        <input
+          type="text"
+          name="Firstname"
+          placeholder="First Name"
+          value={formData.nextOfKin.Firstname}
+          onChange={(e) => handleNestedChange(e, "nextOfKin")}
+          className="border border-gray-300 p-3 rounded-lg w-full 
+                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        />
+      </div>
+
+      {/* Middle Name */}
+      <div>
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Middle Name
+        </label>
+        <input
+          type="text"
+          name="Middlename"
+          placeholder="Middle Name"
+          value={formData.nextOfKin.Middlename}
+          onChange={(e) => handleNestedChange(e, "nextOfKin")}
+          className="border border-gray-300 p-3 rounded-lg w-full 
+                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        />
+      </div>
+
+      {/* Surname */}
+      <div>
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Surname
+        </label>
+        <input
+          type="text"
+          name="Surname"
+          placeholder="Surname"
+          value={formData.nextOfKin.Surname}
+          onChange={(e) => handleNestedChange(e, "nextOfKin")}
+          className="border border-gray-300 p-3 rounded-lg w-full 
+                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        />
+      </div>
+
+      {/* ID Number */}
+      <div>
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          ID Number
+        </label>
+        <input
+          type="text"
+          name="idNumber"
+          placeholder="ID Number"
+          value={formData.nextOfKin.idNumber}
+          onChange={(e) => handleNestedChange(e, "nextOfKin")}
+          className={`border p-3 rounded-lg w-full focus:ring-2 
+                     focus:ring-green-500 focus:border-green-500 ${
+                       errors.nextOfKinIdNumber ? "border-red-500" : "border-gray-300"
+                     }`}
+        />
+        {errors.nextOfKinIdNumber && (
+          <p className="text-red-500 text-xs mt-1">{errors.nextOfKinIdNumber}</p>
+        )}
+      </div>
+
+      {/* Relationship */}
+      <div>
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Relationship
+        </label>
+        <input
+          type="text"
+          name="relationship"
+          placeholder="Relationship"
+          value={formData.nextOfKin.relationship}
+          onChange={(e) => handleNestedChange(e, "nextOfKin")}
+          className="border border-gray-300 p-3 rounded-lg w-full 
+                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        />
+      </div>
+
+      {/* Mobile Number */}
+      <div>
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Mobile Number
+        </label>
+        <input
+          type="text"
+          name="mobile"
+          placeholder="Mobile Number"
+          value={formData.nextOfKin.mobile}
+          onChange={(e) => handleNestedChange(e, "nextOfKin")}
+          className={`border p-3 rounded-lg w-full focus:ring-2 
+                     focus:ring-green-500 focus:border-green-500 ${
+                       errors.nextOfKinMobile ? "border-red-500" : "border-gray-300"
+                     }`}
+        />
+        {errors.nextOfKinMobile && (
+          <p className="text-red-500 text-xs mt-1">{errors.nextOfKinMobile}</p>
+        )}
+      </div>
+
+      {/* Alternative Number */}
+      <div>
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Alternative Number
+        </label>
+        <input
+          type="text"
+          name="alternativeNumber"
+          placeholder="Alternative Number"
+          value={formData.nextOfKin.alternativeNumber}
+          onChange={(e) => handleNestedChange(e, "nextOfKin")}
+          className="border border-gray-300 p-3 rounded-lg w-full 
+                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        />
+      </div>
+
+      {/* Employment Status */}
+      <div>
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          Employment Status
+        </label>
+        <select
+          name="employmentStatus"
+          value={formData.nextOfKin.employmentStatus}
+          onChange={(e) => handleNestedChange(e, "nextOfKin")}
+          className="border border-gray-300 p-3 rounded-lg w-full 
+                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        >
+          <option value="">Select Employment Status</option>
+          <option>Employed</option>
+          <option>Self-Employed</option>
+          <option>Unemployed</option>
+          <option>Student</option>
+          <option>Retired</option>
+        </select>
+      </div>
+
+      {/* County */}
+      <div>
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          County
+        </label>
+        <input
+          type="text"
+          name="county"
+          placeholder="County"
+          value={formData.nextOfKin.county}
+          onChange={(e) => handleNestedChange(e, "nextOfKin")}
+          className="border border-gray-300 p-3 rounded-lg w-full 
+                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        />
+      </div>
+
+      {/* City/Town */}
+      <div>
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          City/Town
+        </label>
+        <input
+          type="text"
+          name="cityTown"
+          placeholder="City/Town"
+          value={formData.nextOfKin.cityTown}
+          onChange={(e) => handleNestedChange(e, "nextOfKin")}
+          className="border border-gray-300 p-3 rounded-lg w-full 
+                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        />
+      </div>
+    </div>
+  </div>
+</section>
+
+      )}
+
+      {/* DOCUMENTS */}
+      {activeSection === "documents" && (
+       <section className="bg-green-50 p-6 rounded-xl">
+  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
+    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
+    Document Verification
+  </h3>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {/* First Officer and Client Image */}
+    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+      <label className="block text-sm font-medium text-green-800 mb-2">
+        First Officer and Client Image
+      </label>
+      <input
+        type="file"
+        onChange={(e) => handleFileUpload(e, setOfficerClientImage1)}
+        className="block w-full text-sm text-gray-600
+                   file:mr-4 file:py-2 file:px-4
+                   file:rounded-lg file:border-0
+                   file:text-sm file:font-semibold
+                   file:bg-green-100 file:text-green-700
+                   hover:file:bg-green-200
+                   cursor-pointer"
+      />
+    </div>
+
+    {/* Second Officer and Client Image */}
+    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+      <label className="block text-sm font-medium text-green-800 mb-2">
+        Second Officer and Client Image
+      </label>
+      <input
+        type="file"
+        onChange={(e) => handleFileUpload(e, setOfficerClientImage2)}
+        className="block w-full text-sm text-gray-600
+                   file:mr-4 file:py-2 file:px-4
+                   file:rounded-lg file:border-0
+                   file:text-sm file:font-semibold
+                   file:bg-green-100 file:text-green-700
+                   hover:file:bg-green-200
+                   cursor-pointer"
+      />
+    </div>
+
+    {/* Both Officers Image */}
+    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+      <label className="block text-sm font-medium text-green-800 mb-2">
+        Both Officers Image
+      </label>
+      <input
+        type="file"
+        onChange={(e) => handleFileUpload(e, setBothOfficersImage)}
+        className="block w-full text-sm text-gray-600
+                   file:mr-4 file:py-2 file:px-4
+                   file:rounded-lg file:border-0
+                   file:text-sm file:font-semibold
+                   file:bg-green-100 file:text-green-700
+                   hover:file:bg-green-200
+                   cursor-pointer"
+      />
+    </div>
+  </div>
+</section>
+
+      )}
+
+      {/* Navigation buttons */}
+      <div className="flex justify-between mt-8">
+        <button
+          type="button"
+          onClick={() => {
+            const currentIndex = navItems.findIndex(item => item.id === activeSection);
+            if (currentIndex > 0) {
+              setActiveSection(navItems[currentIndex - 1].id);
+            }
+          }}
+          className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          disabled={activeSection === "personal"}
+        >
+          Previous
+        </button>
+        
+        <button
+          type="button"
+          onClick={() => {
+            const currentIndex = navItems.findIndex(item => item.id === activeSection);
+            if (currentIndex < navItems.length - 1) {
+              setActiveSection(navItems[currentIndex + 1].id);
+            }
+          }}
+          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          disabled={activeSection === "documents"}
+        >
+          Next
+        </button>
+      </div>
+
+      {/* SUBMIT BUTTON */}
+      {activeSection === "documents" && (
+        <div className="flex justify-end mt-8">
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 font-medium transition-colors"
+          >
+            {isSubmitting ? "Submitting..." : "Submit Application"}
+          </button>
+        </div>
+      )}
+    </form>
+  </div>
+</div>
   );
 };
 

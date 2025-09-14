@@ -31,6 +31,7 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
     town: "",
     county: "",
     businessName: "",
+    businessType: "",
     yearEstablished: "",
     businessLocation: "",
     daily_Sales: "",
@@ -84,6 +85,7 @@ const CustomerForm = ({ leadData, onClose ,onConversionSuccess}) => {
         mobile: leadData.mobile || leadData.phone || "",
         businessName: leadData.business_name || "",
         businessLocation: leadData.business_location || "",
+        businessType: leadData.business_type || "",
       }));
     }
   }, [leadData]);
