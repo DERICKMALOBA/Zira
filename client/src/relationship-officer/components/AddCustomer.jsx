@@ -2,6 +2,8 @@ import { useState } from "react";
 import { supabase } from "../../supabaseClient";
 import "react-toastify/dist/ReactToastify.css";
 import { toast } from "react-toastify";
+import { Upload, Camera, XIcon } from "lucide-react";
+
 
 const AddCustomer = ({ onClose }) => {
   const [activeSection, setActiveSection] = useState("personal");
@@ -40,6 +42,13 @@ const AddCustomer = ({ onClose }) => {
     road: "",
     landmark: "",
     hasLocalAuthorityLicense: "",
+    passportUrl: "",
+  idFrontUrl: "",
+  idBackUrl: "",
+  houseImageUrl: "",
+   prequalifiedAmount: "",
+    
+    
     guarantor: {
       prefix: "",
       Firstname: "",
@@ -71,18 +80,13 @@ const AddCustomer = ({ onClose }) => {
       cityTown: "",
     },
     loan: {
-      product: "",
-      principal: "",
-      durationWeeks: "",
-      processingFee: "",
-      registrationFee: "",
-      interestRate: "",
-      totalPayable: "",
-      status: "pending",
+      
+      prequalifiedAmount: "",
+      
     },
   });
 
-  // File upload state
+   // File upload state
   const [passportFile, setPassportFile] = useState(null);
   const [idFrontFile, setIdFrontFile] = useState(null);
   const [idBackFile, setIdBackFile] = useState(null);
@@ -96,6 +100,80 @@ const AddCustomer = ({ onClose }) => {
   const [officerClientImage1, setOfficerClientImage1] = useState(null);
   const [officerClientImage2, setOfficerClientImage2] = useState(null);
   const [bothOfficersImage, setBothOfficersImage] = useState(null);
+  const [files, setFiles] = useState({});
+
+
+  const validatePersonalDetails = async () => {
+  const newErrors = {};
+
+  if (!formData.Firstname) newErrors.Firstname = "First name is required";
+  if (!formData.Surname) newErrors.Surname = "Surname is required";
+  if (!formData.mobile) newErrors.mobile = "Mobile number is required";
+  if (!formData.idNumber) newErrors.idNumber = "ID number is required";
+
+  if (
+    formData.mobile &&
+    !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))
+  ) {
+    newErrors.mobile = "Please enter a valid mobile number";
+  }
+
+  if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
+    newErrors.idNumber = "Please enter a valid ID number";
+  }
+
+  if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
+    newErrors.dateOfBirth = "Customer must be at least 18 years old";
+  }
+
+  // Check uniqueness for ID and mobile only at this stage
+  if (formData.mobile && !newErrors.mobile) {
+    const isMobileUnique = await checkUniqueValue(
+      ["customers", "guarantors", "next_of_kin"],
+      "mobile",
+      formData.mobile
+    );
+    if (!isMobileUnique) {
+      newErrors.mobile = "Mobile number already exists in our system";
+    }
+  }
+
+  if (formData.idNumber && !newErrors.idNumber) {
+    const isIdUnique = await checkUniqueValue(
+      ["customers", "guarantors", "next_of_kin"],
+      "id_number",
+      formData.idNumber
+    );
+    if (!isIdUnique) {
+      newErrors.idNumber = "ID number already exists in our system";
+    }
+  }
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
+
+
+
+const handleNext = async () => {
+  let isValid = false;
+
+  if (activeSection === "personal") {
+    isValid = await validatePersonalDetails();
+  }
+  // 🔜 add business, security, guarantor validators here later
+
+  if (isValid) {
+    // go to the next section
+    const nextIndex = navItems.findIndex((item) => item.id === activeSection) + 1;
+    if (nextIndex < navItems.length) {
+      setActiveSection(navItems[nextIndex].id);
+    }
+  } else {
+    toast.error("Please fix the highlighted errors before continuing.");
+  }
+};
+
 
   // Check if a value is unique in the database across multiple tables
   const checkUniqueValue = async (tables, field, value) => {
@@ -414,19 +492,16 @@ const AddCustomer = ({ onClose }) => {
     });
   };
 
-  // Handle file uploads
-  const handleFileUpload = (e, setFileFunction) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFileFunction(file);
-    }
-  };
 
-  const handleMultipleFiles = (e, setFilesFunction) => {
-    const files = Array.from(e.target.files);
-    setFilesFunction(files);
-  };
 
+const handleMultipleFiles = (e, setter) => {
+  const files = Array.from(e.target.files);
+  setter((prev) => [...prev, ...files]); // append new images
+};
+
+const handleRemoveBusinessImage = (index) => {
+  setBusinessImages((prev) => prev.filter((_, i) => i !== index));
+};
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -481,6 +556,12 @@ const AddCustomer = ({ onClose }) => {
             landmark: formData.landmark || null,
             has_local_authority_license:
               formData.hasLocalAuthorityLicense === "Yes",
+
+                // Images
+    passport_url: files.passport || null,
+    id_front_url: files.idFront || null,
+    id_back_url: files.idBack || null,
+    house_image_url: files.house || null,
           },
         ])
         .select("id")
@@ -704,6 +785,73 @@ const AddCustomer = ({ onClose }) => {
     { id: "documents", label: "Documents" },
   ];
 
+const handleFileUpload = async (e, setter, key) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from("customer-documents")
+      .upload(`${Date.now()}_${file.name}`, file);
+
+    if (error) {
+      toast.error("File upload failed: " + error.message);
+      return;
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from("customer-documents")
+      .getPublicUrl(data.path);
+
+    // Update local preview
+    setter(URL.createObjectURL(file));
+
+    // Save URL into formData
+    setFormData((prev) => ({
+      ...prev,
+      [`${key}Url`]: urlData.publicUrl,
+    }));
+  } catch (err) {
+    console.error(err);
+    toast.error("Unexpected error during file upload.");
+  }
+};
+
+
+
+  const handleRemoveFile = (key, handler) => {
+    handler(null);
+    setFiles((prev) => {
+      const updated = { ...prev };
+      delete updated[key];
+      return updated;
+    });
+  };
+
+
+
+  const handleSecurityFiles = (e, index) => {
+  const files = Array.from(e.target.files);
+  setSecurityItemImages((prev) => {
+    const updated = [...prev];
+    if (!updated[index]) updated[index] = [];
+    updated[index] = [...updated[index], ...files];
+    return updated;
+  });
+};
+
+
+const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
+  setSecurityItemImages((prev) => {
+    const updated = [...prev];
+    updated[itemIndex] = updated[itemIndex].filter((_, i) => i !== imgIndex);
+    return updated;
+  });
+};
+
+
   return (
    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 z-50">
   <div className="bg-white w-full max-w-6xl h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-6">
@@ -755,7 +903,7 @@ const AddCustomer = ({ onClose }) => {
         name="prefix"
         value={formData.prefix}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
         <option value="">Select Prefix</option>
         <option>Mr</option>
@@ -765,21 +913,22 @@ const AddCustomer = ({ onClose }) => {
     </div>
 
     {/* First Name */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">First Name *</label>
-      <input
-        type="text"
-        name="Firstname"
-        placeholder="First Name"
-        value={formData.Firstname}
-        onChange={handleChange}
-        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
-          errors.Firstname ? "border-red-500" : "border-green-200"
-        }`}
-        required
-      />
-      {errors.Firstname && <p className="text-red-500 text-xs mt-1">{errors.Firstname}</p>}
-    </div>
+ <div>
+  <label className="block text-sm font-medium text-green-800 mb-1">First Name *</label>
+  <input
+    type="text"
+    name="Firstname"
+    placeholder="First Name"
+    value={formData.Firstname}
+    onChange={handleChange}
+    className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+      errors.Firstname ? "border-red-500" : "border-green-200"
+    }`}
+    required
+  />
+  {errors.Firstname && <p className="text-red-500 text-xs mt-1">{errors.Firstname}</p>}
+</div>
+
 
     {/* Surname */}
     <div>
@@ -790,7 +939,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Surname"
         value={formData.Surname}
         onChange={handleChange}
-        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+        className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
           errors.Surname ? "border-red-500" : "border-green-200"
         }`}
         required
@@ -807,7 +956,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Middle Name"
         value={formData.Middlename}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
@@ -818,7 +967,7 @@ const AddCustomer = ({ onClose }) => {
         name="maritalStatus"
         value={formData.maritalStatus}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
         <option value="">Select Marital Status</option>
         <option>Single</option>
@@ -835,7 +984,7 @@ const AddCustomer = ({ onClose }) => {
         name="residenceStatus"
         value={formData.residenceStatus}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
         <option value="">Residence Status</option>
         <option>Own</option>
@@ -854,7 +1003,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Mobile Number"
         onChange={handleChange}
         value={formData.mobile}
-        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+        className={`border p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
           errors.mobile ? "border-red-500" : "border-green-200"
         }`}
         required
@@ -871,7 +1020,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Alternative Mobile Number"
         value={formData.alternativeMobile}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl  focus:outline-none  focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
@@ -884,7 +1033,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Occupation"
         value={formData.occupation}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
@@ -897,7 +1046,7 @@ const AddCustomer = ({ onClose }) => {
         value={formData.dateOfBirth}
         onChange={handleChange}
         max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
-        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+        className={`border p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
           errors.dateOfBirth ? "border-red-500" : "border-green-200"
         }`}
       />
@@ -911,7 +1060,7 @@ const AddCustomer = ({ onClose }) => {
         name="gender"
         value={formData.gender}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
         <option value="">Select Gender</option>
         <option>Male</option>
@@ -928,7 +1077,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="ID Number"
         value={formData.idNumber}
         onChange={handleChange}
-        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+        className={`border p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
           errors.idNumber ? "border-red-500" : "border-green-200"
         }`}
         required
@@ -945,7 +1094,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Postal Address"
         value={formData.postalAddress}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
@@ -958,7 +1107,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Code"
         value={formData.code}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
@@ -971,11 +1120,12 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Town / City"
         value={formData.town}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
-    {/* County */}
+    
+   {/* County */}
     <div>
       <label className="block text-sm font-medium text-green-800 mb-1">County</label>
       <input
@@ -984,40 +1134,86 @@ const AddCustomer = ({ onClose }) => {
         placeholder="County"
         value={formData.county}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
-    {/* File Uploads */}
-    <div className="md:col-span-2 lg:col-span-3 mt-6">
-      <h4 className="text-lg font-semibold text-green-800 mb-4">Upload Documents</h4>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: "Upload Passport Photo", handler: setPassportFile },
-          { label: "Upload ID Front", handler: setIdFrontFile },
-          { label: "Upload ID Back", handler: setIdBackFile },
-          { label: "Upload House Image", handler: setHouseImageFile },
-        ].map((file, idx) => (
-          <div
-            key={idx}
-            className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
-          >
-            <label className="block text-sm font-medium text-green-800 mb-2">{file.label}</label>
-            <input
-              type="file"
-              onChange={(e) => handleFileUpload(e, file.handler)}
-              className="block w-full text-sm text-gray-600
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-lg file:border-0
-                file:text-sm file:font-semibold
-                file:bg-green-100 file:text-green-700
-                hover:file:bg-green-200
-                cursor-pointer"
+    
+ {/* File Uploads */}
+<div className="md:col-span-2 lg:col-span-3 mt-6">
+  <h4 className="text-lg font-semibold text-green-800 mb-4">
+    Upload Documents
+  </h4>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    {[
+      { key: "passport", label: "Passport Photo", handler: (f) => setPassportFile(f) },
+      { key: "idFront", label: "ID Front", handler: (f) => setIdFrontFile(f) },
+      { key: "idBack", label: "ID Back", handler: (f) => setIdBackFile(f) },
+      { key: "house", label: "House Image", handler: (f) => setHouseImageFile(f) },
+    ].map((file, idx) => (
+      <div
+        key={idx}
+        className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
+      >
+        <label className="block text-sm font-medium text-green-800 mb-3">
+          {file.label}
+        </label>
+
+        
+      
+{/* Action buttons */}
+<div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
+  {/* Upload */}
+  <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
+    <Upload className="w-5 h-5" />
+    <span className="text-sm font-medium">Upload</span>
+    <input
+      type="file"
+      accept="image/*"
+      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+      className="hidden"
+    />
+  </label>
+
+  {/* Camera */}
+  <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
+    <Camera className="w-5 h-5" />
+   
+    <input
+      type="file"
+      accept="image/*"
+      capture={file.key === "passport" ? "user" : "environment"}
+      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+      className="hidden"
+    />
+  </label>
+</div>
+
+
+
+        {/* Preview with delete */}
+        {files[file.key] && (
+          <div className="mt-4 w-full relative">
+            <img
+              src={files[file.key]}
+              alt={`${file.label} preview`}
+              className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
             />
+            <button
+              type="button"
+              onClick={() => handleRemoveFile(file.key, file.handler)}
+              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
           </div>
-        ))}
+        )}
       </div>
-    </div>
+    ))}
+  </div>
+</div>
+
   </div>
 </section>
 
@@ -1044,7 +1240,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Business Name"
         value={formData.businessName}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       />
     </div>
 
@@ -1059,7 +1255,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Business Type (e.g. Retail, Wholesale)"
         value={formData.businessType}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       />
     </div>
 
@@ -1074,7 +1270,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Year Established"
         value={formData.yearEstablished}
         onChange={handleChange}
-        className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+        className={`border p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
           errors.yearEstablished ? "border-red-500" : "border-green-200"
         }`}
         max={new Date().toISOString().split("T")[0]}
@@ -1095,7 +1291,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Daily Sales (KES)"
         value={formData.daily_Sales}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       />
     </div>
 
@@ -1110,7 +1306,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Business Location"
         value={formData.businessLocation}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       />
     </div>
 
@@ -1125,7 +1321,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Road"
         value={formData.road}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       />
     </div>
 
@@ -1140,7 +1336,7 @@ const AddCustomer = ({ onClose }) => {
         placeholder="Landmark (e.g. Mosque)"
         value={formData.landmark}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       />
     </div>
 
@@ -1153,7 +1349,7 @@ const AddCustomer = ({ onClose }) => {
         name="hasLocalAuthorityLicense"
         value={formData.hasLocalAuthorityLicense}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
         <option value="">Have Local Authority Licence?</option>
         <option value="Yes">Yes</option>
@@ -1164,22 +1360,85 @@ const AddCustomer = ({ onClose }) => {
     {/* Upload Business Images - styled like Personal Details uploads */}
    <div className="md:col-span-2 mt-6">
  
-  <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-    <label className="block text-sm font-medium text-green-800 mb-2">
-      Upload Business Images
+{/* File Upload for Security Item */}
+<div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+  <label className="block text-sm font-medium text-green-800 mb-3">
+    Upload Business Images <span className="text-red-500">*</span>
+  </label>
+
+  {/* Action buttons (Upload + Camera) */}
+  <div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
+    {/* Upload */}
+    <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
+      <Upload className="w-5 h-5" />
+      <span className="text-sm font-medium">Upload</span>
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={(e) => handleMultipleFiles(e, setBusinessImages)}
+        className="hidden"
+      />
     </label>
-    <input
-      type="file"
-      onChange={(e) => handleMultipleFiles(e, setBusinessImages)}
-      className="block w-full text-sm text-gray-600
-        file:mr-4 file:py-2 file:px-4
-        file:rounded-lg file:border-0
-        file:text-sm file:font-semibold
-        file:bg-green-100 file:text-green-700
-        hover:file:bg-green-200
-        cursor-pointer"
-    />
+
+    {/* Camera */}
+    <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
+      <Camera className="w-5 h-5" />
+      <span className="text-sm font-medium">Camera</span>
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        onChange={(e) => handleMultipleFiles(e, setBusinessImages)}
+        className="hidden"
+      />
+    </label>
   </div>
+
+  {/* Preview grid */}
+  {businessImages.length > 0 && (
+    <div className="mt-4 w-full">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {businessImages.map((img, idx) => (
+          <div key={idx} className="relative group">
+            <img
+              src={URL.createObjectURL(img)}
+              alt={`Business ${idx + 1}`}
+              className="w-full h-32 object-cover rounded-lg border border-green-200 shadow-sm"
+            />
+            <button
+              type="button"
+              onClick={() => handleRemoveBusinessImage(idx)}
+              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md opacity-90 group-hover:opacity-100"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Add Another Image */}
+      <div className="mt-4 flex justify-center">
+        <label className="flex items-center justify-center gap-2 px-5 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
+          <Upload className="w-5 h-5" />
+          <span className="text-sm font-medium">Add Another Image</span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => handleMultipleFiles(e, setBusinessImages)}
+            className="hidden"
+          />
+        </label>
+      </div>
+    </div>
+  )}
+</div>
+
+
+
+
 </div>
 
   </div>
@@ -1215,7 +1474,7 @@ const AddCustomer = ({ onClose }) => {
             value={item.item}
             onChange={(e) => handleSecurityChange(e, index)}
             className="border border-green-200 p-3 rounded-xl w-full 
-              focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+             focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
           />
         </div>
 
@@ -1231,7 +1490,7 @@ const AddCustomer = ({ onClose }) => {
             value={item.description}
             onChange={(e) => handleSecurityChange(e, index)}
             className="border border-green-200 p-3 rounded-xl w-full 
-              focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
           />
         </div>
 
@@ -1247,7 +1506,7 @@ const AddCustomer = ({ onClose }) => {
             value={item.identification}
             onChange={(e) => handleSecurityChange(e, index)}
             className="border border-green-200 p-3 rounded-xl w-full 
-              focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
           />
         </div>
 
@@ -1262,7 +1521,7 @@ const AddCustomer = ({ onClose }) => {
             placeholder="Est. Market Value (KES)"
             value={item.value}
             onChange={(e) => handleSecurityChange(e, index)}
-            className={`border p-3 rounded-xl w-full focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm ${
+            className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm ${
               errors[`securityValue_${index}`]
                 ? "border-red-500"
                 : "border-green-200"
@@ -1278,27 +1537,82 @@ const AddCustomer = ({ onClose }) => {
         </div>
       </div>
 
+      
       {/* File Upload */}
-      <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Upload Image for Security Item
-        </label>
-        <input
-          type="file"
-          onChange={(e) => {
-            const newImages = [...securityItemImages];
-            newImages[index] = e.target.files[0];
-            setSecurityItemImages(newImages);
-          }}
-          className="block w-full text-sm text-gray-600
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-lg file:border-0
-            file:text-sm file:font-semibold
-            file:bg-green-100 file:text-green-700
-            hover:file:bg-green-200
-            cursor-pointer"
-        />
-      </div>
+<div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+  <label className="block text-sm font-medium text-green-800 mb-3">
+    Upload Images for Security Item
+  </label>
+
+  {/* Upload / Camera Buttons */}
+  <div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
+    {/* Upload */}
+    <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
+      <Upload className="w-5 h-5" />
+      <span className="text-sm font-medium">Upload</span>
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={(e) => {
+          const files = Array.from(e.target.files);
+          const newImages = [...(securityItemImages[index] || []), ...files];
+          const updatedImages = [...securityItemImages];
+          updatedImages[index] = newImages;
+          setSecurityItemImages(updatedImages);
+        }}
+        className="hidden"
+      />
+    </label>
+
+    {/* Camera */}
+    <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
+      <Camera className="w-5 h-5" />
+      <span className="text-sm font-medium">Camera</span>
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        onChange={(e) => {
+          const files = Array.from(e.target.files);
+          const newImages = [...(securityItemImages[index] || []), ...files];
+          const updatedImages = [...securityItemImages];
+          updatedImages[index] = newImages;
+          setSecurityItemImages(updatedImages);
+        }}
+        className="hidden"
+      />
+    </label>
+  </div>
+
+  {/* Preview Grid */}
+  {securityItemImages[index] && securityItemImages[index].length > 0 && (
+    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+      {securityItemImages[index].map((img, imgIdx) => (
+        <div key={imgIdx} className="relative">
+          <img
+            src={URL.createObjectURL(img)}
+            alt={`Security ${index + 1} - Image ${imgIdx + 1}`}
+            className="w-full h-32 object-cover rounded-lg border border-green-200 shadow-sm"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const updated = [...securityItemImages];
+              updated[index] = updated[index].filter((_, i) => i !== imgIdx);
+              setSecurityItemImages(updated);
+            }}
+            className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+          >
+            <XIcon className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
+
     </div>
   ))}
 
@@ -1335,7 +1649,7 @@ const AddCustomer = ({ onClose }) => {
         onChange={handleLoanChange}
         className="block w-full text-sm text-gray-600
           border border-gray-300 p-2 rounded-lg
-          focus:ring-2 focus:ring-green-500 focus:border-green-500
+          focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500
           placeholder-gray-400"
         required
       />
@@ -1349,7 +1663,7 @@ const AddCustomer = ({ onClose }) => {
 
       {/* GUARANTOR DETAILS */}
       {activeSection === "guarantor" && (
-      <section className="bg-green-50 p-6 rounded-xl">
+ <section className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg border border-green-200">
   <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
     <span className="w-1 h-5 bg-green-600 rounded-full"></span>
     Guarantor Details
@@ -1357,13 +1671,13 @@ const AddCustomer = ({ onClose }) => {
 
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {/* Prefix */}
-    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-      <label className="block text-sm font-medium text-green-800 mb-2">Prefix</label>
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Prefix</label>
       <select
         name="prefix"
         value={formData.guarantor.prefix}
         onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="block w-full text-sm text-gray-600 border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
         <option value="">Select Prefix</option>
         <option>Mr</option>
@@ -1372,96 +1686,318 @@ const AddCustomer = ({ onClose }) => {
       </select>
     </div>
 
-    {/* Marital Status */}
-    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-      <label className="block text-sm font-medium text-green-800 mb-2">Marital Status</label>
-      <select
-        name="maritalStatus"
-        value={formData.guarantor.maritalStatus}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="block w-full text-sm text-gray-600 border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-      >
-        <option value="">Select Marital Status</option>
-        <option>Single</option>
-        <option>Married</option>
-        <option>Separated/Divorced</option>
-        <option>Other</option>
-      </select>
-    </div>
-
     {/* First Name */}
-    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-      <label className="block text-sm font-medium text-green-800 mb-2">First Name</label>
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">First Name</label>
       <input
         type="text"
         name="Firstname"
         placeholder="First Name"
         value={formData.guarantor.Firstname}
         onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="block w-full text-sm text-gray-600 border border-gray-300 p-2 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-400"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       />
     </div>
 
-    {/* Repeat the same card styling for Surname, ID Number, Gender, Mobile, etc. */}
-
-    {/* File Uploads */}
-    <div className="md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-      <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Upload Guarantor Passport
-        </label>
-        <input
-          type="file"
-          onChange={(e) => handleFileUpload(e, setGuarantorPassportFile)}
-          className="block w-full text-sm text-gray-600
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-lg file:border-0
-            file:text-sm file:font-semibold
-            file:bg-green-100 file:text-green-700
-            hover:file:bg-green-200 cursor-pointer"
-        />
-      </div>
-
-      <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Upload Guarantor ID Front
-        </label>
-        <input
-          type="file"
-          onChange={(e) => handleFileUpload(e, setGuarantorIdFrontFile)}
-          className="block w-full text-sm text-gray-600
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-lg file:border-0
-            file:text-sm file:font-semibold
-            file:bg-green-100 file:text-green-700
-            hover:file:bg-green-200 cursor-pointer"
-        />
-      </div>
-
-      <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Upload Guarantor ID Back
-        </label>
-        <input
-          type="file"
-          onChange={(e) => handleFileUpload(e, setGuarantorIdBackFile)}
-          className="block w-full text-sm text-gray-600
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-lg file:border-0
-            file:text-sm file:font-semibold
-            file:bg-green-100 file:text-green-700
-            hover:file:bg-green-200 cursor-pointer"
-        />
-      </div>
+    {/* Middle Name */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Middle Name</label>
+      <input
+        type="text"
+        name="Middlename"
+        placeholder="Middle Name"
+        value={formData.guarantor.Middlename}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
     </div>
+
+    {/* Surname */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Surname</label>
+      <input
+        type="text"
+        name="Surname"
+        placeholder="Surname"
+        value={formData.guarantor.Surname}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    
+    {/* Gender */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Gender</label>
+      <select
+        name="gender"
+        value={formData.guarantor.gender}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      >
+        <option value="">Select Gender</option>
+        <option>Male</option>
+        <option>Female</option>
+      </select>
+    </div>
+
+    {/* Date of Birth */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Date of Birth</label>
+      <input
+        type="date"
+        name="dateOfBirth"
+        value={formData.guarantor.dateOfBirth}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    {/* ID Number */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">ID Number</label>
+      <input
+        type="text"
+        name="idNumber"
+        placeholder="National ID Number"
+        value={formData.guarantor.idNumber}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    {/* Phone Number */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Phone Number</label>
+      <input
+        type="tel"
+        name="phone"
+        placeholder="07 "
+        value={formData.guarantor.phone}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    {/* Alt Phone */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Alt Phone</label>
+      <input
+        type="tel"
+        name="altPhone"
+        placeholder="07XX XXX XXX"
+        value={formData.guarantor.altPhone}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    {/* Marital Status */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Marital Status</label>
+      <select
+        name="maritalStatus"
+        value={formData.guarantor.maritalStatus}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      >
+        <option value="">Select Status</option>
+        <option>Single</option>
+        <option>Married</option>
+        <option>Divorced</option>
+        <option>Widowed</option>
+      </select>
+    </div>
+
+    {/* Residence */}
+   <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Residence Status</label>
+      <select
+        name="residenceStatus"
+        value={formData.guarantor.residenceStatus}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      >
+        <option value="">Residence Status</option>
+        <option>Own</option>
+        <option>Rent</option>
+        <option>Family</option>
+        <option>Other</option>
+      </select>
+    </div>
+
+  
+
+    {/* Relationship with Borrower */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Relationship with Borrower</label>
+      <input
+        type="text"
+        name="relationship"
+        placeholder="e.g. Brother, Friend"
+        value={formData.guarantor.relationship}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    {/* Occupation */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Occupation</label>
+      <input
+        type="text"
+        name="occupation"
+        placeholder="Occupation"
+        value={formData.guarantor.occupation}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+ 
+
+    {/* Address */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Address</label>
+      <input
+        type="text"
+        name="address"
+        placeholder="Postal  Address"
+        value={formData.guarantor.address}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+      />
+    </div>
+
+    {/* Code */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Code</label>
+      <input
+        type="number"
+        name="code"
+        placeholder="Code"
+        value={formData.guarantor.code}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+      />
+    </div>
+
+    {/* Town */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">Town / City</label>
+      <input
+        type="text"
+        name="town"
+        placeholder="Town / City"
+        value={formData.guarantor.town}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+      />
+    </div>
+
+    
+   {/* County */}
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">County</label>
+      <input
+        type="text"
+        name="county"
+        placeholder="County"
+        value={formData.guarantor.county}
+        onChange={handleChange}
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+      />
+    </div>
+
+
+
   </div>
+
+  
+
+{/* Guarantor File Uploads */}
+<div className="md:col-span-2 lg:col-span-3 mt-6">
+  <h4 className="text-lg font-semibold text-green-800 mb-4">
+    Upload Guarantor Documents
+  </h4>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {[
+      { key: "guarantorPassport", label: "Upload Guarantor Passport", handler: setGuarantorPassportFile },
+      { key: "guarantorIdFront", label: "Upload Guarantor ID Front", handler: setGuarantorIdFrontFile },
+      { key: "guarantorIdBack", label: "Upload Guarantor ID Back", handler: setGuarantorIdBackFile },
+    ].map((file, idx) => (
+      <div
+        key={idx}
+        className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
+      >
+        <label className="block text-sm font-medium text-green-800 mb-2">
+          {file.label} <span className="text-red-500">*</span>
+        </label>
+
+        {/* Action buttons */}
+        <div className="flex gap-3 flex-wrap w-full sm:flex-row lg:flex-row lg:justify-between">
+          {/* Upload button */}
+          <label className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
+            <Upload className="w-5 h-5" />
+            <span className="text-sm font-medium">Upload</span>
+            <input
+              key={files[file.key] ? files[file.key] : `${file.key}-empty`} // resets input when preview cleared
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+              className="hidden"
+            />
+          </label>
+
+          {/* Camera button */}
+          <label className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
+            <Camera className="w-5 h-5" />
+            <span className="text-sm font-medium">Camera</span>
+            <input
+              key={`cam-${files[file.key] ? files[file.key] : `${file.key}-empty`}`} // also resettable
+              type="file"
+              accept="image/*"
+              capture={file.key === "guarantorPassport" ? "user" : "environment"}
+              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+              className="hidden"
+            />
+          </label>
+        </div>
+
+        {/* Preview with delete */}
+        {files[file.key] && (
+          <div className="mt-4 w-full relative">
+            <img
+              src={files[file.key]}
+              alt={`${file.label} preview`}
+              className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
+            />
+            <button
+              type="button"
+              onClick={() => handleRemoveFile(file.key, file.handler)}
+              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+</div>
+
+
 </section>
+
+
 
       )}
 
       {/* GUARANTOR SECURITY */}
       {activeSection === "guarantorSecurity" && (
-       <section className="bg-green-50 p-6 rounded-xl">
+<section className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg border border-green-200">
   <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
     <span className="w-1 h-5 bg-green-600 rounded-full"></span>
     Guarantor Security
@@ -1470,12 +2006,13 @@ const AddCustomer = ({ onClose }) => {
   {guarantorSecurityItems.map((item, index) => (
     <div
       key={index}
-      className="mb-6 p-6 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
+      className="mb-8 bg-white p-6 rounded-xl shadow-sm border border-green-200"
     >
+      {/* Inputs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         {/* Item */}
         <div>
-          <label className="block text-sm font-medium text-green-800 mb-2">
+          <label className="block text-sm font-medium text-green-800 mb-1">
             Item
           </label>
           <input
@@ -1484,14 +2021,14 @@ const AddCustomer = ({ onClose }) => {
             placeholder="Item"
             value={item.item}
             onChange={(e) => handleGuarantorSecurityChange(e, index)}
-            className="border border-gray-300 p-3 rounded-lg w-full 
-                       focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="border border-green-200 p-3 rounded-xl w-full 
+             focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
           />
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-green-800 mb-2">
+          <label className="block text-sm font-medium text-green-800 mb-1">
             Description
           </label>
           <input
@@ -1500,14 +2037,14 @@ const AddCustomer = ({ onClose }) => {
             placeholder="Description"
             value={item.description}
             onChange={(e) => handleGuarantorSecurityChange(e, index)}
-            className="border border-gray-300 p-3 rounded-lg w-full 
-                       focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="border border-green-200 p-3 rounded-xl w-full 
+              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
           />
         </div>
 
         {/* Identification */}
         <div>
-          <label className="block text-sm font-medium text-green-800 mb-2">
+          <label className="block text-sm font-medium text-green-800 mb-1">
             Identification
           </label>
           <input
@@ -1516,14 +2053,14 @@ const AddCustomer = ({ onClose }) => {
             placeholder="Identification (e.g. Serial No.)"
             value={item.identification}
             onChange={(e) => handleGuarantorSecurityChange(e, index)}
-            className="border border-gray-300 p-3 rounded-lg w-full 
-                       focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            className="border border-green-200 p-3 rounded-xl w-full 
+              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
           />
         </div>
 
         {/* Value */}
         <div>
-          <label className="block text-sm font-medium text-green-800 mb-2">
+          <label className="block text-sm font-medium text-green-800 mb-1">
             Est. Market Value (KES)
           </label>
           <input
@@ -1532,13 +2069,11 @@ const AddCustomer = ({ onClose }) => {
             placeholder="Est. Market Value (KES)"
             value={item.value}
             onChange={(e) => handleGuarantorSecurityChange(e, index)}
-            className={`border p-3 rounded-lg w-full 
-                        focus:ring-2 focus:ring-green-500 focus:border-green-500 
-                        ${
-                          errors[`guarantorSecurityValue_${index}`]
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        }`}
+            className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm ${
+              errors[`guarantorSecurityValue_${index}`]
+                ? "border-red-500"
+                : "border-green-200"
+            }`}
             min="0"
             step="0.01"
           />
@@ -1550,40 +2085,105 @@ const AddCustomer = ({ onClose }) => {
         </div>
       </div>
 
-      {/* Upload */}
-      <div className="mt-4">
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Upload Image for Guarantor Security Item
+      {/* File Upload for Guarantor Security Item */}
+      <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
+        <label className="block text-sm font-medium text-green-800 mb-3">
+          Upload Images for Guarantor Security Item
         </label>
-        <input
-          type="file"
-          onChange={(e) => {
-            const newImages = [...guarantorSecurityImages];
-            newImages[index] = e.target.files[0];
-            setGuarantorSecurityImages(newImages);
-          }}
-          className="block w-full text-sm text-gray-600
-                     file:mr-4 file:py-2 file:px-4
-                     file:rounded-lg file:border-0
-                     file:text-sm file:font-semibold
-                     file:bg-green-100 file:text-green-700
-                     hover:file:bg-green-200 cursor-pointer"
-        />
+
+        {/* Upload / Camera Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
+          {/* Upload */}
+          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
+            <Upload className="w-5 h-5" />
+            <span className="text-sm font-medium">Upload</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                const files = Array.from(e.target.files);
+                const newImages = [
+                  ...(guarantorSecurityImages[index] || []),
+                  ...files,
+                ];
+                const updatedImages = [...guarantorSecurityImages];
+                updatedImages[index] = newImages;
+                setGuarantorSecurityImages(updatedImages);
+              }}
+              className="hidden"
+            />
+          </label>
+
+          {/* Camera */}
+          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
+            <Camera className="w-5 h-5" />
+            <span className="text-sm font-medium">Camera</span>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              onChange={(e) => {
+                const files = Array.from(e.target.files);
+                const newImages = [
+                  ...(guarantorSecurityImages[index] || []),
+                  ...files,
+                ];
+                const updatedImages = [...guarantorSecurityImages];
+                updatedImages[index] = newImages;
+                setGuarantorSecurityImages(updatedImages);
+              }}
+              className="hidden"
+            />
+          </label>
+        </div>
+
+        {/* Preview Grid */}
+        {guarantorSecurityImages[index] &&
+          guarantorSecurityImages[index].length > 0 && (
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+              {guarantorSecurityImages[index].map((img, imgIdx) => (
+                <div key={imgIdx} className="relative">
+                  <img
+                    src={URL.createObjectURL(img)}
+                    alt={`Guarantor Security ${index + 1} - Image ${imgIdx + 1}`}
+                    className="w-full h-32 object-cover rounded-lg border border-green-200 shadow-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updated = [...guarantorSecurityImages];
+                      updated[index] = updated[index].filter(
+                        (_, i) => i !== imgIdx
+                      );
+                      setGuarantorSecurityImages(updated);
+                    }}
+                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
       </div>
     </div>
   ))}
 
-  {/* Add button */}
+  {/* Add Security Item Button */}
   <button
     type="button"
     onClick={addGuarantorSecurityItem}
-    className="mt-4 px-5 py-2 bg-green-600 text-white rounded-lg 
-               hover:bg-green-700 text-sm font-medium transition-colors"
+    className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 text-sm font-semibold shadow-sm transition"
     disabled={isSubmitting}
   >
     + Add Guarantor Security Item
   </button>
 </section>
+
+
+
 
       )}
 
@@ -1610,7 +2210,7 @@ const AddCustomer = ({ onClose }) => {
           value={formData.nextOfKin.Firstname}
           onChange={(e) => handleNestedChange(e, "nextOfKin")}
           className="border border-gray-300 p-3 rounded-lg w-full 
-                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
         />
       </div>
 
@@ -1626,7 +2226,7 @@ const AddCustomer = ({ onClose }) => {
           value={formData.nextOfKin.Middlename}
           onChange={(e) => handleNestedChange(e, "nextOfKin")}
           className="border border-gray-300 p-3 rounded-lg w-full 
-                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
         />
       </div>
 
@@ -1642,7 +2242,7 @@ const AddCustomer = ({ onClose }) => {
           value={formData.nextOfKin.Surname}
           onChange={(e) => handleNestedChange(e, "nextOfKin")}
           className="border border-gray-300 p-3 rounded-lg w-full 
-                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                     focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
         />
       </div>
 
@@ -1657,7 +2257,7 @@ const AddCustomer = ({ onClose }) => {
           placeholder="ID Number"
           value={formData.nextOfKin.idNumber}
           onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className={`border p-3 rounded-lg w-full focus:ring-2 
+          className={`border p-3 rounded-lg w-full focus:outline-none focus:ring-2
                      focus:ring-green-500 focus:border-green-500 ${
                        errors.nextOfKinIdNumber ? "border-red-500" : "border-gray-300"
                      }`}
@@ -1679,7 +2279,7 @@ const AddCustomer = ({ onClose }) => {
           value={formData.nextOfKin.relationship}
           onChange={(e) => handleNestedChange(e, "nextOfKin")}
           className="border border-gray-300 p-3 rounded-lg w-full 
-                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                   focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
         />
       </div>
 
@@ -1694,7 +2294,7 @@ const AddCustomer = ({ onClose }) => {
           placeholder="Mobile Number"
           value={formData.nextOfKin.mobile}
           onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className={`border p-3 rounded-lg w-full focus:ring-2 
+          className={`border p-3 rounded-lg w-full focus:outline-none focus:ring-2
                      focus:ring-green-500 focus:border-green-500 ${
                        errors.nextOfKinMobile ? "border-red-500" : "border-gray-300"
                      }`}
@@ -1716,7 +2316,7 @@ const AddCustomer = ({ onClose }) => {
           value={formData.nextOfKin.alternativeNumber}
           onChange={(e) => handleNestedChange(e, "nextOfKin")}
           className="border border-gray-300 p-3 rounded-lg w-full 
-                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
         />
       </div>
 
@@ -1730,7 +2330,7 @@ const AddCustomer = ({ onClose }) => {
           value={formData.nextOfKin.employmentStatus}
           onChange={(e) => handleNestedChange(e, "nextOfKin")}
           className="border border-gray-300 p-3 rounded-lg w-full 
-                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
         >
           <option value="">Select Employment Status</option>
           <option>Employed</option>
@@ -1753,7 +2353,7 @@ const AddCustomer = ({ onClose }) => {
           value={formData.nextOfKin.county}
           onChange={(e) => handleNestedChange(e, "nextOfKin")}
           className="border border-gray-300 p-3 rounded-lg w-full 
-                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
         />
       </div>
 
@@ -1769,7 +2369,7 @@ const AddCustomer = ({ onClose }) => {
           value={formData.nextOfKin.cityTown}
           onChange={(e) => handleNestedChange(e, "nextOfKin")}
           className="border border-gray-300 p-3 rounded-lg w-full 
-                     focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                     focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
         />
       </div>
     </div>
@@ -1780,68 +2380,76 @@ const AddCustomer = ({ onClose }) => {
 
       {/* DOCUMENTS */}
       {activeSection === "documents" && (
-       <section className="bg-green-50 p-6 rounded-xl">
+  <section className="bg-green-50 p-6 rounded-xl">
   <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
     <span className="w-1 h-5 bg-green-600 rounded-full"></span>
     Document Verification
   </h3>
 
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {/* First Officer and Client Image */}
-    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-      <label className="block text-sm font-medium text-green-800 mb-2">
-        First Officer and Client Image
-      </label>
-      <input
-        type="file"
-        onChange={(e) => handleFileUpload(e, setOfficerClientImage1)}
-        className="block w-full text-sm text-gray-600
-                   file:mr-4 file:py-2 file:px-4
-                   file:rounded-lg file:border-0
-                   file:text-sm file:font-semibold
-                   file:bg-green-100 file:text-green-700
-                   hover:file:bg-green-200
-                   cursor-pointer"
-      />
-    </div>
+    {[
+      { label: "First Officer and Client Image", handler: setOfficerClientImage1, state: officerClientImage1 },
+      { label: "Second Officer and Client Image", handler: setOfficerClientImage2, state: officerClientImage2 },
+      { label: "Both Officers Image", handler: setBothOfficersImage, state: bothOfficersImage },
+    ].map((file, idx) => (
+      <div
+        key={idx}
+        className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
+      >
+        <label className="block text-sm font-medium text-green-800 mb-3">
+          {file.label}
+        </label>
 
-    {/* Second Officer and Client Image */}
-    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-      <label className="block text-sm font-medium text-green-800 mb-2">
-        Second Officer and Client Image
-      </label>
-      <input
-        type="file"
-        onChange={(e) => handleFileUpload(e, setOfficerClientImage2)}
-        className="block w-full text-sm text-gray-600
-                   file:mr-4 file:py-2 file:px-4
-                   file:rounded-lg file:border-0
-                   file:text-sm file:font-semibold
-                   file:bg-green-100 file:text-green-700
-                   hover:file:bg-green-200
-                   cursor-pointer"
-      />
-    </div>
+        {/* Upload / Camera Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
+          {/* Upload */}
+          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
+            <Upload className="w-5 h-5" />
+            <span className="text-sm font-medium">Upload</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => file.handler(e.target.files[0])}
+              className="hidden"
+            />
+          </label>
 
-    {/* Both Officers Image */}
-    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-      <label className="block text-sm font-medium text-green-800 mb-2">
-        Both Officers Image
-      </label>
-      <input
-        type="file"
-        onChange={(e) => handleFileUpload(e, setBothOfficersImage)}
-        className="block w-full text-sm text-gray-600
-                   file:mr-4 file:py-2 file:px-4
-                   file:rounded-lg file:border-0
-                   file:text-sm file:font-semibold
-                   file:bg-green-100 file:text-green-700
-                   hover:file:bg-green-200
-                   cursor-pointer"
-      />
-    </div>
+          {/* Camera */}
+          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
+            <Camera className="w-5 h-5" />
+            <span className="text-sm font-medium">Camera</span>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => file.handler(e.target.files[0])}
+              className="hidden"
+            />
+          </label>
+        </div>
+
+        {/* Preview */}
+        {file.state && (
+          <div className="mt-4 relative w-full">
+            <img
+              src={URL.createObjectURL(file.state)}
+              alt={`${file.label} Preview`}
+              className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
+            />
+            <button
+              type="button"
+              onClick={() => file.handler(null)}
+              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
+    ))}
   </div>
 </section>
+
 
       )}
 
@@ -1860,20 +2468,16 @@ const AddCustomer = ({ onClose }) => {
         >
           Previous
         </button>
-        
-        <button
-          type="button"
-          onClick={() => {
-            const currentIndex = navItems.findIndex(item => item.id === activeSection);
-            if (currentIndex < navItems.length - 1) {
-              setActiveSection(navItems[currentIndex + 1].id);
-            }
-          }}
-          className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          disabled={activeSection === "documents"}
-        >
-          Next
-        </button>
+       <div className="flex justify-end mt-6">
+  <button
+    type="button"
+    onClick={handleNext}
+    className="px-6 py-2 bg-green-600 text-white rounded-xl shadow hover:bg-green-700"
+  >
+    Next
+  </button>
+</div>
+
       </div>
 
       {/* SUBMIT BUTTON */}
