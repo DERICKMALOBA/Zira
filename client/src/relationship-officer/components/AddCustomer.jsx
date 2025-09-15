@@ -4,7 +4,6 @@ import "react-toastify/dist/ReactToastify.css";
 import { toast } from "react-toastify";
 import { Upload, Camera, XIcon } from "lucide-react";
 
-
 const AddCustomer = ({ onClose }) => {
   const [activeSection, setActiveSection] = useState("personal");
   const [securityItems, setSecurityItems] = useState([
@@ -43,11 +42,10 @@ const AddCustomer = ({ onClose }) => {
     landmark: "",
     hasLocalAuthorityLicense: "",
     passportUrl: "",
-  idFrontUrl: "",
-  idBackUrl: "",
-  houseImageUrl: "",
-   prequalifiedAmount: "",
-    
+    idFrontUrl: "",
+    idBackUrl: "",
+    houseImageUrl: "",
+    prequalifiedAmount: "",
     
     guarantor: {
       prefix: "",
@@ -80,13 +78,18 @@ const AddCustomer = ({ onClose }) => {
       cityTown: "",
     },
     loan: {
-      
-      prequalifiedAmount: "",
-      
+      product: "",
+      durationWeeks: "",
+      processingFee: "",
+      principal: "",
+      totalPayable: "",
+      registrationFee: "",
+      interestRate: "",
+      status: "pending",
     },
   });
 
-   // File upload state
+  // File upload state
   const [passportFile, setPassportFile] = useState(null);
   const [idFrontFile, setIdFrontFile] = useState(null);
   const [idBackFile, setIdBackFile] = useState(null);
@@ -101,79 +104,76 @@ const AddCustomer = ({ onClose }) => {
   const [officerClientImage2, setOfficerClientImage2] = useState(null);
   const [bothOfficersImage, setBothOfficersImage] = useState(null);
   const [files, setFiles] = useState({});
-
+const [previews, setPreviews] = useState({});
 
   const validatePersonalDetails = async () => {
-  const newErrors = {};
+    const newErrors = {};
 
-  if (!formData.Firstname) newErrors.Firstname = "First name is required";
-  if (!formData.Surname) newErrors.Surname = "Surname is required";
-  if (!formData.mobile) newErrors.mobile = "Mobile number is required";
-  if (!formData.idNumber) newErrors.idNumber = "ID number is required";
+    if (!formData.Firstname) newErrors.Firstname = "First name is required";
+    if (!formData.Surname) newErrors.Surname = "Surname is required";
+    if (!formData.mobile) newErrors.mobile = "Mobile number is required";
+    if (!formData.idNumber) newErrors.idNumber = "ID number is required";
 
-  if (
-    formData.mobile &&
-    !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))
-  ) {
-    newErrors.mobile = "Please enter a valid mobile number";
-  }
-
-  if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
-    newErrors.idNumber = "Please enter a valid ID number";
-  }
-
-  if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
-    newErrors.dateOfBirth = "Customer must be at least 18 years old";
-  }
-
-  // Check uniqueness for ID and mobile only at this stage
-  if (formData.mobile && !newErrors.mobile) {
-    const isMobileUnique = await checkUniqueValue(
-      ["customers", "guarantors", "next_of_kin"],
-      "mobile",
-      formData.mobile
-    );
-    if (!isMobileUnique) {
-      newErrors.mobile = "Mobile number already exists in our system";
+    if (
+      formData.mobile &&
+      !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))
+    ) {
+      newErrors.mobile = "Please enter a valid mobile number";
     }
-  }
 
-  if (formData.idNumber && !newErrors.idNumber) {
-    const isIdUnique = await checkUniqueValue(
-      ["customers", "guarantors", "next_of_kin"],
-      "id_number",
-      formData.idNumber
-    );
-    if (!isIdUnique) {
-      newErrors.idNumber = "ID number already exists in our system";
+    if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
+      newErrors.idNumber = "Please enter a valid ID number";
     }
-  }
 
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
-
-
-
-const handleNext = async () => {
-  let isValid = false;
-
-  if (activeSection === "personal") {
-    isValid = await validatePersonalDetails();
-  }
-  // 🔜 add business, security, guarantor validators here later
-
-  if (isValid) {
-    // go to the next section
-    const nextIndex = navItems.findIndex((item) => item.id === activeSection) + 1;
-    if (nextIndex < navItems.length) {
-      setActiveSection(navItems[nextIndex].id);
+    if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
+      newErrors.dateOfBirth = "Customer must be at least 18 years old";
     }
-  } else {
-    toast.error("Please fix the highlighted errors before continuing.");
-  }
-};
 
+    // Check uniqueness for ID and mobile only at this stage
+    if (formData.mobile && !newErrors.mobile) {
+      const isMobileUnique = await checkUniqueValue(
+        ["customers", "guarantors", "next_of_kin"],
+        "mobile",
+        formData.mobile
+      );
+      if (!isMobileUnique) {
+        newErrors.mobile = "Mobile number already exists in our system";
+      }
+    }
+
+    if (formData.idNumber && !newErrors.idNumber) {
+      const isIdUnique = await checkUniqueValue(
+        ["customers", "guarantors", "next_of_kin"],
+        "id_number",
+        formData.idNumber
+      );
+      if (!isIdUnique) {
+        newErrors.idNumber = "ID number already exists in our system";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNext = async () => {
+    let isValid = false;
+
+    if (activeSection === "personal") {
+      isValid = await validatePersonalDetails();
+    }
+    // Add other section validations here as needed
+
+    if (isValid) {
+      // go to the next section
+      const nextIndex = navItems.findIndex((item) => item.id === activeSection) + 1;
+      if (nextIndex < navItems.length) {
+        setActiveSection(navItems[nextIndex].id);
+      }
+    } else {
+      toast.error("Please fix the highlighted errors before continuing.");
+    }
+  };
 
   // Check if a value is unique in the database across multiple tables
   const checkUniqueValue = async (tables, field, value) => {
@@ -492,16 +492,39 @@ const handleNext = async () => {
     });
   };
 
+  const handleMultipleFiles = (e, setter) => {
+    const files = Array.from(e.target.files);
+    setter((prev) => [...prev, ...files]); // append new images
+  };
 
+  const handleRemoveBusinessImage = (index) => {
+    setBusinessImages((prev) => prev.filter((_, i) => i !== index));
+  };
 
-const handleMultipleFiles = (e, setter) => {
-  const files = Array.from(e.target.files);
-  setter((prev) => [...prev, ...files]); // append new images
-};
+  // Upload file to Supabase Storage
+  const uploadFile = async (file, path) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from("customer-documents")
+        .upload(path, file);
 
-const handleRemoveBusinessImage = (index) => {
-  setBusinessImages((prev) => prev.filter((_, i) => i !== index));
-};
+      if (error) {
+        throw error;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("customer-documents")
+        .getPublicUrl(data.path);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error(`Failed to upload file: ${error.message}`);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -522,6 +545,45 @@ const handleRemoveBusinessImage = (index) => {
     setIsSubmitting(true);
 
     try {
+      // Upload all files first
+      const uploadPromises = [];
+      
+      // Customer documents
+      if (passportFile) {
+        uploadPromises.push(
+          uploadFile(passportFile, `customers/${Date.now()}_passport`).then(
+            (url) => (formData.passportUrl = url)
+          )
+        );
+      }
+      
+      if (idFrontFile) {
+        uploadPromises.push(
+          uploadFile(idFrontFile, `customers/${Date.now()}_id_front`).then(
+            (url) => (formData.idFrontUrl = url)
+          )
+        );
+      }
+      
+      if (idBackFile) {
+        uploadPromises.push(
+          uploadFile(idBackFile, `customers/${Date.now()}_id_back`).then(
+            (url) => (formData.idBackUrl = url)
+          )
+        );
+      }
+      
+      if (houseImageFile) {
+        uploadPromises.push(
+          uploadFile(houseImageFile, `customers/${Date.now()}_house`).then(
+            (url) => (formData.houseImageUrl = url)
+          )
+        );
+      }
+
+      // Wait for all uploads to complete
+      await Promise.all(uploadPromises);
+
       // 1. Insert into customers
       const { data: customerData, error: customerError } = await supabase
         .from("customers")
@@ -556,12 +618,10 @@ const handleRemoveBusinessImage = (index) => {
             landmark: formData.landmark || null,
             has_local_authority_license:
               formData.hasLocalAuthorityLicense === "Yes",
-
-                // Images
-    passport_url: files.passport || null,
-    id_front_url: files.idFront || null,
-    id_back_url: files.idBack || null,
-    house_image_url: files.house || null,
+            passport_url: formData.passportUrl || null,
+            id_front_url: formData.idFrontUrl || null,
+            id_back_url: formData.idBackUrl || null,
+            house_image_url: formData.houseImageUrl || null,
           },
         ])
         .select("id")
@@ -579,12 +639,12 @@ const handleRemoveBusinessImage = (index) => {
 
       const customerId = customerData.id;
 
-      // 2. Insert loan record (AFTER customerId is defined)
-      if (formData.loan.product) {
+      // 2. Insert loan record
+      if (formData.loan.principal) {
         const { error: loanError } = await supabase.from("loans").insert([
           {
             customer_id: customerId,
-            product: formData.loan.product,
+            product: formData.loan.product || null,
             duration_weeks: formData.loan.durationWeeks
               ? parseInt(formData.loan.durationWeeks)
               : null,
@@ -648,6 +708,32 @@ const handleRemoveBusinessImage = (index) => {
 
       let guarantorId = null;
       if (guarantorFieldsFilled) {
+        // Upload guarantor documents
+        let guarantorPassportUrl = null;
+        let guarantorIdFrontUrl = null;
+        let guarantorIdBackUrl = null;
+        
+        if (guarantorPassportFile) {
+          guarantorPassportUrl = await uploadFile(
+            guarantorPassportFile, 
+            `guarantors/${Date.now()}_passport`
+          );
+        }
+        
+        if (guarantorIdFrontFile) {
+          guarantorIdFrontUrl = await uploadFile(
+            guarantorIdFrontFile, 
+            `guarantors/${Date.now()}_id_front`
+          );
+        }
+        
+        if (guarantorIdBackFile) {
+          guarantorIdBackUrl = await uploadFile(
+            guarantorIdBackFile, 
+            `guarantors/${Date.now()}_id_back`
+          );
+        }
+
         const { data: guarantorData, error: guarantorError } = await supabase
           .from("guarantors")
           .insert([
@@ -671,6 +757,9 @@ const handleRemoveBusinessImage = (index) => {
               Middlename: formData.guarantor.Middlename || null,
               county: formData.guarantor.county || null,
               city_town: formData.guarantor.cityTown || null,
+              passport_url: guarantorPassportUrl,
+              id_front_url: guarantorIdFrontUrl,
+              id_back_url: guarantorIdBackUrl,
             },
           ])
           .select("id")
@@ -752,8 +841,35 @@ const handleRemoveBusinessImage = (index) => {
         }
       }
 
-      // 6. Upload files (you would need to implement this part based on your storage setup)
-     
+      // 6. Upload business images
+      if (businessImages.length > 0) {
+        const businessImageUrls = [];
+        
+        for (const image of businessImages) {
+          const url = await uploadFile(
+            image, 
+            `business/${Date.now()}_${image.name}`
+          );
+          if (url) businessImageUrls.push(url);
+        }
+        
+        // Save business images to database
+        if (businessImageUrls.length > 0) {
+          const { error: businessImageError } = await supabase
+            .from("business_images")
+            .insert(
+              businessImageUrls.map(url => ({
+                customer_id: customerId,
+                image_url: url
+              }))
+            );
+
+          if (businessImageError) {
+            console.error("Error saving business images:", businessImageError.message);
+          }
+        }
+      }
+
       toast.success("Customer & all related details saved successfully!", {
         position: "top-right",
         autoClose: 4000,
@@ -785,72 +901,62 @@ const handleRemoveBusinessImage = (index) => {
     { id: "documents", label: "Documents" },
   ];
 
-const handleFileUpload = async (e, setter, key) => {
+ const handleFileUpload = async (e, setter, key) => {
   const file = e.target.files[0];
   if (!file) return;
 
   try {
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from("customer-documents")
-      .upload(`${Date.now()}_${file.name}`, file);
+    // Save file for upload
+    setFiles((prev) => ({ ...prev, [key]: file }));
 
-    if (error) {
-      toast.error("File upload failed: " + error.message);
-      return;
-    }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from("customer-documents")
-      .getPublicUrl(data.path);
-
-    // Update local preview
-    setter(URL.createObjectURL(file));
-
-    // Save URL into formData
-    setFormData((prev) => ({
-      ...prev,
-      [`${key}Url`]: urlData.publicUrl,
-    }));
+    // Save preview URL
+    setPreviews((prev) => ({ ...prev, [key]: URL.createObjectURL(file) }));
   } catch (err) {
     console.error(err);
-    toast.error("Unexpected error during file upload.");
+    toast.error("Unexpected error during file selection.");
   }
 };
 
 
+const handleRemoveFile = (key, handler) => {
+  // Clear the specific file state
+  if (handler) handler(null);
 
-  const handleRemoveFile = (key, handler) => {
-    handler(null);
-    setFiles((prev) => {
-      const updated = { ...prev };
-      delete updated[key];
-      return updated;
-    });
-  };
+  // Remove file from files
+  setFiles((prev) => {
+    const updated = { ...prev };
+    delete updated[key];
+    return updated;
+  });
 
-
-
-  const handleSecurityFiles = (e, index) => {
-  const files = Array.from(e.target.files);
-  setSecurityItemImages((prev) => {
-    const updated = [...prev];
-    if (!updated[index]) updated[index] = [];
-    updated[index] = [...updated[index], ...files];
+  // Remove preview
+  setPreviews((prev) => {
+    const updated = { ...prev };
+    delete updated[key];
     return updated;
   });
 };
 
 
-const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
-  setSecurityItemImages((prev) => {
-    const updated = [...prev];
-    updated[itemIndex] = updated[itemIndex].filter((_, i) => i !== imgIndex);
-    return updated;
-  });
-};
+  // const handleSecurityFiles = (e, index) => {
+  //   const files = Array.from(e.target.files);
+  //   setSecurityItemImages((prev) => {
+  //     const updated = [...prev];
+  //     if (!updated[index]) updated[index] = [];
+  //     updated[index] = [...updated[index], ...files];
+  //     return updated;
+  //   });
+  // };
 
+  // const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
+  //   setSecurityItemImages((prev) => {
+  //     const updated = [...prev];
+  //     updated[itemIndex] = updated[itemIndex].filter((_, i) => i !== imgIndex);
+  //     return updated;
+  //   });
+  // };
+
+ 
 
   return (
    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 z-50">
@@ -889,8 +995,8 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
     <form className="space-y-8">
       {/* PERSONAL DETAILS */}
       {activeSection === "personal" && (
-   <section className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg border border-green-200">
-   <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
+  <section className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg border border-green-200">
+  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
     <span className="w-1 h-5 bg-green-600 rounded-full"></span>
     Personal Details
   </h3>
@@ -903,7 +1009,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         name="prefix"
         value={formData.prefix}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
         <option value="">Select Prefix</option>
         <option>Mr</option>
@@ -913,22 +1019,21 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
     </div>
 
     {/* First Name */}
- <div>
-  <label className="block text-sm font-medium text-green-800 mb-1">First Name *</label>
-  <input
-    type="text"
-    name="Firstname"
-    placeholder="First Name"
-    value={formData.Firstname}
-    onChange={handleChange}
-    className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
-      errors.Firstname ? "border-red-500" : "border-green-200"
-    }`}
-    required
-  />
-  {errors.Firstname && <p className="text-red-500 text-xs mt-1">{errors.Firstname}</p>}
-</div>
-
+    <div>
+      <label className="block text-sm font-medium text-green-800 mb-1">First Name *</label>
+      <input
+        type="text"
+        name="Firstname"
+        placeholder="First Name"
+        value={formData.Firstname}
+        onChange={handleChange}
+        className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+          errors.Firstname ? "border-red-500" : "border-green-200"
+        }`}
+        required
+      />
+      {errors.Firstname && <p className="text-red-500 text-xs mt-1">{errors.Firstname}</p>}
+    </div>
 
     {/* Surname */}
     <div>
@@ -956,7 +1061,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         placeholder="Middle Name"
         value={formData.Middlename}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
@@ -967,7 +1072,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         name="maritalStatus"
         value={formData.maritalStatus}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
         <option value="">Select Marital Status</option>
         <option>Single</option>
@@ -984,7 +1089,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         name="residenceStatus"
         value={formData.residenceStatus}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
         <option value="">Residence Status</option>
         <option>Own</option>
@@ -1003,7 +1108,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         placeholder="Mobile Number"
         onChange={handleChange}
         value={formData.mobile}
-        className={`border p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+        className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
           errors.mobile ? "border-red-500" : "border-green-200"
         }`}
         required
@@ -1020,7 +1125,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         placeholder="Alternative Mobile Number"
         value={formData.alternativeMobile}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl  focus:outline-none  focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
@@ -1033,7 +1138,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         placeholder="Occupation"
         value={formData.occupation}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
@@ -1046,7 +1151,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         value={formData.dateOfBirth}
         onChange={handleChange}
         max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
-        className={`border p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+        className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
           errors.dateOfBirth ? "border-red-500" : "border-green-200"
         }`}
       />
@@ -1060,7 +1165,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         name="gender"
         value={formData.gender}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
         <option value="">Select Gender</option>
         <option>Male</option>
@@ -1077,7 +1182,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         placeholder="ID Number"
         value={formData.idNumber}
         onChange={handleChange}
-        className={`border p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
+        className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
           errors.idNumber ? "border-red-500" : "border-green-200"
         }`}
         required
@@ -1094,7 +1199,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         placeholder="Postal Address"
         value={formData.postalAddress}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
@@ -1107,7 +1212,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         placeholder="Code"
         value={formData.code}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
@@ -1120,12 +1225,11 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         placeholder="Town / City"
         value={formData.town}
         onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
+        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
 
-    
-   {/* County */}
+    {/* County */}
     <div>
       <label className="block text-sm font-medium text-green-800 mb-1">County</label>
       <input
@@ -1139,7 +1243,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
     </div>
 
     
- {/* File Uploads */}
+   {/* File Uploads */}
 <div className="md:col-span-2 lg:col-span-3 mt-6">
   <h4 className="text-lg font-semibold text-green-800 mb-4">
     Upload Documents
@@ -1161,8 +1265,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
         </label>
 
         
-      
-{/* Action buttons */}
+       {/* Action buttons */}
 <div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
   {/* Upload */}
   <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
@@ -1179,7 +1282,6 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
   {/* Camera */}
   <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
     <Camera className="w-5 h-5" />
-   
     <input
       type="file"
       accept="image/*"
@@ -1191,24 +1293,24 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
 </div>
 
 
-
         {/* Preview with delete */}
-        {files[file.key] && (
-          <div className="mt-4 w-full relative">
-            <img
-              src={files[file.key]}
-              alt={`${file.label} preview`}
-              className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
-            />
-            <button
-              type="button"
-              onClick={() => handleRemoveFile(file.key, file.handler)}
-              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
-            >
-              <XIcon className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+       {previews[file.key] && (
+  <div className="mt-4 w-full relative">
+    <img
+      src={previews[file.key]}
+      alt={`${file.label} preview`}
+      className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
+    />
+    <button
+      type="button"
+      onClick={() => handleRemoveFile(file.key, file.handler)}
+      className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+    >
+      <XIcon className="w-4 h-4" />
+    </button>
+  </div>
+)}
+
       </div>
     ))}
   </div>
@@ -1216,6 +1318,7 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
 
   </div>
 </section>
+
 
 
       )}
@@ -1966,23 +2069,24 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
           </label>
         </div>
 
-        {/* Preview with delete */}
-        {files[file.key] && (
-          <div className="mt-4 w-full relative">
-            <img
-              src={files[file.key]}
-              alt={`${file.label} preview`}
-              className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
-            />
-            <button
-              type="button"
-              onClick={() => handleRemoveFile(file.key, file.handler)}
-              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
-            >
-              <XIcon className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+      {/* Preview with delete */}
+{previews[file.key] && (
+  <div className="mt-4 w-full relative">
+    <img
+      src={previews[file.key]}   // ✅ use previews, not files
+      alt={`${file.label} preview`}
+      className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
+    />
+    <button
+      type="button"
+      onClick={() => handleRemoveFile(file.key, file.handler)}
+      className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+    >
+      <XIcon className="w-4 h-4" />
+    </button>
+  </div>
+)}
+
       </div>
     ))}
   </div>
@@ -2453,32 +2557,31 @@ const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
 
       )}
 
-      {/* Navigation buttons */}
-      <div className="flex justify-between mt-8">
-        <button
-          type="button"
-          onClick={() => {
-            const currentIndex = navItems.findIndex(item => item.id === activeSection);
-            if (currentIndex > 0) {
-              setActiveSection(navItems[currentIndex - 1].id);
-            }
-          }}
-          className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          disabled={activeSection === "personal"}
-        >
-          Previous
-        </button>
-       <div className="flex justify-end mt-6">
+     {/* Navigation buttons */}
+<div className="flex justify-between mt-8">
+  <button
+    type="button"
+    onClick={() => {
+      const currentIndex = navItems.findIndex(item => item.id === activeSection);
+      if (currentIndex > 0) {
+        setActiveSection(navItems[currentIndex - 1].id);
+      }
+    }}
+    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+    disabled={activeSection === "personal"}
+  >
+    Previous
+  </button>
+
   <button
     type="button"
     onClick={handleNext}
-    className="px-6 py-2 bg-green-600 text-white rounded-xl shadow hover:bg-green-700"
+    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
   >
     Next
   </button>
 </div>
 
-      </div>
 
       {/* SUBMIT BUTTON */}
       {activeSection === "documents" && (
