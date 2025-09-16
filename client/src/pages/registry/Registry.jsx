@@ -7,7 +7,6 @@ import ApprovalsPending from './ApprovalPending'
 import CallbacksPending from './CallbacksPending'
 import CustomerTransfer from './CustomerTransfer'
 import CustomerCategories from './CustomerCategories'
-import CustomerEdits from './CustomerEdits'
 
 const Registry = () => {
   const location = useLocation()
@@ -16,14 +15,12 @@ const Registry = () => {
     { name: 'Pending Amendments', href: '/registry/pending-amendments' },
     { name: 'Approvals Pending', href: '/registry/approvals-pending' },
     { name: 'Callbacks Pending', href: '/registry/callbacks-pending' },
-    { name: 'Customer Transfer', href: '/registry/customer-transfer' },
+    
     { name: 'Customer Categories', href: '/registry/customer-categories' },
-    { name: 'Customer Edits', href: '/registry/customer-edits' },
   ]
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Customer Registry</h1>
       
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8 overflow-x-auto">
@@ -51,7 +48,6 @@ const Registry = () => {
           <Route path="callbacks-pending" element={<CallbacksPending />} />
           <Route path="customer-transfer" element={<CustomerTransfer />} />
           <Route path="customer-categories" element={<CustomerCategories />} />
-          <Route path="customer-edits" element={<CustomerEdits />} />
           <Route path="*" element={<Navigate to="customers" />} />
         </Routes>
       </div>

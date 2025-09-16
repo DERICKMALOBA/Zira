@@ -3,715 +3,1060 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  DocumentMagnifyingGlassIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  UserCircleIcon,
+  IdentificationIcon,
+  HomeIcon,
+  UserGroupIcon,
+  ShieldCheckIcon,
+  ClipboardDocumentCheckIcon,
+  CurrencyDollarIcon
+} from '@heroicons/react/24/outline';
 
-const LoanVerificationForm = ({ customerId, loanId, onComplete }) => {
+const LoanVerificationForm = ({ customerId, onClose }) => {
   const [step, setStep] = useState(1);
-  const [loan, setLoan] = useState(null);
-  const [securityItems, setSecurityItems] = useState([]);
-  const [guarantorSecurityItems, setGuarantorSecurityItems] = useState([]);
   const [customer, setCustomer] = useState(null);
   const [guarantors, setGuarantors] = useState([]);
-  const [nextOfKin, setNextOfKin] = useState([]);
-  const [formData, setFormData] = useState({
-    customerVerified: false,
-    guarantorsVerified: [],
-    nextOfKinVerified: [],
-    suggestedAmount: '',
-    serviceFee: 0,
-    decision: '',
-    comments: ''
+  const [securityItems, setSecurityItems] = useState([]);
+  const [guarantorSecurityItems, setGuarantorSecurityItems] = useState([]);
+  const [loanDetails, setLoanDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [verificationData, setVerificationData] = useState({
+    customer: {
+      idVerified: false,
+      phoneVerified: false,
+      comment: ''
+    },
+    guarantors: [],
+    security: {
+      verified: false,
+      comment: ''
+    },
+    guarantorSecurity: {
+      verified: false,
+      comment: ''
+    },
+    loan: {
+      prequalifiedAmount: 0,
+      scoredAmount: 0,
+      comment: ''
+    },
+    finalDecision: '',
+    overallComment: ''
   });
-  const [loading, setLoading] = useState(false);
-  const [hasLoan, setHasLoan] = useState(true);
 
   useEffect(() => {
     if (customerId) {
       fetchCustomerDetails();
-      if (loanId) {
-        fetchLoanDetails();
-      } else {
-        setHasLoan(false);
-      }
     }
-  }, [customerId, loanId]);
+  }, [customerId]);
 
   const fetchCustomerDetails = async () => {
     try {
-      // Fetch customer details
+      setLoading(true);
+      
+      // Fetch customer with images
       const { data: customerData, error: customerError } = await supabase
         .from('customers')
         .select('*')
         .eq('id', customerId)
         .single();
       
-      if (customerError) {
-        console.error('Error fetching customer:', customerError);
-        toast.error('Error loading customer details');
-        return;
-      }
-      
-      setCustomer(customerData || {});
-      console.log('Customer data loaded:', customerData);
+      if (customerError) throw customerError;
+      setCustomer(customerData);
 
-      // Fetch guarantors
+      // Fetch loan details
+      const { data: loanData, error: loanError } = await supabase
+        .from('loans')
+        .select('*')
+        .eq('customer_id', customerId)
+        .single();
+      
+      if (!loanError && loanData) {
+        setLoanDetails(loanData);
+        setVerificationData(prev => ({
+          ...prev,
+          loan: {
+            ...prev.loan,
+            prequalifiedAmount: loanData.prequalified_amount || 0,
+            scoredAmount: loanData.prequalified_amount || 0
+          }
+        }));
+      }
+
+      // Fetch guarantors with their images
       const { data: guarantorsData, error: guarantorsError } = await supabase
         .from('guarantors')
         .select('*')
         .eq('customer_id', customerId);
       
-      if (guarantorsError) {
-        console.error('Error fetching guarantors:', guarantorsError);
-        toast.error('Error loading guarantor details');
-      } else {
-        setGuarantors(guarantorsData || []);
-        setFormData(prev => ({
+      if (!guarantorsError && guarantorsData) {
+        setGuarantors(guarantorsData);
+        setVerificationData(prev => ({
           ...prev,
-          guarantorsVerified: Array(guarantorsData?.length || 0).fill(false)
+          guarantors: guarantorsData.map(() => ({
+            idVerified: false,
+            phoneVerified: false,
+            comment: ''
+          }))
         }));
-        console.log('Guarantors data loaded:', guarantorsData);
-
-        // Fetch guarantor security for each guarantor
-        if (guarantorsData && guarantorsData.length > 0) {
-          const guarantorIds = guarantorsData.map(g => g.id);
-          const { data: gSecurity, error: gSecurityError } = await supabase
-            .from('guarantor_security')
-            .select('*')
-            .in('guarantor_id', guarantorIds);
-
-          if (!gSecurityError && gSecurity) {
-            setGuarantorSecurityItems(gSecurity);
-            console.log('Guarantor security loaded:', gSecurity);
-          }
-        }
       }
 
-      // Fetch next of kin
-      const { data: nextOfKinData, error: nextOfKinError } = await supabase
-        .from('next_of_kin')
-        .select('*')
-        .eq('customer_id', customerId);
-      
-      if (nextOfKinError) {
-        console.error('Error fetching next of kin:', nextOfKinError);
-        toast.error('Error loading next of kin details');
-      } else {
-        setNextOfKin(nextOfKinData || []);
-        setFormData(prev => ({
-          ...prev,
-          nextOfKinVerified: Array(nextOfKinData?.length || 0).fill(false)
-        }));
-        console.log('Next of kin data loaded:', nextOfKinData);
-      }
-
-      // Fetch borrower security
+      // Fetch security items
       const { data: securityData, error: securityError } = await supabase
         .from('security_items')
         .select('*')
         .eq('customer_id', customerId);
+      
+      if (!securityError) setSecurityItems(securityData || []);
 
-      if (securityError) {
-        console.error('Error fetching security items:', securityError);
-      } else {
-        setSecurityItems(securityData || []);
-        console.log('Security items loaded:', securityData);
+      // Fetch guarantor security items
+      if (guarantorsData && guarantorsData.length > 0) {
+        const guarantorIds = guarantorsData.map(g => g.id);
+        const { data: gSecurityData, error: gSecurityError } = await supabase
+          .from('guarantor_security')
+          .select('*')
+          .in('guarantor_id', guarantorIds);
+        
+        if (!gSecurityError) setGuarantorSecurityItems(gSecurityData || []);
       }
+
     } catch (error) {
       console.error('Error fetching customer details:', error);
       toast.error('Error loading customer details');
-    }
-  };
-
-  const fetchLoanDetails = async () => {
-    try {
-      // Fetch loan details
-      const { data: loanData, error: loanError } = await supabase
-        .from('loans')
-        .select('*')
-        .eq('id', loanId)
-        .single();
-
-      if (loanError) {
-        console.error('Error fetching loan:', loanError);
-        setHasLoan(false);
-        toast.error('Error loading loan details');
-        return;
-      }
-
-      if (loanData) {
-        setLoan(loanData);
-        console.log('Loan data loaded:', loanData);
-        // Pre-fill suggested amount with principal amount if available
-        if (loanData.principal) {
-          setFormData(prev => ({
-            ...prev,
-            suggestedAmount: loanData.principal,
-            serviceFee: calculateServiceFee(loanData.principal)
-          }));
-        }
-      } else {
-        setHasLoan(false);
-        console.log('No loan found with ID:', loanId);
-      }
-    } catch (error) {
-      console.error('Error fetching loan details:', error);
-      setHasLoan(false);
-      toast.error('Error loading loan details');
-    }
-  };
-
-const calculateServiceFee = (amount) => {
-  if (amount <= 10000) {
-    return 500; // Flat fee for loans <= 10k
-  }
-  return amount * 0.05; // 5% for loans above 10k
-};
-
-
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-
-    // Auto-calculate service fee when suggested amount changes
-    if (name === 'suggestedAmount') {
-      const amount = parseFloat(value) || 0;
-      setFormData(prev => ({
-        ...prev,
-        serviceFee: calculateServiceFee(amount)
-      }));
-    }
-  };
-
-
-
-  const nextStep = () => {
-    // Validation before proceeding
-    if (step === 1 && !formData.customerVerified) {
-      toast.error('Please verify customer details before proceeding');
-      return;
-    }
-    
-    if (step === 2 && guarantors.length > 0 && formData.guarantorsVerified.some(verified => !verified)) {
-      toast.error('Please verify all guarantors before proceeding');
-      return;
-    }
-    
-    if (step === 3 && nextOfKin.length > 0 && formData.nextOfKinVerified.some(verified => !verified)) {
-      toast.error('Please verify all next of kin before proceeding');
-      return;
-    }
-    
-    if (step === 4 && (!formData.suggestedAmount || formData.suggestedAmount <= 0)) {
-      toast.error('Please enter a valid suggested loan amount');
-      return;
-    }
-
-    setStep(step + 1);
-  };
-
-  const prevStep = () => {
-    setStep(step - 1);
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.decision) {
-      toast.error('Please make a final decision');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // If there's no loan but we have a customer, we might need to create a loan first
-      let actualLoanId = loanId;
-      
-      if (!hasLoan && customerId) {
-        // Create a new loan record
-        const { data: newLoan, error: loanError } = await supabase
-          .from('loans')
-          .insert({
-            customer_id: customerId,
-            principal: parseFloat(formData.suggestedAmount),
-            status: 'pending',
-            application_date: new Date().toISOString()
-          })
-          .select()
-          .single();
-          
-        if (loanError) {
-          console.error('Error creating loan:', loanError);
-          throw loanError;
-        }
-        
-        actualLoanId = newLoan.id;
-        setLoan(newLoan);
-        setHasLoan(true);
-        console.log('New loan created:', newLoan);
-      }
-
-      // Insert into LoanProcessing table
-      const { data: processingData, error: processingError } = await supabase
-        .from('loan_processing')
-        .insert({
-          loan_id: actualLoanId,
-          customer_verified: formData.customerVerified,
-          guarantors_verified: guarantors.length > 0 ? formData.guarantorsVerified.every(v => v) : null,
-          next_of_kin_verified: nextOfKin.length > 0 ? formData.nextOfKinVerified.every(v => v) : null,
-          suggested_amount: parseFloat(formData.suggestedAmount),
-          service_fee: formData.serviceFee,
-          decision: formData.decision,
-          comments: formData.comments,
-          processed_by: (await supabase.auth.getUser()).data.user.id
-        })
-        .select();
-
-      if (processingError) {
-        console.error('Error inserting into loan_processing:', processingError);
-        throw processingError;
-      }
-
-      console.log('Loan processing record created:', processingData);
-
-      // Update loan status
-      const { data: updatedLoan, error: loanError } = await supabase
-        .from('loans')
-        .update({ 
-          status: formData.decision,
-          approved_amount: formData.decision === 'approved' ? parseFloat(formData.suggestedAmount) : null
-        })
-        .eq('id', actualLoanId)
-        .select();
-
-      if (loanError) {
-        console.error('Error updating loan:', loanError);
-        throw loanError;
-      }
-
-      console.log('Loan updated:', updatedLoan);
-
-      // If approved, create loan assignment
-      if (formData.decision === 'approved') {
-        const { data: assignmentData, error: assignmentError } = await supabase
-          .from('loan_assignments')
-          .insert({
-            loan_id: actualLoanId,
-            assigned_to: null, // Will be assigned by admin
-            status: 'unassigned'
-          })
-          .select();
-
-        if (assignmentError) {
-          console.error('Error creating loan assignment:', assignmentError);
-          throw assignmentError;
-        }
-
-        console.log('Loan assignment created:', assignmentData);
-      }
-
-      toast.success('Loan processing completed successfully!');
-      console.log('Loan verification process completed successfully');
-      onComplete();
-    } catch (error) {
-      console.error('Error processing loan:', error);
-      toast.error('Error processing loan. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleVerificationChange = (field, value, section = 'customer', index = null) => {
+    setVerificationData(prev => {
+      if (section === 'customer') {
+        return {
+          ...prev,
+          customer: {
+            ...prev.customer,
+            [field]: value
+          }
+        };
+      } else if (section === 'guarantors' && index !== null) {
+        const updatedGuarantors = [...prev.guarantors];
+        updatedGuarantors[index] = {
+          ...updatedGuarantors[index],
+          [field]: value
+        };
+        return {
+          ...prev,
+          guarantors: updatedGuarantors
+        };
+      } else if (section === 'security' || section === 'guarantorSecurity' || section === 'loan') {
+        return {
+          ...prev,
+          [section]: {
+            ...prev[section],
+            [field]: value
+          }
+        };
+      } else {
+        return {
+          ...prev,
+          [field]: value
+        };
+      }
+    });
+  };
+
+  const submitVerification = async () => {
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from('loan_verifications')
+        .insert({
+          customer_id: customerId,
+          verification_data: verificationData,
+          verified_by: (await supabase.auth.getUser()).data.user?.id,
+          status: verificationData.finalDecision
+        });
+
+      if (error) throw error;
+
+      // Update loan with scored amount if approved
+      if (verificationData.finalDecision === 'approved') {
+        const { error: loanError } = await supabase
+          .from('loans')
+          .update({ 
+            scored_amount: verificationData.loan.scoredAmount,
+            status: 'approved'
+          })
+          .eq('customer_id', customerId);
+
+        if (loanError) throw loanError;
+      }
+
+      // Update customer verification status
+      const { error: updateError } = await supabase
+        .from('customers')
+        .update({ 
+          verification_status: verificationData.finalDecision,
+          last_verification_date: new Date().toISOString()
+        })
+        .eq('id', customerId);
+
+      if (updateError) throw updateError;
+
+      toast.success('Verification submitted successfully!');
+      onClose();
+    } catch (error) {
+      console.error('Error submitting verification:', error);
+      toast.error('Error submitting verification');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   if (!customer) {
     return (
-      <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Loan Verification Process</h2>
-        <div className="text-center py-8">
-          <p className="text-lg text-gray-600">Loading customer details...</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <DocumentMagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Customer not found</h3>
+          <p className="mt-1 text-sm text-gray-500">The requested customer details could not be loaded.</p>
         </div>
       </div>
     );
   }
 
   return (
- <div className="max-w-5xl mx-auto p-8 bg-white rounded-xl shadow-lg">
-  {/* Title */}
-  <h2 className="text-3xl font-bold text-center text-blue-700 mb-10 tracking-wide">
-    Loan Verification Process
-  </h2>
-
-  {/* Progress Steps */}
-  <div className="flex justify-between mb-10">
-    {[1, 2, 3, 4, 5].map((stepNum) => (
-      <div key={stepNum} className="flex flex-col items-center">
-        <div
-          className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold shadow-md transition ${
-            step === stepNum
-              ? "bg-blue-600 text-white ring-4 ring-blue-200"
-              : step > stepNum
-              ? "bg-green-500 text-white"
-              : "bg-gray-200 text-gray-600"
-          }`}
-        >
-          {stepNum}
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Loan Application Verification</h1>
+              <p className="text-sm text-gray-600">Comprehensive verification of customer documents and information</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <XCircleIcon className="h-6 w-6" />
+            </button>
+          </div>
         </div>
-        <span className="text-sm mt-2 font-medium text-gray-700">
-          {["Customer", "Guarantors", "Next of Kin", "Assessment", "Decision"][stepNum - 1]}
-        </span>
+
+        {/* Progress Steps */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+          <div className="flex items-center justify-between">
+            {[1, 2, 3, 4, 5, 6].map((stepNumber) => (
+              <div key={stepNumber} className="flex flex-col items-center">
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${
+                    step === stepNumber
+                      ? 'border-blue-600 bg-blue-600 text-white shadow-lg'
+                      : step > stepNumber
+                      ? 'border-green-500 bg-green-500 text-white'
+                      : 'border-gray-300 bg-white text-gray-400'
+                  }`}
+                >
+                  {stepNumber}
+                </div>
+                <span className="text-xs mt-2 font-medium text-gray-700">
+                  {['Customer', 'Guarantors', 'Security', 'Loan', 'Assessment', 'Decision'][stepNumber - 1]}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Step Content */}
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+          {/* Step 1: Customer Information & Documents */}
+          {step === 1 && (
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-6 border-b pb-2">Customer Verification</h2>
+                
+                {/* Customer Profile Header */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-8">
+                  <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                    {/* Passport Photo */}
+                    <div className="flex flex-col items-center">
+                      <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-xl">
+                        {customer.passport_url ? (
+                          <img
+                            src={customer.passport_url}
+                            alt="Passport"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                            <UserCircleIcon className="h-16 w-16 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mt-3">
+                        {customer.Firstname} {customer.Middlename} {customer.Surname}
+                      </h3>
+                      <p className="text-sm text-gray-600">Customer</p>
+                    </div>
+
+                    {/* Personal Information */}
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <IdentificationIcon className="h-5 w-5 text-blue-600 mr-2" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-600">ID Number</p>
+                            <p className="text-lg font-bold text-gray-900">{customer.id_number || 'Not provided'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium text-gray-600">Phone: </span>
+                          <span className="text-sm text-gray-900 ml-2">{customer.mobile}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Date of Birth</p>
+                          <p className="text-sm text-gray-900">{customer.date_of_birth || 'Not provided'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Occupation</p>
+                          <p className="text-sm text-gray-900">{customer.occupation || 'Not provided'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ID Documents Section */}
+                <div className="bg-white border rounded-xl p-6 mb-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                      <IdentificationIcon className="h-6 w-6 text-blue-600 mr-2" />
+                      ID Document Verification
+                    </h3>
+                    <div className="flex items-center space-x-4">
+                      <span className="text-sm font-medium text-gray-700">Reference ID: </span>
+                      <span className="text-lg font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-md">
+                        {customer.id_number || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* ID Images */}
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">ID Front</h4>
+                        {customer.id_front_url ? (
+                          <div className="border-2 border-gray-200 rounded-lg overflow-hidden shadow-md bg-gray-50">
+                            <img
+                              src={customer.id_front_url}
+                              alt="ID Front"
+                              className="w-full h-64 object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg h-64 flex flex-col items-center justify-center bg-gray-50">
+                            <IdentificationIcon className="h-12 w-12 text-gray-400 mb-2" />
+                            <span className="text-gray-500">No ID front image available</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-center">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3">ID Back</h4>
+                        {customer.id_back_url ? (
+                          <div className="border-2 border-gray-200 rounded-lg overflow-hidden shadow-md bg-gray-50">
+                            <img
+                              src={customer.id_back_url}
+                              alt="ID Back"
+                              className="w-full h-64 object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg h-64 flex flex-col items-center justify-center bg-gray-50">
+                            <IdentificationIcon className="h-12 w-12 text-gray-400 mb-2" />
+                            <span className="text-gray-500">No ID back image available</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Verification Controls */}
+                    <div className="space-y-6">
+                      <div className="bg-blue-50 p-5 rounded-lg border border-blue-100">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="font-medium text-blue-900">ID Verification</h4>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={verificationData.customer.idVerified}
+                              onChange={(e) => handleVerificationChange('idVerified', e.target.checked, 'customer')}
+                              className="sr-only"
+                            />
+                            <div className={`relative w-12 h-6 bg-gray-300 rounded-full transition-colors ${verificationData.customer.idVerified ? 'bg-green-500' : ''}`}>
+                              <div className={`absolute top-0.5 left-0.5 bg-white border rounded-full w-5 h-5 transition-transform ${verificationData.customer.idVerified ? 'transform translate-x-6' : ''}`}></div>
+                            </div>
+                            <span className="ml-3 text-sm font-medium text-gray-700">
+                              {verificationData.customer.idVerified ? 'Verified' : 'Verify'}
+                            </span>
+                          </label>
+                        </div>
+
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            ID Verification Comment
+                          </label>
+                          <textarea
+                            value={verificationData.customer.comment}
+                            onChange={(e) => handleVerificationChange('comment', e.target.value, 'customer')}
+                            placeholder="Add comments about ID verification, document quality, or issues found..."
+                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            rows={4}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Documents */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                  {/* Passport Photo */}
+                  <div className="bg-white border rounded-xl p-5">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Passport Photo</h3>
+                    <div className="flex flex-col items-center">
+                      <div className="w-40 h-40 rounded-full overflow-hidden border-4 border-gray-100 shadow-md mb-4">
+                        {customer.passport_url ? (
+                          <img
+                            src={customer.passport_url}
+                            alt="Passport"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                            <UserCircleIcon className="h-16 w-16 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Residence Verification */}
+                  <div className="bg-white border rounded-xl p-5">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Residence Verification</h3>
+                    <div className="flex flex-col items-center">
+                      {customer.house_image_url ? (
+                        <div className="w-full h-48 rounded-lg overflow-hidden border border-gray-200 shadow-md">
+                          <img
+                            src={customer.house_image_url}
+                            alt="House"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-full h-48 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-gray-50">
+                          <HomeIcon className="h-12 w-12 text-gray-400 mb-2" />
+                          <span className="text-gray-500">No house image available</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phone Verification */}
+                <div className="bg-white border rounded-xl p-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Phone Verification</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-gray-700">Mobile Number</p>
+                        <p className="text-2xl font-bold text-blue-700">{customer.mobile}</p>
+                      </div>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={verificationData.customer.phoneVerified}
+                          onChange={(e) => handleVerificationChange('phoneVerified', e.target.checked, 'customer')}
+                          className="sr-only"
+                        />
+                        <div className={`relative w-12 h-6 bg-gray-300 rounded-full transition-colors ${verificationData.customer.phoneVerified ? 'bg-green-500' : ''}`}>
+                          <div className={`absolute top-0.5 left-0.5 bg-white border rounded-full w-5 h-5 transition-transform ${verificationData.customer.phoneVerified ? 'transform translate-x-6' : ''}`}></div>
+                        </div>
+                        <span className="ml-3 text-sm font-medium text-gray-700">
+                          {verificationData.customer.phoneVerified ? 'Verified' : 'Verify'}
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Guarantors */}
+          {step === 2 && (
+            <div className="space-y-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6 border-b pb-2">Guarantor Verification</h2>
+              
+              {guarantors.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-xl">
+                  <UserGroupIcon className="mx-auto h-16 w-16 text-gray-400" />
+                  <h3 className="mt-4 text-lg font-medium text-gray-900">No Guarantors</h3>
+                  <p className="mt-2 text-sm text-gray-600">This customer has no guarantors listed.</p>
+                </div>
+              ) : (
+                guarantors.map((guarantor, index) => (
+                  <div key={guarantor.id} className="bg-white border rounded-xl p-6 mb-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                      <UserGroupIcon className="h-5 w-5 text-blue-600 mr-2" />
+                      Guarantor {index + 1}
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center py-2 border-b">
+                          <span className="font-medium text-gray-700">Name:</span>
+                          <span className="text-gray-900">{guarantor.Firstname} {guarantor.Middlename} {guarantor.Surname}</span>
+                        </div>
+                        <div className="flex justify-between items-center py-2 border-b">
+  <span className="font-medium text-gray-700">ID Number:</span>
+  <span className="text-gray-900">{guarantor.id_number || 'N/A'}</span>
+</div>
+<div className="flex justify-between items-center py-2 border-b">
+  <span className="font-medium text-gray-700">Phone:</span>
+  <span className="text-gray-900">{guarantor.mobile}</span>
+</div>
+</div>
+
+<div className="space-y-3">
+  <div className="flex justify-between items-center py-2 border-b">
+    <span className="font-medium text-gray-700">Relationship:</span>
+    <span className="text-gray-900">{guarantor.relationship || 'N/A'}</span>
+  </div>
+  <div className="flex justify-between items-center py-2 border-b">
+    <span className="font-medium text-gray-700">Occupation:</span>
+    <span className="text-gray-900">{guarantor.occupation || 'N/A'}</span>
+  </div>
+</div>
+</div>
+
+{/* Guarantor Documents */}
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  {guarantor.passport_url && (
+    <div className="text-center">
+      <h4 className="text-sm font-medium text-gray-700 mb-2">Passport Photo</h4>
+      <img
+        src={guarantor.passport_url}
+        alt="Guarantor Passport"
+        className="w-full h-48 object-cover rounded-lg border border-gray-200"
+      />
+    </div>
+  )}
+  {guarantor.id_front_url && (
+    <div className="text-center">
+      <h4 className="text-sm font-medium text-gray-700 mb-2">ID Front</h4>
+      <img
+        src={guarantor.id_front_url}
+        alt="Guarantor ID Front"
+        className="w-full h-48 object-cover rounded-lg border border-gray-200"
+      />
+    </div>
+  )}
+  {guarantor.id_back_url && (
+    <div className="text-center">
+      <h4 className="text-sm font-medium text-gray-700 mb-2">ID Back</h4>
+      <img
+        src={guarantor.id_back_url}
+        alt="Guarantor ID Back"
+        className="w-full h-48 object-cover rounded-lg border border-gray-200"
+      />
+    </div>
+  )}
+</div>
+
+<div className="bg-gray-50 p-5 rounded-lg">
+  <div className="flex items-center justify-between mb-4">
+    <h4 className="font-medium text-gray-900">Guarantor Verification</h4>
+    <label className="flex items-center cursor-pointer">
+      <input
+        type="checkbox"
+        checked={verificationData.guarantors[index]?.idVerified || false}
+        onChange={(e) => handleVerificationChange('idVerified', e.target.checked, 'guarantors', index)}
+        className="sr-only"
+      />
+      <div className={`relative w-12 h-6 bg-gray-300 rounded-full transition-colors ${verificationData.guarantors[index]?.idVerified ? 'bg-green-500' : ''}`}>
+        <div className={`absolute top-0.5 left-0.5 bg-white border rounded-full w-5 h-5 transition-transform ${verificationData.guarantors[index]?.idVerified ? 'transform translate-x-6' : ''}`}></div>
       </div>
-    ))}
+      <span className="ml-3 text-sm font-medium text-gray-700">
+        {verificationData.guarantors[index]?.idVerified ? 'Verified' : 'Verify'}
+      </span>
+    </label>
   </div>
 
-  {/* Step Content */}
-  <div className="mb-8">
-    {/* Step 1: Customer */}
-    {step === 1 && (
-      <div>
-        <h3 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2">
-          Customer Verification
-        </h3>
-
-        {/* Personal Info */}
-        <div className="grid grid-cols-2 gap-6 text-gray-700">
-          <div className="space-y-3">
-            <p><span className="font-medium">Name:</span> {customer.prefix} {customer.Firstname} {customer.Middlename} {customer.Surname}</p>
-            <p><span className="font-medium">ID Number:</span> {customer.id_number || "N/A"}</p>
-            <p><span className="font-medium">Mobile:</span> {customer.mobile || "N/A"}</p>
-            <p><span className="font-medium">Date of Birth:</span> {customer.date_of_birth || "N/A"}</p>
-                        <p><span className="font-medium">Gender:</span> {customer.gender || "N/A"}</p>
-
-          </div>
-          <div className="space-y-3">
-            <p><span className="font-medium">Marital Status:</span> {customer.marital_status || "N/A"}</p>
-            <p><span className="font-medium">Residence Status:</span> {customer.residence_status || "N/A"}</p>
-            <p><span className="font-medium">Postal Address:</span> {customer.postal_address || "N/A"}</p>
-                        <p><span className="font-medium">Town/City:</span> {customer.town || "N/A"}</p>
-                                    <p><span className="font-medium">county:</span> {customer.county || "N/A"}</p>
-
-
-          </div>
-        </div>
-
-        {/* Business Info */}
-        <div className="mt-8">
-          <h4 className="text-xl font-semibold text-gray-800 mb-4">Business Information</h4>
-          <div className="grid grid-cols-2 gap-6 text-gray-700">
-            <div className="space-y-2">
-              <p><span className="font-medium">Business Name:</span> {customer.business_name || "N/A"}</p>
-              <p><span className="font-medium">Year Established:</span> {customer.year_established || "N/A"}</p>
-              <p><span className="font-medium">Business Location:</span> {customer.business_location || "N/A"}</p>
-            </div>
-            <div className="space-y-2">
-              <p><span className="font-medium">Road:</span> {customer.road || "N/A"}</p>
-              <p><span className="font-medium">Landmark:</span> {customer.landmark || "N/A"}</p>
-              <p><span className="font-medium">Local Authority License:</span> {customer.has_local_authority_license ? "Yes" : "No"}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Security Items */}
-        {securityItems.length > 0 && (
-          <div className="mt-8">
-            <h4 className="text-xl font-semibold text-gray-800 mb-4">Security Items</h4>
-            <table className="w-full text-sm border rounded-lg overflow-hidden shadow-sm">
-              <thead className="bg-gray-100 text-gray-700">
-                <tr>
-                  <th className="px-4 py-2 border text-left">#</th>
-                  <th className="px-4 py-2 border text-left">Item</th>
-                  <th className="px-4 py-2 border text-left">Description</th>
-                  <th className="px-4 py-2 border text-left">Identification</th>
-                  <th className="px-4 py-2 border text-left">Value (KES)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {securityItems.map((item, index) => (
-                  <tr key={index} className="odd:bg-white even:bg-gray-50">
-                    <td className="px-4 py-2 border">{index + 1}</td>
-                    <td className="px-4 py-2 border">{item.item || "N/A"}</td>
-                    <td className="px-4 py-2 border">{item.description || "N/A"}</td>
-                    <td className="px-4 py-2 border">{item.identification || "N/A"}</td>
-                    <td className="px-4 py-2 border">{item.value ? `KES ${item.value}` : "N/A"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <label className="flex items-center mt-6 text-gray-700">
-          <input
-            type="checkbox"
-            name="customerVerified"
-            checked={formData.customerVerified}
-            onChange={handleInputChange}
-            className="mr-2 w-5 h-5 text-blue-600 focus:ring focus:ring-blue-300"
-          />
-          <span className="font-medium">I verify that the customer details are correct</span>
-        </label>
-      </div>
-    )}
-
-  
-  {/* Step 2: Guarantors */}
-{step === 2 && (
   <div>
-    <h3 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2">
-      Guarantor Verification
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Verification Comment
+    </label>
+    <textarea
+      value={verificationData.guarantors[index]?.comment || ''}
+      onChange={(e) => handleVerificationChange('comment', e.target.value, 'guarantors', index)}
+      placeholder="Add comments about this guarantor's verification..."
+      className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+      rows={3}
+    />
+  </div>
+</div>
+</div>
+))
+)}
+</div>
+)}
+
+{/* Step 3: Security Items */}
+{step === 3 && (
+<div className="space-y-8">
+  <h2 className="text-xl font-semibold text-gray-900 mb-6 border-b pb-2">Security Verification</h2>
+  
+  {/* Customer Security */}
+  <div className="bg-white border rounded-xl p-6 mb-8">
+    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+      <ShieldCheckIcon className="h-5 w-5 text-blue-600 mr-2" />
+      Customer Security Items
     </h3>
 
-    {guarantors.length > 0 ? (
-      guarantors.map((guarantor, index) => {
-        const guarantorSecurity = guarantorSecurityItems.filter(
-          (item) => item.guarantor_id === guarantor.id
-        );
-
-        return (
-          <div key={guarantor.id} className="mb-6 p-6 border rounded-lg bg-gray-50">
-            <h4 className="text-xl font-semibold text-gray-800 mb-4">
-              Guarantor {index + 1}
-            </h4>
-
-            {/* Personal Info Grid */}
-            <div className="grid grid-cols-2 gap-6 text-gray-700 mb-4">
-              <div className="space-y-2">
-                <p><span className="font-medium">Name:</span> {guarantor.prefix} {guarantor.Firstname} {guarantor.Middlename} {guarantor.Surname}</p>
-                <p><span className="font-medium">Mobile:</span> {guarantor.mobile || "N/A"}</p>
-                <p><span className="font-medium">ID Number:</span> {guarantor.id_number || "N/A"}</p>
-                                <p><span className="font-medium">Gender:</span> {guarantor.gender || "N/A"}</p>
-                                                <p><span className="font-medium">Relationship:</span> {guarantor.relationship || "N/A"}</p>
-
-
+    {securityItems.length === 0 ? (
+      <div className="text-center py-8 bg-gray-50 rounded-lg">
+        <ShieldCheckIcon className="mx-auto h-12 w-12 text-gray-400" />
+        <p className="mt-2 text-sm text-gray-600">No security items provided by customer</p>
+      </div>
+    ) : (
+      <div className="space-y-4">
+        {securityItems.map((item, index) => (
+          <div key={index} className="border rounded-lg p-4 bg-gray-50">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Item</p>
+                <p className="text-gray-900">{item.item || 'N/A'}</p>
               </div>
-              <div className="space-y-2">
-                <p><span className="font-medium">Occupation:</span> {guarantor.occupation || "N/A"}</p>
-                <p><span className="font-medium">Postal Address:</span> {guarantor.postal_address || "N/A"}</p>
-                                <p><span className="font-medium">Code:</span> {guarantor.code || "N/A"}</p>
-
-                                <p><span className="font-medium">Town/City:</span> {guarantor.town || "N/A"}</p>
-                                                <p><span className="font-medium">County:</span> {guarantor.county|| "N/A"}</p>
-
+              <div>
+                <p className="text-sm font-medium text-gray-700">Value</p>
+                <p className="text-gray-900">KES {item.value || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700">Identification</p>
+                <p className="text-gray-900">{item.identification || 'N/A'}</p>
               </div>
             </div>
-
-            {/* Security Table */}
-            {guarantorSecurity.length > 0 && (
-              <div className="mt-6">
-                <h5 className="text-lg font-semibold text-gray-800 mb-3">
-                  Security Provided
-                </h5>
-                <table className="w-full text-sm border rounded-lg overflow-hidden shadow-sm">
-                  <thead className="bg-gray-100 text-gray-700">
-                    <tr>
-                      <th className="px-4 py-2 border text-left">#</th>
-                      <th className="px-4 py-2 border text-left">Item</th>
-                      <th className="px-4 py-2 border text-left">Description</th>
-                      <th className="px-4 py-2 border text-left">Identification</th>
-                      <th className="px-4 py-2 border text-left">Value (KES)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {guarantorSecurity.map((item, idx) => (
-                      <tr key={idx} className="odd:bg-white even:bg-gray-50">
-                        <td className="px-4 py-2 border">{idx + 1}</td>
-                        <td className="px-4 py-2 border">{item.item || "N/A"}</td>
-                        <td className="px-4 py-2 border">{item.description || "N/A"}</td>
-                        <td className="px-4 py-2 border">{item.identification || "N/A"}</td>
-                        <td className="px-4 py-2 border">{item.estimated_market_value ? `KES ${item.estimated_market_value}` : "N/A"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {item.description && (
+              <div className="mt-2">
+                <p className="text-sm font-medium text-gray-700">Description</p>
+                <p className="text-gray-900 text-sm">{item.description}</p>
               </div>
             )}
-
-
-              {/* Verify Checkbox */}
-            <label className="flex items-center mt-4 text-gray-700">
-              <input
-                type="checkbox"
-                checked={formData.guarantorsVerified[index] || false}
-                onChange={(e) => {
-                  const updated = [...formData.guarantorsVerified];
-                  updated[index] = e.target.checked;
-                  setFormData((prev) => ({ ...prev, guarantorsVerified: updated }));
-                }}
-                className="mr-2 w-5 h-5 text-blue-600 focus:ring focus:ring-blue-300"
-              />
-              <span className="font-medium">
-                I verify that this guarantor’s details are correct
-              </span>
-            </label>
           </div>
-          
-        );
-      })
-    ) : (
-      <p className="text-gray-500 text-center py-4">
-        No guarantors found for this customer.
-      </p>
+        ))}
+      </div>
     )}
 
-  
+    <div className="mt-6 bg-blue-50 p-5 rounded-lg">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-medium text-blue-900">Security Verification</h4>
+        <label className="flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={verificationData.security.verified}
+            onChange={(e) => handleVerificationChange('verified', e.target.checked, 'security')}
+            className="sr-only"
+          />
+          <div className={`relative w-12 h-6 bg-gray-300 rounded-full transition-colors ${verificationData.security.verified ? 'bg-green-500' : ''}`}>
+            <div className={`absolute top-0.5 left-0.5 bg-white border rounded-full w-5 h-5 transition-transform ${verificationData.security.verified ? 'transform translate-x-6' : ''}`}></div>
+          </div>
+          <span className="ml-3 text-sm font-medium text-gray-700">
+            {verificationData.security.verified ? 'Verified' : 'Verify'}
+          </span>
+        </label>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Security Comment
+        </label>
+        <textarea
+          value={verificationData.security.comment}
+          onChange={(e) => handleVerificationChange('comment', e.target.value, 'security')}
+          placeholder="Add comments about the security items..."
+          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+          rows={3}
+        />
+      </div>
+    </div>
   </div>
-)}
 
-
-  {/* Step 3: Next of Kin */}
-{step === 3 && (
-  <div>
-    <h3 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2">
-      Next of Kin Verification
+  {/* Guarantor Security */}
+  <div className="bg-white border rounded-xl p-6">
+    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+      <ShieldCheckIcon className="h-5 w-5 text-blue-600 mr-2" />
+      Guarantor Security Items
     </h3>
 
-    {nextOfKin.length > 0 ? (
-      nextOfKin.map((kin, index) => (
-        <div key={kin.id} className="mb-6 p-6 border rounded-lg bg-gray-50">
-          <h4 className="text-xl font-semibold text-gray-800 mb-4">
-            Next of Kin {index + 1}
-          </h4>
-
-          {/* Personal Info Grid */}
-          <div className="grid grid-cols-2 gap-6 text-gray-700">
-            <div className="space-y-2">
-              <p><span className="font-medium">Name:</span> {kin.Firstname} {kin.Middlename} {kin.Surname}</p>
-              <p><span className="font-medium">Mobile:</span> {kin.mobile || "N/A"}</p>
-            </div>
-            <div className="space-y-2">
-              <p><span className="font-medium">ID Number:</span> {kin.id_number || "N/A"}</p>
-              <p><span className="font-medium">Relationship:</span> {kin.relationship || "N/A"}</p>
-            </div>
-          </div>
-             {/* Verify Checkbox */}
-          <label className="flex items-center mt-4 text-gray-700">
-            <input
-              type="checkbox"
-              checked={formData.nextOfKinVerified[index] || false}
-              onChange={(e) => {
-                const updated = [...formData.nextOfKinVerified];
-                updated[index] = e.target.checked;
-                setFormData((prev) => ({ ...prev, nextOfKinVerified: updated }));
-              }}
-              className="mr-2 w-5 h-5 text-blue-600 focus:ring focus:ring-blue-300"
-            />
-            <span className="font-medium">
-              I verify that this next of kin’s details are correct
-            </span>
-          </label>
-        </div>
-      ))
+    {guarantorSecurityItems.length === 0 ? (
+      <div className="text-center py-8 bg-gray-50 rounded-lg">
+        <ShieldCheckIcon className="mx-auto h-12 w-12 text-gray-400" />
+        <p className="mt-2 text-sm text-gray-600">No security items provided by guarantors</p>
+      </div>
     ) : (
-      <p className="text-gray-500 text-center py-4">
-        No next of kin found for this customer.
-      </p>
+      <div className="space-y-4">
+        {guarantorSecurityItems.map((item, index) => (
+          <div key={index} className="border rounded-lg p-4 bg-gray-50">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Item</p>
+                <p className="text-gray-900">{item.item || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700">Value</p>
+                <p className="text-gray-900">KES {item.estimated_market_value || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700">Identification</p>
+                <p className="text-gray-900">{item.identification || 'N/A'}</p>
+              </div>
+            </div>
+            {item.description && (
+              <div className="mt-2">
+                <p className="text-sm font-medium text-gray-700">Description</p>
+                <p className="text-gray-900 text-sm">{item.description}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     )}
-    
+
+    <div className="mt-6 bg-blue-50 p-5 rounded-lg">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="font-medium text-blue-900">Guarantor Security Verification</h4>
+        <label className="flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            checked={verificationData.guarantorSecurity.verified}
+            onChange={(e) => handleVerificationChange('verified', e.target.checked, 'guarantorSecurity')}
+            className="sr-only"
+          />
+          <div className={`relative w-12 h-6 bg-gray-300 rounded-full transition-colors ${verificationData.guarantorSecurity.verified ? 'bg-green-500' : ''}`}>
+            <div className={`absolute top-0.5 left-0.5 bg-white border rounded-full w-5 h-5 transition-transform ${verificationData.guarantorSecurity.verified ? 'transform translate-x-6' : ''}`}></div>
+          </div>
+          <span className="ml-3 text-sm font-medium text-gray-700">
+            {verificationData.guarantorSecurity.verified ? 'Verified' : 'Verify'}
+          </span>
+        </label>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Guarantor Security Comment
+        </label>
+        <textarea
+          value={verificationData.guarantorSecurity.comment}
+          onChange={(e) => handleVerificationChange('comment', e.target.value, 'guarantorSecurity')}
+          placeholder="Add comments about the guarantor security items..."
+          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+          rows={3}
+        />
+      </div>
+    </div>
   </div>
+</div>
 )}
 
+{/* Step 4: Loan Information */}
+{step === 4 && (
+<div className="space-y-8">
+  <h2 className="text-xl font-semibold text-gray-900 mb-6 border-b pb-2">Loan Information</h2>
+  
+  <div className="bg-white border rounded-xl p-6">
+    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+      <CurrencyDollarIcon className="h-5 w-5 text-blue-600 mr-2" />
+      Loan Details
+    </h3>
 
-    {/* Step 4: Loan Assessment */}
-    {step === 4 && (
-      <div>
-        <h3 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2">
-          Loan Assessment
-        </h3>
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Suggested Loan Amount (KES)</label>
-            <input
-              type="number"
-              name="suggestedAmount"
-              value={formData.suggestedAmount}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded-lg focus:ring focus:ring-blue-200"
-              placeholder="Enter amount"
-            />
-          </div>
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Service Fee (KES)</label>
-            <input
-              type="text"
-              value={formData.serviceFee.toLocaleString()}
-              readOnly
-              className="w-full p-2 border rounded-lg bg-gray-100"
-            />
-          </div>
-        </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div className="bg-blue-50 p-4 rounded-lg">
+        <h4 className="font-medium text-blue-900 mb-2">Prequalified Amount</h4>
+        <p className="text-2xl font-bold text-blue-700">
+          KES {verificationData.loan.prequalifiedAmount?.toLocaleString() || '0'}
+        </p>
+        <p className="text-sm text-gray-600 mt-1">Amount determined during initial assessment</p>
       </div>
-    )}
 
-    {/* Step 5: Final Decision */}
-    {step === 5 && (
-      <div>
-        <h3 className="text-2xl font-semibold text-gray-800 mb-6 border-b pb-2">
-          Final Decision
-        </h3>
-        <div className="mb-4">
-          <label className="block text-gray-700 font-medium mb-2">Decision</label>
-          <select
-            name="decision"
-            value={formData.decision}
-            onChange={handleInputChange}
-            className="w-full p-2 border rounded-lg focus:ring focus:ring-blue-200"
-          >
-            <option value="">Select decision</option>
-            <option value="approved">Approve</option>
-            <option value="pending">Pending</option>
-            <option value="rejected">Reject</option>
-          </select>
-        </div>
-        <div className="mb-4">
-          <label className="block text-gray-700 font-medium mb-2">Comments</label>
-          <textarea
-            name="comments"
-            value={formData.comments}
-            onChange={handleInputChange}
-            className="w-full p-2 border rounded-lg focus:ring focus:ring-blue-200"
-            rows="4"
-            placeholder="Enter comments about your decision"
+      <div className="bg-green-50 p-4 rounded-lg">
+        <h4 className="font-medium text-green-900 mb-2">Scored Amount</h4>
+        <div className="flex items-center">
+          <span className="text-2xl font-bold text-green-700 mr-2">KES</span>
+          <input
+            type="number"
+            value={verificationData.loan.scoredAmount}
+            onChange={(e) => handleVerificationChange('scoredAmount', parseFloat(e.target.value) || 0, 'loan')}
+            className="text-2xl font-bold text-green-700 bg-transparent border-b-2 border-green-300 focus:outline-none focus:border-green-500 w-full"
+            placeholder="Enter scored amount"
           />
         </div>
+        <p className="text-sm text-gray-600 mt-1">Final amount after verification</p>
       </div>
-    )}
-  </div>
+    </div>
 
-  {/* Navigation Buttons */}
-  <div className="flex justify-between items-center mt-8">
-    <button
-      onClick={prevStep}
-      disabled={step === 1}
-      className={`px-6 py-2 rounded-lg font-medium shadow-sm transition ${
-        step === 1
-          ? "bg-gray-300 cursor-not-allowed text-gray-600"
-          : "bg-gray-500 text-white hover:bg-gray-600"
-      }`}
-    >
-      Previous
-    </button>
+    <div className="bg-gray-50 p-5 rounded-lg">
+      <h4 className="font-medium text-gray-900 mb-3">Loan Assessment Comments</h4>
+      <textarea
+        value={verificationData.loan.comment}
+        onChange={(e) => handleVerificationChange('comment', e.target.value, 'loan')}
+        placeholder="Add comments about the loan assessment, amount justification, or any adjustments..."
+        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        rows={4}
+      />
+    </div>
 
-    {step < 5 ? (
-      <button
-        onClick={nextStep}
-        className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium shadow-sm hover:bg-blue-700 transition"
-      >
-        Next
-      </button>
-    ) : (
-      <button
-        onClick={handleSubmit}
-        disabled={loading}
-        className={`px-6 py-2 rounded-lg font-medium shadow-sm transition ${
-          loading
-            ? "bg-gray-400 cursor-not-allowed text-gray-100"
-            : "bg-green-600 text-white hover:bg-green-700"
-        }`}
-      >
-        {loading ? "Processing..." : "Submit Decision"}
-      </button>
+    {loanDetails && (
+      <div className="mt-6 bg-yellow-50 p-4 rounded-lg">
+        <h4 className="font-medium text-yellow-900 mb-2">Loan Details</h4>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="font-medium">Application Date:</span>
+            <span className="ml-2">{new Date(loanDetails.application_date).toLocaleDateString()}</span>
+          </div>
+          <div>
+            <span className="font-medium">Status:</span>
+            <span className="ml-2 capitalize">{loanDetails.status}</span>
+          </div>
+          {loanDetails.interest_rate && (
+            <div>
+              <span className="font-medium">Interest Rate:</span>
+              <span className="ml-2">{loanDetails.interest_rate}%</span>
+            </div>
+          )}
+          {loanDetails.term && (
+            <div>
+              <span className="font-medium">Term:</span>
+              <span className="ml-2">{loanDetails.term} months</span>
+            </div>
+          )}
+        </div>
+      </div>
     )}
   </div>
 </div>
+)}
 
+{/* Step 5: Assessment */}
+{step === 5 && (
+<div className="space-y-8">
+  <h2 className="text-xl font-semibold text-gray-900 mb-6 border-b pb-2">Risk Assessment</h2>
+  
+  <div className="bg-white border rounded-xl p-6 mb-6">
+    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+      <ClipboardDocumentCheckIcon className="h-5 w-5 text-blue-600 mr-2" />
+      Overall Assessment
+    </h3>
 
-  );
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div className="bg-blue-50 p-4 rounded-lg">
+        <h4 className="font-medium text-blue-900 mb-3">Verification Summary</h4>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">Customer ID:</span>
+            <span className={`text-sm font-medium ${verificationData.customer.idVerified ? 'text-green-600' : 'text-red-600'}`}>
+              {verificationData.customer.idVerified ? 'Verified' : 'Not Verified'}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">Customer Phone:</span>
+            <span className={`text-sm font-medium ${verificationData.customer.phoneVerified ? 'text-green-600' : 'text-red-600'}`}>
+              {verificationData.customer.phoneVerified ? 'Verified' : 'Not Verified'}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">Guarantors:</span>
+            <span className={`text-sm font-medium ${verificationData.guarantors.every(g => g.idVerified) ? 'text-green-600' : 'text-red-600'}`}>
+              {verificationData.guarantors.every(g => g.idVerified) ? 'All Verified' : 'Needs Attention'}
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">Security Items:</span>
+            <span className={`text-sm font-medium ${verificationData.security.verified ? 'text-green-600' : 'text-red-600'}`}>
+              {verificationData.security.verified ? 'Adequate' : 'Inadequate'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-green-50 p-4 rounded-lg">
+        <h4 className="font-medium text-green-900 mb-3">Risk Rating</h4>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">Documentation:</span>
+            <span className="text-sm font-medium text-yellow-600">Moderate</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">Collateral:</span>
+            <span className="text-sm font-medium text-green-600">Good</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-700">Customer History:</span>
+            <span className="text-sm font-medium text-gray-600">New Customer</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-gray-50 p-5 rounded-lg">
+      <h4 className="font-medium text-gray-900 mb-3">Assessment Notes</h4>
+      <textarea
+        placeholder="Add your overall assessment notes and observations..."
+        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        rows={5}
+      />
+    </div>
+  </div>
+</div>
+)}
+
+{/* Step 6: Final Decision */}
+{step === 6 && (
+<div className="space-y-8">
+  <h2 className="text-xl font-semibold text-gray-900 mb-6 border-b pb-2">Final Decision</h2>
+  
+  <div className="bg-white border rounded-xl p-6">
+    <h3 className="text-lg font-medium text-gray-900 mb-4">Verification Outcome</h3>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Final Decision
+        </label>
+        <select
+          value={verificationData.finalDecision}
+          onChange={(e) => handleVerificationChange('finalDecision', e.target.value)}
+          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="">Select decision</option>
+          <option value="approved">Approve</option>
+          <option value="rejected">Reject</option>
+          <option value="pending">Request More Information</option>
+          <option value="referred">Refer to Senior Manager</option>
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Recommended Amount
+        </label>
+        <div className="flex items-center">
+          <span className="text-2xl font-bold text-gray-700 mr-2">KES</span>
+          <input
+            type="number"
+            value={verificationData.loan.scoredAmount}
+            onChange={(e) => handleVerificationChange('scoredAmount', parseFloat(e.target.value) || 0, 'loan')}
+            className="text-2xl font-bold text-gray-700 bg-transparent border-b-2 border-gray-300 focus:outline-none focus:border-blue-500 w-full"
+            placeholder="Enter amount"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div className="mb-6">
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Overall Comments
+      </label>
+      <textarea
+        value={verificationData.overallComment}
+        onChange={(e) => handleVerificationChange('overallComment', e.target.value)}
+        placeholder="Provide final comments and notes for the relationship officer..."
+        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        rows={6}
+      />
+    </div>
+
+    <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+      <h4 className="font-medium text-yellow-800 mb-2">Verification Summary</h4>
+      <ul className="text-sm text-yellow-700 space-y-1">
+        <li className="flex items-center">
+          {verificationData.customer.idVerified ? 
+            <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2" /> : 
+            <XCircleIcon className="h-4 w-4 text-red-500 mr-2" />
+          }
+          Customer ID: {verificationData.customer.idVerified ? 'Verified' : 'Not Verified'}
+        </li>
+        <li className="flex items-center">
+          {verificationData.customer.phoneVerified ? 
+            <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2" /> : 
+            <XCircleIcon className="h-4 w-4 text-red-500 mr-2" />
+          }
+          Customer Phone: {verificationData.customer.phoneVerified ? 'Verified' : 'Not Verified'}
+        </li>
+        <li className="flex items-center">
+          {verificationData.security.verified ? 
+            <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2" /> : 
+            <XCircleIcon className="h-4 w-4 text-red-500 mr-2" />
+          }
+          Security: {verificationData.security.verified ? 'Adequate' : 'Inadequate'}
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+)}
+</div>
+
+{/* Navigation Buttons */}
+<div className="bg-white rounded-xl shadow-md p-6 flex justify-between">
+  <button
+    onClick={() => setStep(step - 1)}
+    disabled={step === 1}
+    className={`flex items-center px-5 py-2.5 rounded-lg transition-colors ${step === 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+  >
+    <ChevronLeftIcon className="h-5 w-5 mr-2" />
+    Previous
+  </button>
+  
+  {step < 6 ? (
+    <button
+      onClick={() => setStep(step + 1)}
+      className="flex items-center px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+    >
+      Next
+      <ChevronRightIcon className="h-5 w-5 ml-2" />
+    </button>
+  ) : (
+    <button
+      onClick={submitVerification}
+      disabled={loading || !verificationData.finalDecision}
+      className={`px-5 py-2.5 rounded-lg transition-colors ${!verificationData.finalDecision || loading ? 'bg-gray-400 text-gray-200 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
+    >
+      {loading ? 'Submitting...' : 'Submit Verification'}
+    </button>
+  )}
+</div>
+</div>
+</div>
+);
 };
 
 export default LoanVerificationForm;

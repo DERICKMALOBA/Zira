@@ -4,7 +4,6 @@ import {
   Home,
   FileText,
   Users,
-  PhoneCall,
   ClipboardList,
   CheckCircle,
   BarChart3,
@@ -35,15 +34,15 @@ const OfficerSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       noChildren: true, // direct NavLink
     },
     {
-      name: 'Customer Management',
+      name: 'Customer',
       href: '/officer/customers',
       icon: Users,
       color: 'text-orange-400',
       bgColor: 'bg-orange-400/10',
       children: [
         { name: 'View Customers', href: '/officer/customers', icon: Users },
-        { name: 'New Applications', href: '/officer/customers/applications', icon: FileText },
-        { name: 'Pending Verifications', href: '/officer/customers/verifications', icon: ClipboardList },
+        { name: 'Approval Pending', href: '/officer/customers/applications', icon: FileText },
+        { name: 'Pending Amendments', href: '/officer/customers/verifications', icon: ClipboardList },
       ],
     },
     {

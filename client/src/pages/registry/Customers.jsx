@@ -11,7 +11,6 @@ import {
 import { supabase } from "../../supabaseClient";
 import CustomerDetailsModal from "../../relationship-officer/components/CustomerDetailsModal.jsx";
 import LoanVerificationForm from "../../loan/LoanVerificationForm.jsx";
-import AddCustomer from "../../relationship-officer/components/AddCustomer.jsx";
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -20,7 +19,6 @@ const Customers = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showForm, setShowForm] = useState(false);
-   const [showAddCustomer, setShowAddCustomer] = useState(false);
 
   // Fetch customers from Supabase
   const fetchCustomers = async () => {
@@ -32,7 +30,7 @@ const Customers = () => {
         .select(
           `
         *,
-        loans ( id, principal, product, duration_weeks, processing_fee, registration_fee, interest_rate, created_at )
+        loans ( id, prequalified_amount )
       `
         )
         .order("created_at", { ascending: false });
@@ -58,6 +56,7 @@ const Customers = () => {
     setSelectedCustomer(customer);
     setShowDetailsModal(true);
   };
+  
   const verifyCustomer = (customer) => {
     setSelectedCustomer(customer);
     setShowForm(true);
@@ -92,32 +91,8 @@ const Customers = () => {
   );
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Customer Management
-        </h1>
-
-        <div>
-
-
-            {/* Button */}
-      <button
-        onClick={() => setShowAddCustomer(true)} // open modal/form
-        className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 flex items-center"
-      >
-        <PlusIcon className="h-5 w-5 mr-2" />
-        Add New Customer
-      </button>
-
-      {/* Conditionally render AddCustomer */}
-      {showAddCustomer && (
-        <AddCustomer onClose={() => setShowAddCustomer(false)} />
-      )}
-        </div>
-       
-      </div>
-
+    <div className="p-6">
+    
       {/* Filters and Search */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
         <div className="flex flex-col md:flex-row md:items-end gap-4">
@@ -135,7 +110,7 @@ const Customers = () => {
                 placeholder="Search by name, mobile, or ID..."
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full focus:ring-indigo-500 focus:border-indigo-500"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)} // ✅ switch to local filter
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
@@ -154,86 +129,99 @@ const Customers = () => {
         </div>
       </div>
 
-      {/* Customers Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  First Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Surname
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Middle Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Contact
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  ID Number
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Principle Amount
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCustomers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">{customer.Firstname}</td>
-                  <td className="px-6 py-4">{customer.Surname}</td>
-                  <td className="px-6 py-4">{customer.Middlename || "N/A"}</td>
-                  <td className="px-6 py-4">{customer.mobile}</td>
-                  <td className="px-6 py-4">{customer.id_number}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {customer.loans && customer.loans.length > 0
-                      ? customer.loans[0].principal.toLocaleString("en-KE", {
-                          style: "currency",
-                          currency: "KES",
-                        })
-                      : "N/A"}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => viewCustomerDetails(customer)}
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
-
-                      <button
-                        onClick={() => verifyCustomer(customer)}
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        <h1>Verify</h1>
-                      </button>
-                      <button
-                        onClick={() => deleteCustomer(customer.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Loading State */}
+      {loading && (
+        <div className="bg-white shadow rounded-lg p-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading customers...</p>
         </div>
+      )}
 
-        {customers.length === 0 && !loading && (
-          <div className="text-center py-12 text-gray-400">
-            No customers found matching your criteria.
+      {/* Customers Table */}
+      {!loading && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    First Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Surname
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Middle Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Contact
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    ID Number
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Prequalified Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredCustomers.map((customer) => (
+                  <tr key={customer.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">{customer.Firstname || "N/A"}</td>
+                    <td className="px-6 py-4">{customer.Surname || "N/A"}</td>
+                    <td className="px-6 py-4">{customer.Middlename || "N/A"}</td>
+                    <td className="px-6 py-4">{customer.mobile || "N/A"}</td>
+                    <td className="px-6 py-4">{customer.id_number || "N/A"}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {customer.loans && customer.loans.length > 0
+                        ? customer.loans[0].prequalified_amount.toLocaleString("en-KE", {
+                            style: "currency",
+                            currency: "KES",
+                          })
+                        : "N/A"}
+                    </td>
+                    <td className="px-6 py-4 text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => viewCustomerDetails(customer)}
+                          className="text-indigo-600 hover:text-indigo-900"
+                          title="View Details"
+                        >
+                          <EyeIcon className="h-5 w-5" />
+                        </button>
+
+                        <button
+                          onClick={() => verifyCustomer(customer)}
+                          className="text-green-600 hover:text-green-900 px-2 py-1 border border-green-600 rounded"
+                          title="Verify Loan"
+                        >
+                          Verify
+                        </button>
+                        <button
+                          onClick={() => deleteCustomer(customer.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete Customer"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
+
+          {filteredCustomers.length === 0 && !loading && (
+            <div className="text-center py-12 text-gray-400">
+              {searchTerm ? "No customers found matching your search." : "No customers found."}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Customer Details Modal */}
       {showDetailsModal && selectedCustomer && (
@@ -243,14 +231,14 @@ const Customers = () => {
         />
       )}
 
-      {/* Customer Details Modal */}
+      {/* Loan Verification Form Modal */}
       {showForm && selectedCustomer && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white w-full h-full relative rounded-none shadow-xl">
             {/* Close button */}
             <button
               onClick={() => setShowForm(false)}
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold"
+              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
             >
               ✕
             </button>
