@@ -28,7 +28,6 @@ const AddCustomer = ({ onClose }) => {
     dateOfBirth: "",
     gender: "",
     idNumber: "",
-    residentialStatus: "",
     postalAddress: "",
     code: "",
     town: "",
@@ -41,11 +40,7 @@ const AddCustomer = ({ onClose }) => {
     road: "",
     landmark: "",
     hasLocalAuthorityLicense: "",
-    passportUrl: "",
-    idFrontUrl: "",
-    idBackUrl: "",
-    houseImageUrl: "",
-    prequalifiedAmount: "",
+  
     
     guarantor: {
       prefix: "",
@@ -55,7 +50,7 @@ const AddCustomer = ({ onClose }) => {
       maritalStatus: "",
       Middlename: "",
       dateOfBirth: "",
-      residentialStatus: "",
+       residenceStatus: "",
       gender: "",
       mobile: "",
       postalAddress: "",
@@ -77,16 +72,8 @@ const AddCustomer = ({ onClose }) => {
       county: "",
       cityTown: "",
     },
-    loan: {
-      product: "",
-      durationWeeks: "",
-      processingFee: "",
-      principal: "",
-      totalPayable: "",
-      registrationFee: "",
-      interestRate: "",
-      status: "pending",
-    },
+      loan: { prequalifiedAmount: ""}, 
+
   });
 
   // File upload state
@@ -106,74 +93,353 @@ const AddCustomer = ({ onClose }) => {
   const [files, setFiles] = useState({});
 const [previews, setPreviews] = useState({});
 
-  const validatePersonalDetails = async () => {
-    const newErrors = {};
+const validatePersonalDetails = async () => {
+  const newErrors = {};
 
-    if (!formData.Firstname) newErrors.Firstname = "First name is required";
-    if (!formData.Surname) newErrors.Surname = "Surname is required";
-    if (!formData.mobile) newErrors.mobile = "Mobile number is required";
-    if (!formData.idNumber) newErrors.idNumber = "ID number is required";
+  if (!formData.Firstname) newErrors.Firstname = "First name is required";
+  if (!formData.Surname) newErrors.Surname = "Surname is required";
+  if (!formData.mobile) newErrors.mobile = "Mobile number is required";
+  if (!formData.idNumber) newErrors.idNumber = "ID number is required";
 
-    if (
-      formData.mobile &&
-      !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))
-    ) {
-      newErrors.mobile = "Please enter a valid mobile number";
+  if (
+    formData.mobile &&
+    !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))
+  ) {
+    newErrors.mobile = "Please enter a valid mobile number";
+  }
+
+  if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
+    newErrors.idNumber = "Please enter a valid ID number";
+  }
+
+  if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
+    newErrors.dateOfBirth = "Customer must be at least 18 years old";
+  }
+
+  // Check uniqueness for ID and mobile only at this stage
+  if (formData.mobile && !newErrors.mobile) {
+    const isMobileUnique = await checkUniqueValue(
+      ["customers", "guarantors", "next_of_kin"],
+      "mobile",
+      formData.mobile
+    );
+    if (!isMobileUnique) {
+      newErrors.mobile = "Mobile number already exists in our system";
+    }
+  }
+
+  if (formData.idNumber && !newErrors.idNumber) {
+    const isIdUnique = await checkUniqueValue(
+      ["customers", "guarantors", "next_of_kin"],
+      "id_number",
+      formData.idNumber
+    );
+    if (!isIdUnique) {
+      newErrors.idNumber = "ID number already exists in our system";
+    }
+  }
+
+  setErrors(newErrors);
+
+  // ✅ Return boolean for handleNext
+  return Object.keys(newErrors).length === 0;
+};
+
+const validateBusinessDetails = () => {
+  let errorsFound = {};
+
+  // Business Name
+  if (!formData.businessName) {
+    errorsFound.businessName = "Business name is required";
+  }
+
+  // Business Type
+  if (!formData.businessType) {
+    errorsFound.businessType = "Business type is required";
+  }
+
+  // Year Established (>= 6 months)
+  if (!formData.yearEstablished) {
+    errorsFound.yearEstablished = "Year established is required";
+  } else {
+    const establishedDate = new Date(formData.yearEstablished);
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    if (establishedDate > sixMonthsAgo) {
+      errorsFound.yearEstablished = "Business must be at least 6 months old";
+    }
+  }
+
+  // Business Location
+  if (!formData.businessLocation) {
+    errorsFound.businessLocation = "Business location is required";
+  }
+
+  // Road
+  if (!formData.road) {
+    errorsFound.road = "Road is required";
+  }
+
+  // Landmark
+  if (!formData.landmark) {
+    errorsFound.landmark = "Landmark is required";
+  }
+
+  // Daily Sales
+  if (!formData.daily_Sales) {
+    errorsFound.daily_Sales = "Daily sales estimate is required";
+  }
+
+  // // Local Authority License
+  // if (formData.hasLocalAuthorityLicense === "" || formData.hasLocalAuthorityLicense == null) {
+  //   errorsFound.hasLocalAuthorityLicense = "License status must be selected";
+  // }
+
+  // // Business Images
+  // if (!files.businessImages || files.businessImages.length === 0) {
+  //   errorsFound.businessImages = "At least one business image is required";
+  // }
+
+  setErrors(errorsFound);
+
+  const isValid = Object.keys(errorsFound).length === 0;
+  console.log("Business validation result:", isValid, errorsFound); // 👈 check here
+  return isValid;
+};
+
+
+const validateBorrowerSecurity = () => {
+  let errorsFound = {};
+  let isValid = true;
+
+  if (securityItems.length === 0) {
+    toast.error("Please add at least one security item.");
+    return false;
+  }
+
+  securityItems.forEach((item, index) => {
+    // Item name
+    if (!item.item) {
+      errorsFound[`securityItem_${index}`] = "Item name is required";
+      isValid = false;
     }
 
-    if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
-      newErrors.idNumber = "Please enter a valid ID number";
+    // Description
+    if (!item.description) {
+      errorsFound[`securityDescription_${index}`] = "Description is required";
+      isValid = false;
     }
 
-    if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
-      newErrors.dateOfBirth = "Customer must be at least 18 years old";
+    // Identification
+    if (!item.identification) {
+      errorsFound[`securityIdentification_${index}`] = "Identification is required";
+      isValid = false;
     }
 
-    // Check uniqueness for ID and mobile only at this stage
-    if (formData.mobile && !newErrors.mobile) {
-      const isMobileUnique = await checkUniqueValue(
-        ["customers", "guarantors", "next_of_kin"],
-        "mobile",
-        formData.mobile
-      );
-      if (!isMobileUnique) {
-        newErrors.mobile = "Mobile number already exists in our system";
-      }
+    // Value
+    if (!item.value || parseFloat(item.value) <= 0) {
+      errorsFound[`securityValue_${index}`] = "Estimated value must be greater than 0";
+      isValid = false;
     }
 
-    if (formData.idNumber && !newErrors.idNumber) {
-      const isIdUnique = await checkUniqueValue(
-        ["customers", "guarantors", "next_of_kin"],
-        "id_number",
-        formData.idNumber
-      );
-      if (!isIdUnique) {
-        newErrors.idNumber = "ID number already exists in our system";
-      }
+    // Images
+    if (!securityItemImages[index] || securityItemImages[index].length === 0) {
+      toast.error(`Please upload at least one image for item #${index + 1}`);
+      isValid = false;
     }
+  });
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  setErrors(errorsFound);
+  return isValid;
+};
 
-  const handleNext = async () => {
-    let isValid = false;
+const validateLoanDetails = () => {
+  let errorsFound = {};
+  let isValid = true;
 
-    if (activeSection === "personal") {
+  // Principal / Pre-qualified Amount
+  if (!formData.loan.prequalifiedAmount || parseFloat(formData.loan.prequalifiedAmount) <= 0) {
+    errorsFound.loanPrequalifiedamount = "Please enter a valid loan amount greater than 0";
+    isValid = false;
+  }
+
+  // (Optional) Add other validations like interestRate, duration, processingFee if present
+
+  setErrors(errorsFound);
+  return isValid;
+};
+
+const validateGuarantorDetails = () => {
+  let errorsFound = {};
+  let isValid = true;
+
+  const guarantor = formData.guarantor;
+
+  // Firstname
+  if (!guarantor.Firstname || guarantor.Firstname.trim() === "") {
+    errorsFound.guarantorFirstname = "First Name is required";
+    isValid = false;
+  }
+
+  // Surname
+  if (!guarantor.Surname || guarantor.Surname.trim() === "") {
+    errorsFound.guarantorSurname = "Surname is required";
+    isValid = false;
+  }
+
+  // ID Number
+  if (!guarantor.idNumber || guarantor.idNumber.trim() === "") {
+    errorsFound.guarantorIdNumber = "ID Number is required";
+    isValid = false;
+  }
+
+  // Phone
+  if (!guarantor.phone || guarantor.phone.trim() === "") {
+    errorsFound.guarantorPhone = "Phone Number is required";
+    isValid = false;
+  }
+
+  // Gender
+  if (!guarantor.gender || guarantor.gender.trim() === "") {
+    errorsFound.guarantorGender = "Gender is required";
+    isValid = false;
+  }
+
+  setErrors(errorsFound);
+    console.log("Guarantor validation result:", isValid, errorsFound); // 👈 check here
+
+  return isValid;
+};
+
+const validateGuarantorSecurity = () => {
+  let isValid = true;
+  let errorsFound = {};
+
+  guarantorSecurityItems.forEach((item, index) => {
+    if (!item.item || item.item.trim() === "") {
+      errorsFound[`guarantorSecurityItem_${index}`] = "Item is required";
+      isValid = false;
+    }
+    if (!item.description || item.description.trim() === "") {
+      errorsFound[`guarantorSecurityDescription_${index}`] = "Description is required";
+      isValid = false;
+    }
+    if (!item.identification || item.identification.trim() === "") {
+      errorsFound[`guarantorSecurityIdentification_${index}`] = "Identification is required";
+      isValid = false;
+    }
+    if (item.value === "" || item.value === null || isNaN(item.value) || Number(item.value) <= 0) {
+      errorsFound[`guarantorSecurityValue_${index}`] = "Valid Value is required";
+      isValid = false;
+    }
+  });
+
+  setErrors(errorsFound);
+  return isValid;
+};
+
+const validateNextOfKinDetails = () => {
+  let isValid = true;
+  let errorsFound = {};
+
+  const nextOfKin = formData.nextOfKin;
+
+  // Validate First Name
+  if (!nextOfKin.Firstname || nextOfKin.Firstname.trim() === "") {
+    errorsFound.nextOfKinFirstname = "First Name is required";
+    isValid = false;
+  }
+
+  // Validate Surname
+  if (!nextOfKin.Surname || nextOfKin.Surname.trim() === "") {
+    errorsFound.nextOfKinSurname = "Surname is required";
+    isValid = false;
+  }
+
+  // Validate ID Number
+  if (!nextOfKin.idNumber || nextOfKin.idNumber.trim() === "") {
+    errorsFound.nextOfKinIdNumber = "ID Number is required";
+    isValid = false;
+  }
+
+  // Validate Mobile Number
+  if (!nextOfKin.mobile || nextOfKin.mobile.trim() === "") {
+    errorsFound.nextOfKinMobile = "Mobile Number is required";
+    isValid = false;
+  }
+
+  setErrors(errorsFound);
+  return isValid;
+};
+
+const validateDocuments = () => {
+  let isValid = true;
+  let errorsFound = {};
+
+  if (!officerClientImage1) {
+    errorsFound.officerClientImage1 = "First Officer and Client Image is required";
+    isValid = false;
+  }
+
+  if (!officerClientImage2) {
+    errorsFound.officerClientImage2 = "Second Officer and Client Image is required";
+    isValid = false;
+  }
+
+  if (!bothOfficersImage) {
+    errorsFound.bothOfficersImage = "Both Officers Image is required";
+    isValid = false;
+  }
+
+  setErrors(errorsFound);
+  return isValid;
+};
+
+
+const handleNext = async () => {
+  let isValid = false;
+
+  switch (activeSection) {
+    case "personal":
       isValid = await validatePersonalDetails();
-    }
-    // Add other section validations here as needed
+      break;
+    case "business":
+      isValid = validateBusinessDetails();
+      break;
+    case "borrowerSecurity":
+      isValid = validateBorrowerSecurity();
+      break;
+    case "loan":
+      isValid = validateLoanDetails();
+      break;
+    case "guarantor":
+      isValid = validateGuarantorDetails();
+      break;
+    case "guarantorSecurity":
+      isValid = validateGuarantorSecurity();
+      break;
+    case "nextOfKin":
+      isValid = validateNextOfKinDetails();
+      break;
+    case "documents":
+      isValid = validateDocuments();
+      break;
+    default:
+      break;
+  }
 
-    if (isValid) {
-      // go to the next section
-      const nextIndex = navItems.findIndex((item) => item.id === activeSection) + 1;
-      if (nextIndex < navItems.length) {
-        setActiveSection(navItems[nextIndex].id);
-      }
-    } else {
-      toast.error("Please fix the highlighted errors before continuing.");
+  if (isValid) {
+    const nextIndex = navItems.findIndex((item) => item.id === activeSection) + 1;
+    if (nextIndex < navItems.length) {
+      setActiveSection(navItems[nextIndex].id);
     }
-  };
+  } else {
+    toast.error("Please fix the highlighted errors before continuing.");
+  }
+};
+
+
 
   // Check if a value is unique in the database across multiple tables
   const checkUniqueValue = async (tables, field, value) => {
@@ -362,19 +628,28 @@ const [previews, setPreviews] = useState({});
   };
 
   // Handle top-level form changes
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+ const handleChange = (e) => {
+  const { name, value } = e.target;
 
-    // Clear error when field is edited
-    if (errors[name]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[name];
-        return newErrors;
-      });
+  if (name === "yearEstablished") {
+    const selectedDate = new Date(value);
+    const today = new Date();
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(today.getMonth() - 6);
+
+    if (selectedDate > sixMonthsAgo) {
+      setErrors((prev) => ({
+        ...prev,
+        yearEstablished: "Business must be at least 6 months old.",
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, yearEstablished: "" }));
     }
-  };
+  }
+
+  setFormData((prev) => ({ ...prev, [name]: value }));
+};
+
 
   const handleGuarantorSecurityChange = (e, index) => {
     const { name, value } = e.target;
@@ -401,23 +676,27 @@ const [previews, setPreviews] = useState({});
   };
 
   // Handle nested objects (guarantor, nextOfKin)
-  const handleNestedChange = (e, section) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [section]: { ...prev[section], [name]: value },
-    }));
+const handleNestedChange = (e, section) => {
+  if (!e || !e.target) return; // ✅ prevent crash
 
-    // Clear error when field is edited
-    const errorKey = `${section}${name}`;
-    if (errors[errorKey]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[errorKey];
-        return newErrors;
-      });
-    }
-  };
+  const { name, value } = e.target;
+
+  setFormData((prev) => ({
+    ...prev,
+    [section]: { ...prev[section], [name]: value },
+  }));
+
+  const errorKey = `${section}${name}`;
+  if (errors[errorKey]) {
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[errorKey];
+      return newErrors;
+    });
+  }
+};
+
+
 
   // Handle security items
   const handleSecurityChange = (e, index) => {
@@ -444,53 +723,21 @@ const [previews, setPreviews] = useState({});
     ]);
   };
 
-  // Loan calculation functions
-  const calculateProcessingFee = (principal) => {
-    if (!principal) return 0;
-    return principal <= 10000 ? 500 : principal * 0.05;
-  };
+ 
 
-  const calculateRegistrationFee = (isNewCustomer) => {
-    return isNewCustomer ? 300 : 0;
-  };
+ const handleLoanChange = (e) => {
+  const { name, value } = e.target;
+  setFormData((prev) => ({
+    ...prev,
+    loan: {
+      ...prev.loan,
+      [name]: value
+    }
+  }));
+};
 
-  const calculateInterestRate = (weeks) => {
-    if (!weeks) return 0;
-    const weeklyRate = 25 / 4; // 6.25% per week
-    return weeks * weeklyRate;
-  };
 
-  const calculateTotalPayable = ({ principal, interestRate }) => {
-    if (!principal || !interestRate) return 0;
-    const interestAmount = (principal * interestRate) / 100;
-    return principal + interestAmount;
-  };
 
-  // Whenever loan fields change, auto-calculate fees and total
-  const handleLoanChange = (e) => {
-    const { name, value } = e.target;
-
-    setFormData((prev) => {
-      const updatedLoan = { ...prev.loan, [name]: value };
-
-      // Calculate values based on changes
-      const principal = parseFloat(updatedLoan.principal) || 0;
-      const duration = parseInt(updatedLoan.durationWeeks) || 0;
-
-      // Only recalculate if relevant fields change
-      if (name === 'principal' || name === 'durationWeeks') {
-        updatedLoan.processingFee = calculateProcessingFee(principal);
-        updatedLoan.registrationFee = calculateRegistrationFee(true);
-        updatedLoan.interestRate = calculateInterestRate(duration);
-        updatedLoan.totalPayable = calculateTotalPayable({
-          principal,
-          interestRate: updatedLoan.interestRate,
-        });
-      }
-
-      return { ...prev, loan: updatedLoan };
-    });
-  };
 
   const handleMultipleFiles = (e, setter) => {
     const files = Array.from(e.target.files);
@@ -501,393 +748,408 @@ const [previews, setPreviews] = useState({});
     setBusinessImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Upload file to Supabase Storage
-  const uploadFile = async (file, path) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from("customer-documents")
-        .upload(path, file);
+  
 
-      if (error) {
-        throw error;
-      }
+// Upload file to Supabase Storage
+const uploadFile = async (file, path, bucket = "customers") => {
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(path, file, { upsert: true });
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("customer-documents")
-        .getPublicUrl(data.path);
+    if (error) throw error;
 
-      return urlData.publicUrl;
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      toast.error(`Failed to upload file: ${error.message}`);
-      return null;
-    }
+    const { data: urlData, error: urlError } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(data.path);
+
+    if (urlError) throw urlError;
+
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    toast.error(`Failed to upload file: ${error.message}`);
+    return null;
+  }
+};
+
+
+const handleFileUpload = async (e, setter, key) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    // Save file for upload using the individual setter
+    setter(file);
+
+    // Save preview URL
+    setPreviews((prev) => ({ ...prev, [key]: URL.createObjectURL(file) }));
+    
+    console.log(`✅ File saved for ${key}:`, file.name);
+  } catch (err) {
+    console.error(err);
+    toast.error("Unexpected error during file selection.");
+  }
+};
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  console.log("🚀 Submit button clicked");
+
+  const isValid = await validateForm();
+  if (!isValid) {
+    toast.error("Please fix the errors in the form before submitting.");
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  const logError = (section, error) => {
+    console.group(`❌ Error in ${section} section`);
+    console.error(error.message, error);
+    console.groupEnd();
+    toast.error(`Error in ${section}: ${error.message}`);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  try {
+    console.log("📁 Starting file uploads...");
+    
+    // ========= 1. Upload customer personal images to /personal folder =========
+    let passportUrl = null;
+    let idFrontUrl = null;
+    let idBackUrl = null;
+    let houseImageUrl = null;
 
-    const isValid = await validateForm();
-    if (!isValid) {
-      toast.error("Please fix the errors in the form before submitting.", {
-        position: "top-right",
-        autoClose: 4000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        theme: "colored",
-      });
+    // Debug: Log file states
+    console.log("📄 File states:", {
+      passportFile: !!passportFile,
+      idFrontFile: !!idFrontFile, 
+      idBackFile: !!idBackFile,
+      houseImageFile: !!houseImageFile
+    });
+
+    // Upload customer personal images using the file states directly
+    if (passportFile) {
+      console.log("⬆️ Uploading passport to personal folder...");
+      passportUrl = await uploadFile(
+        passportFile, 
+        `personal/${Date.now()}_passport_${passportFile.name}`,
+        "customers"
+      );
+      if (!passportUrl) throw new Error("Failed to upload passport image");
+      console.log("✅ Passport URL:", passportUrl);
+    }
+
+    if (idFrontFile) {
+      console.log("⬆️ Uploading ID front to personal folder...");
+      idFrontUrl = await uploadFile(
+        idFrontFile, 
+        `personal/${Date.now()}_id_front_${idFrontFile.name}`,
+        "customers"
+      );
+      if (!idFrontUrl) throw new Error("Failed to upload ID front image");
+      console.log("✅ ID Front URL:", idFrontUrl);
+    }
+
+    if (idBackFile) {
+      console.log("⬆️ Uploading ID back to personal folder...");
+      idBackUrl = await uploadFile(
+        idBackFile, 
+        `personal/${Date.now()}_id_back_${idBackFile.name}`,
+        "customers"
+      );
+      if (!idBackUrl) throw new Error("Failed to upload ID back image");
+      console.log("✅ ID Back URL:", idBackUrl);
+    }
+
+    if (houseImageFile) {
+      console.log("⬆️ Uploading house image to personal folder...");
+      houseImageUrl = await uploadFile(
+        houseImageFile, 
+        `personal/${Date.now()}_house_${houseImageFile.name}`,
+        "customers"
+      );
+      if (!houseImageUrl) throw new Error("Failed to upload house image");
+      console.log("✅ House Image URL:", houseImageUrl);
+    }
+
+    // ========= 2. Insert customer =========
+    const { data: customerData, error: customerError } = await supabase
+      .from("customers")
+      .insert([{
+        prefix: formData.prefix || null,
+        Firstname: formData.Firstname || null,
+        Surname: formData.Surname || null,
+        Middlename: formData.Middlename || null,
+        marital_status: formData.maritalStatus || null,
+        residence_status: formData.residenceStatus || null,
+        mobile: formData.mobile || null,
+        alternative_mobile: formData.alternativeMobile || null,
+        occupation: formData.occupation || null,
+        date_of_birth: formData.dateOfBirth || null,
+        gender: formData.gender || null,
+        id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
+        postal_address: formData.postalAddress || null,
+        code: formData.code ? parseInt(formData.code) : null,
+        town: formData.town || null,
+        county: formData.county || null,
+        business_name: formData.businessName || null,
+        business_type: formData.businessType || null,
+        daily_Sales: formData.daily_Sales ? parseFloat(formData.daily_Sales) : null,
+        year_established: formData.yearEstablished ? parseInt(formData.yearEstablished) : null,
+        business_location: formData.businessLocation || null,
+        road: formData.road || null,
+        landmark: formData.landmark || null,
+        has_local_authority_license: formData.hasLocalAuthorityLicense === "Yes",
+        passport_url: passportUrl,
+        id_front_url: idFrontUrl,
+        id_back_url: idBackUrl,
+        house_image_url: houseImageUrl,
+      }])
+      .select("id")
+      .single();
+
+    if (customerError) {
+      logError("Customer", customerError);
+      setIsSubmitting(false);
       return;
     }
 
-    setIsSubmitting(true);
+    const customerId = customerData.id;
 
-    try {
-      // Upload all files first
-      const uploadPromises = [];
-      
-      // Customer documents
-      if (passportFile) {
-        uploadPromises.push(
-          uploadFile(passportFile, `customers/${Date.now()}_passport`).then(
-            (url) => (formData.passportUrl = url)
-          )
-        );
+    // ========= 3. Upload business images =========
+    if (businessImages.length > 0) {
+      const businessImageUrls = [];
+      for (const image of businessImages) {
+        const url = await uploadFile(image, `business/${Date.now()}_${image.name}`, "customers");
+        if (url) businessImageUrls.push(url);
       }
-      
-      if (idFrontFile) {
-        uploadPromises.push(
-          uploadFile(idFrontFile, `customers/${Date.now()}_id_front`).then(
-            (url) => (formData.idFrontUrl = url)
-          )
-        );
+      if (businessImageUrls.length > 0) {
+        const { error: businessImageError } = await supabase
+          .from("business_images")
+          .insert(businessImageUrls.map((url) => ({ customer_id: customerId, image_url: url })));
+        if (businessImageError) logError("Business Images", businessImageError);
       }
+    }
+
+    // ========= 4. Next of Kin =========
+    const nextOfKin = formData.nextOfKin || {};
+    const nextOfKinFilled = Object.values(nextOfKin).some((val) => val != null && String(val).trim() !== "");
+    if (nextOfKinFilled) {
+      const { error: nextOfKinError } = await supabase.from("next_of_kin").insert([{
+        customer_id: customerId,
+        Firstname: nextOfKin.Firstname || null,
+        Surname: nextOfKin.Surname || null,
+        Middlename: nextOfKin.Middlename || null,
+        id_number: nextOfKin.idNumber || null,
+        relationship: nextOfKin.relationship || null,
+        mobile: nextOfKin.mobile || null,
+        alternative_number: nextOfKin.alternativeNumber || null,
+        employment_status: nextOfKin.employmentStatus || null,
+        county: nextOfKin.county || null,
+        city_town: nextOfKin.cityTown || null,
+      }]);
+      if (nextOfKinError) logError("Next of Kin", nextOfKinError);
+    }
+
+    // ========= 5. Guarantor =========
+    const guarantor = formData.guarantor || {};
+    const guarantorFilled = Object.values(guarantor).some((val) => val != null && String(val).trim() !== "");
+    let guarantorId = null;
+
+    if (guarantorFilled) {
+      console.log("📁 Uploading guarantor images...");
       
-      if (idBackFile) {
-        uploadPromises.push(
-          uploadFile(idBackFile, `customers/${Date.now()}_id_back`).then(
-            (url) => (formData.idBackUrl = url)
-          )
-        );
-      }
+      // Debug: Log guarantor file states
+      console.log("📄 Guarantor file states:", {
+        guarantorPassportFile: !!guarantorPassportFile,
+        guarantorIdFrontFile: !!guarantorIdFrontFile, 
+        guarantorIdBackFile: !!guarantorIdBackFile
+      });
       
-      if (houseImageFile) {
-        uploadPromises.push(
-          uploadFile(houseImageFile, `customers/${Date.now()}_house`).then(
-            (url) => (formData.houseImageUrl = url)
-          )
+      // Upload guarantor images to /guarantor folder
+      let guarantorPassportUrl = null;
+      let guarantorIdFrontUrl = null;
+      let guarantorIdBackUrl = null;
+
+      if (guarantorPassportFile) {
+        console.log("⬆️ Uploading guarantor passport to guarantor folder...");
+        guarantorPassportUrl = await uploadFile(
+          guarantorPassportFile, 
+          `guarantor/${Date.now()}_passport_${guarantorPassportFile.name}`,
+          "customers"
         );
+        if (!guarantorPassportUrl) throw new Error("Failed to upload guarantor passport image");
+        console.log("✅ Guarantor Passport URL:", guarantorPassportUrl);
       }
 
-      // Wait for all uploads to complete
-      await Promise.all(uploadPromises);
+      if (guarantorIdFrontFile) {
+        console.log("⬆️ Uploading guarantor ID front to guarantor folder...");
+        guarantorIdFrontUrl = await uploadFile(
+          guarantorIdFrontFile, 
+          `guarantor/${Date.now()}_id_front_${guarantorIdFrontFile.name}`,
+          "customers"
+        );
+        if (!guarantorIdFrontUrl) throw new Error("Failed to upload guarantor ID front image");
+        console.log("✅ Guarantor ID Front URL:", guarantorIdFrontUrl);
+      }
 
-      // 1. Insert into customers
-      const { data: customerData, error: customerError } = await supabase
-        .from("customers")
-        .insert([
-          {
-            prefix: formData.prefix || null,
-            Firstname: formData.Firstname || null,
-            Surname: formData.Surname || null,
-            Middlename: formData.Middlename || null,
-            marital_status: formData.maritalStatus || null,
-            residence_status: formData.residenceStatus || null,
-            mobile: formData.mobile || null,
-            alternative_mobile: formData.alternativeMobile || null,
-            occupation: formData.occupation || null,
-            date_of_birth: formData.dateOfBirth || null,
-            gender: formData.gender || null,
-            id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
-            postal_address: formData.postalAddress || null,
-            code: formData.code ? parseInt(formData.code) : null,
-            town: formData.town || null,
-            county: formData.county || null,
-            business_name: formData.businessName || null,
-            business_type: formData.businessType || null,
-            daily_Sales: formData.daily_Sales
-              ? parseFloat(formData.daily_Sales)
-              : null,
-            year_established: formData.yearEstablished
-              ? parseInt(formData.yearEstablished)
-              : null,
-            business_location: formData.businessLocation || null,
-            road: formData.road || null,
-            landmark: formData.landmark || null,
-            has_local_authority_license:
-              formData.hasLocalAuthorityLicense === "Yes",
-            passport_url: formData.passportUrl || null,
-            id_front_url: formData.idFrontUrl || null,
-            id_back_url: formData.idBackUrl || null,
-            house_image_url: formData.houseImageUrl || null,
-          },
-        ])
+      if (guarantorIdBackFile) {
+        console.log("⬆️ Uploading guarantor ID back to guarantor folder...");
+        guarantorIdBackUrl = await uploadFile(
+          guarantorIdBackFile, 
+          `guarantor/${Date.now()}_id_back_${guarantorIdBackFile.name}`,
+          "customers"
+        );
+        if (!guarantorIdBackUrl) throw new Error("Failed to upload guarantor ID back image");
+        console.log("✅ Guarantor ID Back URL:", guarantorIdBackUrl);
+      }
+
+      const { data: guarantorData, error: guarantorError } = await supabase
+        .from("guarantors")
+        .insert([{
+          customer_id: customerId,
+          Firstname: guarantor.Firstname || null,
+          Surname: guarantor.Surname || null,
+          Middlename: guarantor.Middlename || null,
+          id_number: guarantor.idNumber || null,
+          marital_status: guarantor.maritalStatus || null,
+          gender: guarantor.gender || null,
+          mobile: guarantor.mobile || null,
+          residence_status: guarantor.residenceStatus || null,
+          postal_address: guarantor.postalAddress || null,
+          code: guarantor.code ? parseInt(guarantor.code) : null,
+          occupation: guarantor.occupation || null,
+          relationship: guarantor.relationship || null,
+          date_of_birth: guarantor.dateOfBirth || null,
+          county: guarantor.county || null,
+          city_town: guarantor.cityTown || null,
+          passport_url: guarantorPassportUrl,
+          id_front_url: guarantorIdFrontUrl,
+          id_back_url: guarantorIdBackUrl,
+        }])
         .select("id")
         .single();
 
-      if (customerError) {
-        toast.error("Error saving customer: " + customerError.message, {
-          position: "top-right",
-          autoClose: 4000,
-          theme: "colored",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const customerId = customerData.id;
-
-      // 2. Insert loan record
-      if (formData.loan.principal) {
-        const { error: loanError } = await supabase.from("loans").insert([
-          {
-            customer_id: customerId,
-            product: formData.loan.product || null,
-            duration_weeks: formData.loan.durationWeeks
-              ? parseInt(formData.loan.durationWeeks)
-              : null,
-            processing_fee: formData.loan.processingFee
-              ? parseFloat(formData.loan.processingFee)
-              : null,
-            principal: formData.loan.principal
-              ? parseFloat(formData.loan.principal)
-              : null,
-            total_payable: formData.loan.totalPayable,
-            registration_fee: formData.loan.registrationFee
-              ? parseFloat(formData.loan.registrationFee)
-              : 0,
-            interest_rate: formData.loan.interestRate
-              ? parseFloat(formData.loan.interestRate)
-              : null,
-            status: formData.loan.status || "pending",
-          },
-        ]);
-
-        if (loanError) {
-          console.error("Error saving loan:", loanError.message);
-          toast.error("Failed to save loan info.");
-        }
-      }
-
-      // 3. Insert next of kin (only if at least one field is provided)
-      const nextOfKinFieldsFilled = Object.values(formData.nextOfKin).some(
-        (val) => val && val.trim() !== ""
-      );
-
-      if (nextOfKinFieldsFilled) {
-        const { error: nextOfKinError } = await supabase
-          .from("next_of_kin")
-          .insert([
-            {
-              customer_id: customerId,
-              Firstname: formData.nextOfKin.Firstname || null,
-              Surname: formData.nextOfKin.Surname || null,
-              Middlename: formData.nextOfKin.Middlename || null,
-              id_number: formData.nextOfKin.idNumber || null,
-              relationship: formData.nextOfKin.relationship || null,
-              mobile: formData.nextOfKin.mobile || null,
-              alternative_number: formData.nextOfKin.alternativeNumber || null,
-              employment_status: formData.nextOfKin.employmentStatus || null,
-              county: formData.nextOfKin.county || null,
-              city_town: formData.nextOfKin.cityTown || null,
-            },
-          ]);
-
-        if (nextOfKinError) {
-          console.error("Error saving next of kin:", nextOfKinError.message);
-          toast.error("Failed to save next of kin: " + nextOfKinError.message);
-        }
-      }
-
-      // 4. Insert guarantor (only if at least one field is provided)
-      const guarantorFieldsFilled = Object.values(formData.guarantor).some(
-        (val) => val && val.trim() !== ""
-      );
-
-      let guarantorId = null;
-      if (guarantorFieldsFilled) {
-        // Upload guarantor documents
-        let guarantorPassportUrl = null;
-        let guarantorIdFrontUrl = null;
-        let guarantorIdBackUrl = null;
-        
-        if (guarantorPassportFile) {
-          guarantorPassportUrl = await uploadFile(
-            guarantorPassportFile, 
-            `guarantors/${Date.now()}_passport`
-          );
-        }
-        
-        if (guarantorIdFrontFile) {
-          guarantorIdFrontUrl = await uploadFile(
-            guarantorIdFrontFile, 
-            `guarantors/${Date.now()}_id_front`
-          );
-        }
-        
-        if (guarantorIdBackFile) {
-          guarantorIdBackUrl = await uploadFile(
-            guarantorIdBackFile, 
-            `guarantors/${Date.now()}_id_back`
-          );
-        }
-
-        const { data: guarantorData, error: guarantorError } = await supabase
-          .from("guarantors")
-          .insert([
-            {
-              customer_id: customerId,
-              prefix: formData.guarantor.prefix || null,
-              Firstname: formData.guarantor.Firstname || null,
-              Surname: formData.guarantor.Surname || null,
-              id_number: formData.guarantor.idNumber || null,
-              marital_status: formData.guarantor.maritalStatus || null,
-              gender: formData.guarantor.gender || null,
-              mobile: formData.guarantor.mobile || null,
-              residence_status: formData.guarantor.residenceStatus || null,
-              postal_address: formData.guarantor.postalAddress || null,
-              code: formData.guarantor.code
-                ? parseInt(formData.guarantor.code)
-                : null,
-              occupation: formData.guarantor.occupation || null,
-              relationship: formData.guarantor.relationship || null,
-              date_of_birth: formData.guarantor.dateOfBirth || null,
-              Middlename: formData.guarantor.Middlename || null,
-              county: formData.guarantor.county || null,
-              city_town: formData.guarantor.cityTown || null,
-              passport_url: guarantorPassportUrl,
-              id_front_url: guarantorIdFrontUrl,
-              id_back_url: guarantorIdBackUrl,
-            },
-          ])
-          .select("id")
-          .single();
-
-        if (guarantorError) {
-          console.error("Error saving guarantor:", guarantorError.message);
-          toast.error("Error saving guarantor", {
-            position: "top-right",
-            autoClose: 4000,
-            theme: "colored",
-          });
-        } else {
-          guarantorId = guarantorData.id;
-
-          // Save guarantor security if provided
-          const gItemsToInsert = guarantorSecurityItems
-            .filter(
-              (item) =>
-                item.item ||
-                item.description ||
-                item.identification ||
-                item.value
-            )
-            .map((s) => ({
-              guarantor_id: guarantorId,
-              item: s.item || null,
-              description: s.description || null,
-              identification: s.identification || null,
-              estimated_market_value: s.value ? parseFloat(s.value) : null,
-            }));
-
-          if (gItemsToInsert.length > 0) {
-            const { error: guarantorSecurityError } = await supabase
-              .from("guarantor_security")
-              .insert(gItemsToInsert);
-
-            if (guarantorSecurityError) {
-              console.error(
-                "Error saving guarantor security:",
-                guarantorSecurityError.message
-              );
-              toast.error("Error saving guarantor security.", {
-                position: "top-right",
-                autoClose: 4000,
-                theme: "colored",
-              });
-            }
-          }
-        }
-      }
-
-      // 5. Insert borrower security items (only items with some data)
-      const itemsToInsert = securityItems
-        .filter(
-          (item) =>
-            item.item || item.description || item.identification || item.value
-        )
-        .map((s) => ({
-          customer_id: customerId,
-          item: s.item || null,
-          description: s.description || null,
-          identification: s.identification || null,
-          value: s.value ? parseFloat(s.value) : null,
-        }));
-
-      if (itemsToInsert.length > 0) {
-        const { error: securityError } = await supabase
-          .from("security_items")
-          .insert(itemsToInsert);
-
-        if (securityError) {
-          console.error("Error saving security items:", securityError.message);
-          toast.error("Error saving security items.", {
-            position: "top-right",
-            autoClose: 4000,
-            theme: "colored",
-          });
-        }
-      }
-
-      // 6. Upload business images
-      if (businessImages.length > 0) {
-        const businessImageUrls = [];
-        
-        for (const image of businessImages) {
-          const url = await uploadFile(
-            image, 
-            `business/${Date.now()}_${image.name}`
-          );
-          if (url) businessImageUrls.push(url);
-        }
-        
-        // Save business images to database
-        if (businessImageUrls.length > 0) {
-          const { error: businessImageError } = await supabase
-            .from("business_images")
-            .insert(
-              businessImageUrls.map(url => ({
-                customer_id: customerId,
-                image_url: url
-              }))
-            );
-
-          if (businessImageError) {
-            console.error("Error saving business images:", businessImageError.message);
-          }
-        }
-      }
-
-      toast.success("Customer & all related details saved successfully!", {
-        position: "top-right",
-        autoClose: 4000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        theme: "colored",
-      });
-
-      onClose();
-    } catch (error) {
-      console.error("Unexpected error:", error);
-      toast.error("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+      if (guarantorError) logError("Guarantor", guarantorError);
+      else guarantorId = guarantorData.id;
     }
-  };
+
+    // ========= 6. Guarantor Security =========
+    if (guarantorId && guarantorSecurityItems.length > 0) {
+      const itemsToInsert = guarantorSecurityItems.map((s) => ({
+        guarantor_id: guarantorId,
+        item: s.item || null,
+        description: s.description || null,
+        identification: s.identification || null,
+        estimated_market_value: s.value ? parseFloat(s.value) : null,
+      }));
+
+      const { data: insertedItems, error: gSecError } = await supabase
+        .from("guarantor_security")
+        .insert(itemsToInsert)
+        .select("id");
+
+      if (gSecError) logError("Guarantor Security", gSecError);
+      else {
+        for (let i = 0; i < insertedItems.length; i++) {
+          const securityId = insertedItems[i].id;
+          const files = guarantorSecurityImages[i] || [];
+          const urls = [];
+          for (const file of files) {
+            const url = await uploadFile(file, `guarantor_security/${Date.now()}_${file.name}`, "customers");
+            if (url) urls.push(url);
+          }
+          if (urls.length > 0) {
+            const { error: gSecImgError } = await supabase.from("guarantor_security_images").insert(
+              urls.map((url) => ({ guarantor_security_id: securityId, image_url: url }))
+            );
+            if (gSecImgError) logError("Guarantor Security Images", gSecImgError);
+          }
+        }
+      }
+    }
+
+    // ========= 7. Borrower Security =========
+    if (securityItems.length > 0) {
+      const itemsToInsert = securityItems.map((s) => ({
+        customer_id: customerId,
+        item: s.item || null,
+        description: s.description || null,
+        identification: s.identification || null,
+        value: s.value ? parseFloat(s.value) : null,
+      }));
+
+      const { data: insertedItems, error: secError } = await supabase
+        .from("security_items")
+        .insert(itemsToInsert)
+        .select("id");
+
+      if (secError) logError("Borrower Security", secError);
+      else {
+        for (let i = 0; i < insertedItems.length; i++) {
+          const securityId = insertedItems[i].id;
+          const files = securityItemImages[i] || [];
+          const urls = [];
+          for (const file of files) {
+            const url = await uploadFile(file, `borrower_security/${Date.now()}_${file.name}`, "customers");
+            if (url) urls.push(url);
+          }
+          if (urls.length > 0) {
+            const { error: secImgError } = await supabase.from("security_item_images").insert(
+              urls.map((url) => ({ security_item_id: securityId, image_url: url }))
+            );
+            if (secImgError) logError("Borrower Security Images", secImgError);
+          }
+        }
+      }
+    }
+
+    // ========= 8. Loan =========
+    if (formData.loan?.prequalifiedAmount) {
+      const { error: loanError } = await supabase.from("loans").insert([{
+        customer_id: customerId,
+        prequalified_amount: parseFloat(formData.loan.prequalifiedAmount),
+      }]);
+      if (loanError) logError("Loan", loanError);
+    }
+
+    // ========= 9. Documents =========
+    const documentsToUpload = [
+      { file: officerClientImage1, type: "First Officer and Client Image" },
+      { file: officerClientImage2, type: "Second Officer and Client Image" },
+      { file: bothOfficersImage, type: "Both Officers Image" },
+    ];
+
+    const uploadedDocs = [];
+    for (const doc of documentsToUpload) {
+      if (doc.file) {
+        const url = await uploadFile(doc.file, `documents/${Date.now()}_${doc.file.name}`, "customers");
+        if (url) uploadedDocs.push({ customer_id: customerId, document_type: doc.type, document_url: url });
+      }
+    }
+
+    if (uploadedDocs.length > 0) {
+      const { error: docError } = await supabase.from("documents").insert(uploadedDocs);
+      if (docError) logError("Documents", docError);
+    }
+
+    // ========= ✅ Success =========
+    toast.success("Customer & all related details saved successfully!", {
+      position: "top-right",
+      autoClose: 4000,
+      theme: "colored",
+    });
+    onClose();
+
+  } catch (error) {
+    console.error("❌ Unexpected error:", error);
+    toast.error(error.message || "Unexpected error occurred. Please try again.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+
 
   // Navigation tabs
   const navItems = [
@@ -901,62 +1163,28 @@ const [previews, setPreviews] = useState({});
     { id: "documents", label: "Documents" },
   ];
 
- const handleFileUpload = async (e, setter, key) => {
-  const file = e.target.files[0];
-  if (!file) return;
 
-  try {
-    // Save file for upload
-    setFiles((prev) => ({ ...prev, [key]: file }));
 
-    // Save preview URL
-    setPreviews((prev) => ({ ...prev, [key]: URL.createObjectURL(file) }));
-  } catch (err) {
-    console.error(err);
-    toast.error("Unexpected error during file selection.");
+const handleRemoveFile = (key, setter) => {
+  console.log(`🗑️ Removing file for ${key}`);
+  
+  // Reset the file state
+  if (setter) {
+    setter(null); // For individual setters
+  } else {
+    setFiles(prev => ({ ...prev, [key]: null })); // For single files state
+  }
+  
+  // Remove preview
+  setPreviews(prev => ({ ...prev, [key]: null }));
+  
+  // Revoke object URL to prevent memory leaks
+  if (previews[key]) {
+    URL.revokeObjectURL(previews[key]);
   }
 };
 
 
-const handleRemoveFile = (key, handler) => {
-  // Clear the specific file state
-  if (handler) handler(null);
-
-  // Remove file from files
-  setFiles((prev) => {
-    const updated = { ...prev };
-    delete updated[key];
-    return updated;
-  });
-
-  // Remove preview
-  setPreviews((prev) => {
-    const updated = { ...prev };
-    delete updated[key];
-    return updated;
-  });
-};
-
-
-  // const handleSecurityFiles = (e, index) => {
-  //   const files = Array.from(e.target.files);
-  //   setSecurityItemImages((prev) => {
-  //     const updated = [...prev];
-  //     if (!updated[index]) updated[index] = [];
-  //     updated[index] = [...updated[index], ...files];
-  //     return updated;
-  //   });
-  // };
-
-  // const handleRemoveSecurityImage = (itemIndex, imgIndex) => {
-  //   setSecurityItemImages((prev) => {
-  //     const updated = [...prev];
-  //     updated[itemIndex] = updated[itemIndex].filter((_, i) => i !== imgIndex);
-  //     return updated;
-  //   });
-  // };
-
- 
 
   return (
    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 z-50">
@@ -1746,15 +1974,11 @@ const handleRemoveFile = (key, handler) => {
       </label>
       <input
         type="number"
-        name="principal"
+        name="prequalifiedAmount"
         placeholder="Principal Amount"
-        value={formData.loan.principal}
-        onChange={handleLoanChange}
-        className="block w-full text-sm text-gray-600
-          border border-gray-300 p-2 rounded-lg
-          focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500
-          placeholder-gray-400"
-        required
+        value={formData.loan.prequalifiedAmount}
+        onChange={handleLoanChange} // ✅ correct
+        className="block w-full text-sm text-gray-600 border border-gray-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-400"
       />
     </div>
 
@@ -1829,20 +2053,21 @@ const handleRemoveFile = (key, handler) => {
     </div>
 
     
-    {/* Gender */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Gender</label>
-      <select
-        name="gender"
-        value={formData.guarantor.gender}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      >
-        <option value="">Select Gender</option>
-        <option>Male</option>
-        <option>Female</option>
-      </select>
-    </div>
+   {/* Gender */}
+<div>
+  <label className="block text-sm font-medium text-green-800 mb-1">Gender</label>
+  <select
+    name="gender"
+    value={formData.guarantor.gender}
+    onChange={(e) => handleNestedChange(e, "guarantor")}  // ✅ fixed
+    className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
+  >
+    <option value="">Select Gender</option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
+  </select>
+</div>
+
 
     {/* Date of Birth */}
     <div>
@@ -1918,7 +2143,7 @@ const handleRemoveFile = (key, handler) => {
       <label className="block text-sm font-medium text-green-800 mb-1">Residence Status</label>
       <select
         name="residenceStatus"
-        value={formData.guarantor.residenceStatus}
+        value={formData.guarantor.residence}
         onChange={handleChange}
         className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
       >
@@ -1981,7 +2206,7 @@ const handleRemoveFile = (key, handler) => {
         name="code"
         placeholder="Code"
         value={formData.guarantor.code}
-        onChange={handleChange}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
         className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
@@ -1994,7 +2219,7 @@ const handleRemoveFile = (key, handler) => {
         name="town"
         placeholder="Town / City"
         value={formData.guarantor.town}
-        onChange={handleChange}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
         className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
@@ -2008,7 +2233,7 @@ const handleRemoveFile = (key, handler) => {
         name="county"
         placeholder="County"
         value={formData.guarantor.county}
-        onChange={handleChange}
+        onChange={(e) => handleNestedChange(e, "guarantor")}
         className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
       />
     </div>
@@ -2587,6 +2812,7 @@ const handleRemoveFile = (key, handler) => {
       {activeSection === "documents" && (
         <div className="flex justify-end mt-8">
           <button
+          type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
             className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 font-medium transition-colors"
