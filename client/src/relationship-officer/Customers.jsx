@@ -28,12 +28,6 @@ function Customers() {
     fetchCustomers();
   }, []);
 
-  // Delete
-  const deleteCustomer = async (id) => {
-    if (!window.confirm("Are you sure?")) return;
-    const { error } = await supabase.from("customers").delete().eq("id", id);
-    if (!error) setCustomers(customers.filter((c) => c.id !== id));
-  };
 
   
  // Fetch single customer details + relations
@@ -100,7 +94,7 @@ const fetchCustomerDetails = async (id) => {
           setEditCustomer(c.id);
           setShowForm(true);
         }}
-        onDelete={deleteCustomer}
+       
         onView={fetchCustomerDetails}
       />
 

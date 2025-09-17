@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Pencil, Trash2, Eye, Search, Users, Plus } from "lucide-react";
 import AddCustomer from "./AddCustomer"; 
 
-function CustomersTable({ customers, loading, onEdit, onDelete, onView }) {
+function CustomersTable({ customers, loading, onEdit,  onView }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   
@@ -119,12 +119,7 @@ if (!customers || customers.length === 0) {
                       >
                         <Pencil size={18} />
                       </button>
-                      <button
-                        onClick={() => onDelete(c.id)}
-                        className="text-red-600 hover:text-red-800 transition-colors"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                    
                     </div>
                   </td>
                 </tr>

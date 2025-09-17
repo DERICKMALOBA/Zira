@@ -23,6 +23,8 @@ import Customers from "./relationship-officer/Customers";
 import Loans from "./relationship-officer/Loans";
 import ConversionChart from "./relationship-officer/components/CoversionChart";
 import LoanVerificationForm from "./loan/LoanVerificationForm";
+import Approval from "./relationship-officer/Approval";
+import Amendments from "./relationship-officer/amendments/Amendments";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -64,6 +66,10 @@ function App() {
               <Route path="/officer/leads" element={<Leads />} />
               <Route path="/officer/customers" element={<Customers />} />
               <Route path="/officer/loans" element={<Loans />} />
+                            <Route path="/officer/customers/approval" element={<Approval />} />
+              <Route path="/officer/customers/amendments" element={<Amendments/>} />
+
+
               <Route
                 path="/officer/conversions"
                 element={<ConversionChart />}

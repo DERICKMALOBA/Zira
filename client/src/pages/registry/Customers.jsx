@@ -162,6 +162,9 @@ const Customers = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Prequalified Amount
                   </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    status
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Actions
                   </th>
@@ -183,15 +186,11 @@ const Customers = () => {
                           })
                         : "N/A"}
                     </td>
+                                        <td className="px-6 py-4">{customer.verification_status|| "N/A"}</td>
+
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-2">
-                        <button
-                          onClick={() => viewCustomerDetails(customer)}
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="View Details"
-                        >
-                          <EyeIcon className="h-5 w-5" />
-                        </button>
+                        
 
                         <button
                           onClick={() => verifyCustomer(customer)}
@@ -200,13 +199,7 @@ const Customers = () => {
                         >
                           Verify
                         </button>
-                        <button
-                          onClick={() => deleteCustomer(customer.id)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete Customer"
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
+                        
                       </div>
                     </td>
                   </tr>
