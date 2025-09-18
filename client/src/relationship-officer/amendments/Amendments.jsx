@@ -70,10 +70,10 @@ function Amendments() {
       <AmendmentsTable
         amendments={amendments}
         loading={loading}
-        onEdit={(a) => {
-          setEditAmendment(a.id);
-          setShowForm(true);
-        }}
+       onEdit={(a) => {
+    setEditAmendment(a); 
+    setShowForm(true);
+  }}
         onView={fetchAmendmentDetails}
         onRefresh={fetchAmendments}
       />
@@ -81,12 +81,13 @@ function Amendments() {
       {/* Modals */}
       {showForm && (
         <EditAmendment
-          amendmentId={editAmendment}
-          onClose={() => {
-            setShowForm(false);
-            fetchAmendments();
-          }}
-        />
+    amendmentId={editAmendment.id}
+    customerId={editAmendment.customer_id || editAmendment.customers?.id} // fallback if nested
+    onClose={() => {
+      setShowForm(false);
+      fetchAmendments();
+    }}
+  />
       )}
       
       {viewAmendment && (

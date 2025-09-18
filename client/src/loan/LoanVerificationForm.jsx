@@ -17,7 +17,7 @@ import {
   ClipboardDocumentCheckIcon,
   CurrencyDollarIcon,
   BuildingOffice2Icon,
-  PhotoIcon,  DevicePhoneMobileIcon,PhoneIcon
+  PhotoIcon,  DevicePhoneMobileIcon,PhoneIcon,  PencilSquareIcon
 } from '@heroicons/react/24/outline';
 
 const LoanVerificationForm = ({ customerId, onClose }) => {
@@ -1416,6 +1416,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
       { value: "rejected", label: "Reject", color: "red", icon: XCircleIcon },
       { value: "pending", label: "Request More Information", color: "amber", icon: DocumentMagnifyingGlassIcon },
       { value: "referred", label: "Refer to Senior Manager", color: "purple", icon: UserGroupIcon },
+      { value: "edit", label: "Edit Personal Details", color: "blue", icon: PencilSquareIcon },
     ].map(({ value, label, color, icon: Icon }) => {
       const isSelected = verificationData.finalDecision === value;
 
@@ -1448,7 +1449,14 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
           text: "text-purple-700",
           icon: "text-purple-600",
           hover: "hover:bg-purple-100"
-        }
+        },
+        blue: { 
+        bg: "bg-blue-50",
+        border: "border-blue-500",
+        text: "text-blue-700",
+        icon: "text-blue-600",
+        hover: "hover:bg-blue-100"
+      }
       };
 
       const currentColor = colorClasses[color];
