@@ -1,6 +1,6 @@
 // src/components/LoanVerificationForm.jsx
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../supabaseClient';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
@@ -20,7 +20,7 @@ import {
   PhotoIcon,  DevicePhoneMobileIcon,PhoneIcon,  PencilSquareIcon
 } from '@heroicons/react/24/outline';
 
-const LoanVerificationForm = ({ customerId, onClose }) => {
+const CustomerVerificationForm = ({ customerId, onClose }) => {
   const [step, setStep] = useState(1);
   const [customer, setCustomer] = useState(null);
   const [guarantors, setGuarantors] = useState([]);
@@ -64,127 +64,138 @@ const LoanVerificationForm = ({ customerId, onClose }) => {
     }
   }, [customerId]);
 
-  const fetchCustomerDetails = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch customer with images
-      const { data: customerData, error: customerError } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', customerId)
-        .single();
-      
-      if (customerError) throw customerError;
-      setCustomer(customerData);
+const fetchCustomerDetails = async () => {
+  try {
+    setLoading(true);
 
-      // Fetch business images
-      const { data: businessData, error: businessError } = await supabase
-        .from('business_images')
-        .select('*')
-        .eq('customer_id', customerId);
-      
-      if (!businessError) setBusinessImages(businessData || []);
-
-      // Fetch loan details
-      const { data: loanData, error: loanError } = await supabase
-        .from('loans')
-        .select('*')
-        .eq('customer_id', customerId)
-        .single();
-      
-      if (!loanError && loanData) {
-        setLoanDetails(loanData);
-        setVerificationData(prev => ({
-          ...prev,
-          loan: {
-            ...prev.loan,
-            prequalifiedAmount: loanData.prequalified_amount || 0,
-            scoredAmount: loanData.prequalified_amount || 0
-          }
-        }));
-      }
-
-      // Fetch guarantors with their images
-      const { data: guarantorsData, error: guarantorsError } = await supabase
-        .from('guarantors')
-        .select('*')
-        .eq('customer_id', customerId);
-      
-      if (!guarantorsError && guarantorsData) {
-        setGuarantors(guarantorsData);
-        setVerificationData(prev => ({
-          ...prev,
-          guarantors: guarantorsData.map(() => ({
-            idVerified: false,
-            phoneVerified: false,
-            comment: ''
-          }))
-        }));
-      }
-
-// Fetch borrower security items and their images
-const { data: securityItemsData, error: securityItemsError } = await supabase
-  .from("security_items")
-  .select("*")
-  .eq("customer_id", customerId);
-
-if (!securityItemsError && securityItemsData) {
-  const { data: securityImagesData, error: securityImagesError } = await supabase
-    .from("security_item_images")
-    .select("*")
-    .in("security_item_id", securityItemsData.map((s) => s.id));
-
-  if (!securityImagesError) {
-    const securityWithImages = securityItemsData.map((item) => {
-      const images = (securityImagesData || [])
-        .filter((img) => img.security_item_id === item.id)
-        .map((img) =>
-          img.image_url
-            ? supabase.storage.from("customers").getPublicUrl(img.image_url).data.publicUrl
-            : null
-        );
-      return { ...item, images };
-    });
-
-    setSecurityItems(securityWithImages);
-    console.log("✅ Borrower security with images:", securityWithImages);
-  }
-}
-
-// Fetch guarantor security items and their images
-if (guarantorsData && guarantorsData.length > 0) {
-  const guarantorIds = guarantorsData.map((g) => g.id);
-
-  const { data: gSecurityData, error: gSecurityError } = await supabase
-    .from("guarantor_security")
-    .select("*")
-    .in("guarantor_id", guarantorIds);
-
-  if (!gSecurityError && gSecurityData) {
-    const { data: gSecurityImagesData, error: gSecurityImagesError } = await supabase
-      .from("guarantor_security_images")
+    // 1. Fetch customer (this includes prequalified_amount)
+    const { data: customerData, error: customerError } = await supabase
+      .from("customers")
       .select("*")
-      .in("guarantor_security_id", gSecurityData.map((gs) => gs.id));
+      .eq("id", customerId)
+      .single();
 
-    if (!gSecurityImagesError) {
-      const gSecurityWithImages = gSecurityData.map((item) => {
-        const images = (gSecurityImagesData || [])
-          .filter((img) => img.guarantor_security_id === item.id)
-          .map((img) =>
-            img.image_url
-              ? supabase.storage.from("guarantors").getPublicUrl(img.image_url).data.publicUrl
-              : null
-          );
-        return { ...item, images };
-      });
+    if (customerError) throw customerError;
+    setCustomer(customerData);
 
-      setGuarantorSecurityItems(gSecurityWithImages);
-      console.log("✅ Guarantor security with images:", gSecurityWithImages);
+    // Put customer's prequalified_amount into verificationData
+    setVerificationData((prev) => ({
+      ...prev,
+      loan: {
+        ...prev.loan,
+        prequalifiedAmount: customerData.prequalified_amount || 0,
+      },
+    }));
+
+    // 2. Fetch business images
+    const { data: businessData, error: businessError } = await supabase
+      .from("business_images")
+      .select("*")
+      .eq("customer_id", customerId);
+
+    if (!businessError) setBusinessImages(businessData || []);
+
+    // 3. Fetch loan details (only for scored amount and loan-specific info)
+    const { data: loanData, error: loanError } = await supabase
+      .from("loans")
+      .select("*")
+      .eq("customer_id", customerId)
+      .single();
+
+    if (!loanError && loanData) {
+      setLoanDetails(loanData);
+      setVerificationData((prev) => ({
+        ...prev,
+        loan: {
+          ...prev.loan,
+          scoredAmount: loanData.scored_amount || 0, // scored amount comes from loans table
+        },
+      }));
     }
-  }
-}
 
+    // 4. Fetch guarantors
+    const { data: guarantorsData, error: guarantorsError } = await supabase
+      .from("guarantors")
+      .select("*")
+      .eq("customer_id", customerId);
+
+    if (!guarantorsError && guarantorsData) {
+      setGuarantors(guarantorsData);
+      setVerificationData((prev) => ({
+        ...prev,
+        guarantors: guarantorsData.map(() => ({
+          idVerified: false,
+          phoneVerified: false,
+          comment: "",
+        })),
+      }));
+    }
+
+    // 5. Fetch borrower security items and images
+    const { data: securityItemsData, error: securityItemsError } = await supabase
+      .from("security_items")
+      .select("*")
+      .eq("customer_id", customerId);
+
+    if (!securityItemsError && securityItemsData) {
+      const { data: securityImagesData, error: securityImagesError } =
+        await supabase
+          .from("security_item_images")
+          .select("*")
+          .in("security_item_id", securityItemsData.map((s) => s.id));
+
+      if (!securityImagesError) {
+        const securityWithImages = securityItemsData.map((item) => {
+          const images = (securityImagesData || [])
+            .filter((img) => img.security_item_id === item.id)
+            .map((img) =>
+              img.image_url
+                ? supabase.storage
+                    .from("customers")
+                    .getPublicUrl(img.image_url).data.publicUrl
+                : null
+            );
+          return { ...item, images };
+        });
+
+        setSecurityItems(securityWithImages);
+      }
+    }
+
+    // 6. Fetch guarantor security + images
+    if (guarantorsData && guarantorsData.length > 0) {
+      const guarantorIds = guarantorsData.map((g) => g.id);
+
+      const { data: gSecurityData, error: gSecurityError } = await supabase
+        .from("guarantor_security")
+        .select("*")
+        .in("guarantor_id", guarantorIds);
+
+      if (!gSecurityError && gSecurityData) {
+        const { data: gSecurityImagesData, error: gSecurityImagesError } =
+          await supabase
+            .from("guarantor_security_images")
+            .select("*")
+            .in("guarantor_security_id", gSecurityData.map((gs) => gs.id));
+
+        if (!gSecurityImagesError) {
+          const gSecurityWithImages = gSecurityData.map((item) => {
+            const images = (gSecurityImagesData || [])
+              .filter((img) => img.guarantor_security_id === item.id)
+              .map((img) =>
+                img.image_url
+                  ? supabase.storage
+                      .from("guarantors")
+                      .getPublicUrl(img.image_url).data.publicUrl
+                  : null
+              );
+            return { ...item, images };
+          });
+
+          setGuarantorSecurityItems(gSecurityWithImages);
+        }
+      }
+    }
   } catch (error) {
     console.error("❌ Error fetching customer details:", error);
     toast.error("Error loading customer details");
@@ -192,6 +203,7 @@ if (guarantorsData && guarantorsData.length > 0) {
     setLoading(false);
   }
 };
+
 
  
   
@@ -250,7 +262,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
 
     // Insert verification record with the new structure
     const { data, error } = await supabase
-      .from('loan_verifications')
+      .from('customer_verifications')
       .insert({
         customer_id: customerId,
        
@@ -289,7 +301,6 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
         .from('loans')
         .update({ 
           scored_amount: verificationData.loan.scoredAmount,
-          status: 'approved',
           updated_at: new Date().toISOString()
         })
         .eq('customer_id', customerId);
@@ -421,7 +432,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Loan Application Verification
+                Customer Application Verification
               </h1>
               <p className="text-gray-600 mt-2">Comprehensive verification of customer documents and information</p>
             </div>
@@ -711,6 +722,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
         placeholder="Add instructions for the relationship officer (e.g., 'Please verify phone number', 'Update customer address', etc.)"
         className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
         rows={4}
+        required
       />
     </div>
   </div>
@@ -855,6 +867,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
         placeholder="Add comments about business verification, location accuracy, operations, etc."
         className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
         rows={4}
+        required
       />
     </div>
   </div>
@@ -1075,6 +1088,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
                 placeholder="Add comments about this guarantor's verification, document quality, or issues found..."
                 className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
                 rows={3}
+                required
               />
             </div>
           </div>
@@ -1190,6 +1204,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
           placeholder="Add comments about security items adequacy, valuation, verification status..."
           className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
           rows={3}
+          required
         />
       </div>
     </div>
@@ -1286,6 +1301,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
           placeholder="Add comments about guarantor security items adequacy, valuation, verification status..."
           className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
           rows={3}
+          required
         />
       </div>
     </div>
@@ -1322,7 +1338,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
                       </div>
                     </div>
                     <p className="text-3xl font-bold text-blue-700 mb-2">
-                      KES {verificationData.loan.prequalifiedAmount?.toLocaleString() || '0'}
+                      KES {customer.prequalifiedAmount?.toLocaleString() || '0'}
                     </p>
                     <p className="text-sm text-blue-600">Initial assessment amount</p>
                   </div>
@@ -1342,6 +1358,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
                         onChange={(e) => handleVerificationChange('scoredAmount', parseFloat(e.target.value) || 0, 'loan')}
                         className="text-3xl font-bold text-emerald-700 bg-transparent border-b-2 border-emerald-300 focus:outline-none focus:border-emerald-500 w-full"
                         placeholder="0"
+                        required
                       />
                     </div>
                     <p className="text-sm text-emerald-600">Post-verification amount</p>
@@ -1386,6 +1403,7 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
                     placeholder="Add detailed comments about loan assessment, amount justification, risk factors, repayment capacity analysis..."
                     className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
                     rows={5}
+                    required
                   />
                 </div>
               </div>
@@ -1540,6 +1558,8 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
                     placeholder="Provide comprehensive final comments, recommendations for the relationship officer, risk assessment, and any special instructions..."
                     className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
                     rows={6}
+                    required
+
                   />
                 </div>
               </div>
@@ -1642,4 +1662,4 @@ const handleVerificationChange = (field, value, section = 'customer', index = nu
   );
 };
 
-export default LoanVerificationForm;
+export default CustomerVerificationForm;

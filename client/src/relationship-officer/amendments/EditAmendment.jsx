@@ -36,6 +36,7 @@ function EditAmendment({ customerId, onClose }) {
     road: "",
     landmark: "",
     hasLocalAuthorityLicense: "",
+    prequalifiedAmount: "",
     
     guarantor: {
       prefix: "",
@@ -67,7 +68,7 @@ function EditAmendment({ customerId, onClose }) {
       county: "",
       cityTown: "",
     },
-    loan: { prequalifiedAmount: "" }, 
+   
   });
 
   // File upload state
@@ -280,13 +281,13 @@ documents: documentsData?.length > 0
   ? documentsData.map(doc => ({
       id: doc.id,
       type: doc.document_type || "",
-      url: doc.url || ""
+      url: doc.image_url || ""  // Change from doc.url to doc.image_url
     }))
   : [
       officerClientImage1 ? { type: "officer_client1", url: officerClientImage1 } : null,
       officerClientImage2 ? { type: "officer_client2", url: officerClientImage2 } : null,
       bothOfficersImage ? { type: "both_officers", url: bothOfficersImage } : null,
-    ].filter(Boolean) // remove nulls
+    ].filter(Boolean) 
 
    
     };
@@ -1038,8 +1039,8 @@ documents: documentsData?.length > 0
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-      <div className="bg-white w-full max-w-4xl rounded-xl shadow-2xl">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 z-50">
+    <div className="bg-white w-full h-full rounded-none shadow-2xl overflow-y-auto">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-2xl font-bold text-green-600">Edit Customer Information</h2>
@@ -1165,7 +1166,9 @@ documents: documentsData?.length > 0
                     name="alternativeMobile"
                     value={formData.alternativeMobile}
                     onChange={handleChange}
-                    className="w-full p-2 border rounded-md"
+                   className="w-full p-2 border rounded-md bg-gray-100"
+                   readOnly
+                    disabled
                   />
                 </div>
 
@@ -1176,9 +1179,9 @@ documents: documentsData?.length > 0
                     type="text"
                     name="idNumber"
                     value={formData.idNumber}
-                    onChange={handleChange}
-                    className={`w-full p-2 border rounded-md ${errors.idNumber ? 'border-red-500' : ''}`}
-                    required
+            
+className="w-full p-2 border rounded-md bg-gray-100"                    readOnly
+                    disabled
                   />
                   {errors.idNumber && <span className="text-red-500 text-xs">{errors.idNumber}</span>}
                 </div>
@@ -1800,7 +1803,7 @@ documents: documentsData?.length > 0
                   <input
                     type="number"
                     name="prequalifiedAmount"
-                    value={formData.loan.prequalifiedAmount}
+                    value={formData.prequalifiedAmount}
                     onChange={handleLoanChange}
                     className="w-full p-2 border rounded-md"
                     min="0"
@@ -2373,6 +2376,7 @@ documents: documentsData?.length > 0
           )}
 
 
+
 {/* DOCUMENTS */}
 {activeSection === "documents" && (
   <div className="space-y-4">
@@ -2383,6 +2387,7 @@ documents: documentsData?.length > 0
         { 
           key: "officerClient1", 
           label: "First Officer & Client", 
+          documentType: "First Officer and Client Image",
           handler: setOfficerClientImage1, 
           preview: previews.officerClient1, 
           existing: existingImages.officerClient1 
@@ -2390,6 +2395,7 @@ documents: documentsData?.length > 0
         { 
           key: "officerClient2", 
           label: "Second Officer & Client", 
+          documentType: "Second Officer and Client Image",
           handler: setOfficerClientImage2, 
           preview: previews.officerClient2, 
           existing: existingImages.officerClient2 
@@ -2397,90 +2403,98 @@ documents: documentsData?.length > 0
         { 
           key: "bothOfficers", 
           label: "Both Officers", 
+          documentType: "Both Officers Image",
           handler: setBothOfficersImage, 
           preview: previews.bothOfficers, 
           existing: existingImages.bothOfficers 
         },
-      ].map((file) => (
-        <div key={file.key} className="border p-3 rounded-md">
-          <label className="block text-sm font-medium mb-2">{file.label}</label>
-          <div className="flex gap-2 mb-2">
-            <label className="flex items-center justify-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded cursor-pointer">
-              <Upload size={16} />
-              Upload
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleFileUpload(e, file.handler, file.key)}
-                className="hidden"
-              />
-            </label>
-            <label className="flex items-center justify-center gap-1 px-3 py-1 bg-green-600 text-white rounded cursor-pointer">
-              <Camera size={16} />
-              Camera
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e) => handleFileUpload(e, file.handler, file.key)}
-                className="hidden"
-              />
-            </label>
+      ].map((file) => {
+        // Find the document data for this type
+        const documentData = formData.documents?.find(doc => 
+          doc.type === file.documentType
+        );
+        
+        return (
+          <div key={file.key} className="border p-3 rounded-md">
+            <label className="block text-sm font-medium mb-2">{file.label}</label>
+            <div className="flex gap-2 mb-2">
+              <label className="flex items-center justify-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded cursor-pointer">
+                <Upload size={16} />
+                Upload
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                  className="hidden"
+                />
+              </label>
+              <label className="flex items-center justify-center gap-1 px-3 py-1 bg-green-600 text-white rounded cursor-pointer">
+                <Camera size={16} />
+                Camera
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            
+            {/* Show existing image if available */}
+            {(file.existing || documentData?.url) && !file.preview && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-600 mb-2">Existing Image:</p>
+                <div className="relative">
+                  <img
+                    src={file.existing || documentData.url}
+                    alt={file.label}
+                    className="w-full h-32 object-contain border rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // You might want to implement a delete function for existing images
+                      console.log(`Remove existing image for ${file.key}`);
+                    }}
+                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1"
+                  >
+                    <XIcon size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Show new preview if uploaded */}
+            {file.preview && (
+              <div className="mt-4">
+                <p className="text-sm text-gray-600 mb-2">New Image:</p>
+                <div className="relative">
+                  <img
+                    src={file.preview}
+                    alt={file.label}
+                    className="w-full h-32 object-contain border rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveFile(file.key, file.handler)}
+                    className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1"
+                  >
+                    <XIcon size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {/* Show message if no image exists */}
+            {!file.existing && !documentData?.url && !file.preview && (
+              <div className="mt-4 text-center text-gray-500 text-sm">
+                No image uploaded yet
+              </div>
+            )}
           </div>
-          
-          {/* Show existing image if available */}
-          {file.existing && !file.preview && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-600 mb-2">Existing Image:</p>
-              <div className="relative">
-                <img
-                  src={file.existing}
-                  alt={file.label}
-                  className="w-full h-32 object-contain border rounded"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    // You might want to implement a delete function for existing images
-                    console.log(`Remove existing image for ${file.key}`);
-                  }}
-                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1"
-                >
-                  <XIcon size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {/* Show new preview if uploaded */}
-          {file.preview && (
-            <div className="mt-4">
-              <p className="text-sm text-gray-600 mb-2">New Image:</p>
-              <div className="relative">
-                <img
-                  src={file.preview}
-                  alt={file.label}
-                  className="w-full h-32 object-contain border rounded"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveFile(file.key, file.handler)}
-                  className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1"
-                >
-                  <XIcon size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {/* Show message if no image exists */}
-          {!file.existing && !file.preview && (
-            <div className="mt-4 text-center text-gray-500 text-sm">
-              No image uploaded yet
-            </div>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   </div>
 )}

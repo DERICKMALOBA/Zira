@@ -40,7 +40,7 @@ const AddCustomer = ({ onClose }) => {
     road: "",
     landmark: "",
     hasLocalAuthorityLicense: "",
-  
+    prequalifiedAmount: "", 
     
     guarantor: {
       prefix: "",
@@ -59,6 +59,8 @@ const AddCustomer = ({ onClose }) => {
       relationship: "",
       county: "",
       cityTown: "",
+    
+
     },
     nextOfKin: {
       Firstname: "",
@@ -72,7 +74,7 @@ const AddCustomer = ({ onClose }) => {
       county: "",
       cityTown: "",
     },
-      loan: { prequalifiedAmount: ""}, 
+      
 
   });
 
@@ -259,8 +261,8 @@ const validateLoanDetails = () => {
   let isValid = true;
 
   // Principal / Pre-qualified Amount
-  if (!formData.loan.prequalifiedAmount || parseFloat(formData.loan.prequalifiedAmount) <= 0) {
-    errorsFound.loanPrequalifiedamount = "Please enter a valid loan amount greater than 0";
+  if (!formData.prequalifiedAmount || parseFloat(formData.prequalifiedAmount) <= 0) {
+    errorsFound.Prequalifiedamount = "Please enter a valid loan amount greater than 0";
     isValid = false;
   }
 
@@ -725,16 +727,6 @@ const handleNestedChange = (e, section) => {
 
  
 
- const handleLoanChange = (e) => {
-  const { name, value } = e.target;
-  setFormData((prev) => ({
-    ...prev,
-    loan: {
-      ...prev.loan,
-      [name]: value
-    }
-  }));
-};
 
 
 
@@ -904,6 +896,9 @@ const handleSubmit = async (e) => {
         id_front_url: idFrontUrl,
         id_back_url: idBackUrl,
         house_image_url: houseImageUrl,
+           prequalifiedAmount: formData.loan?.prequalifiedAmount 
+        ? parseFloat(formData.loan.prequalifiedAmount) 
+        : null,
       }])
       .select("id")
       .single();
@@ -1104,14 +1099,6 @@ const handleSubmit = async (e) => {
       }
     }
 
-    // ========= 8. Loan =========
-    if (formData.loan?.prequalifiedAmount) {
-      const { error: loanError } = await supabase.from("loans").insert([{
-        customer_id: customerId,
-        prequalified_amount: parseFloat(formData.loan.prequalifiedAmount),
-      }]);
-      if (loanError) logError("Loan", loanError);
-    }
 
     // ========= 9. Documents =========
     const documentsToUpload = [
@@ -1976,8 +1963,8 @@ const handleRemoveFile = (key, setter) => {
         type="number"
         name="prequalifiedAmount"
         placeholder="Principal Amount"
-        value={formData.loan.prequalifiedAmount}
-        onChange={handleLoanChange} // ✅ correct
+        value={formData.prequalifiedAmount}
+        onChange={handleChange} // ✅ correct
         className="block w-full text-sm text-gray-600 border border-gray-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-400"
       />
     </div>

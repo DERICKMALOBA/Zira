@@ -22,7 +22,6 @@ import Leads from "./relationship-officer/Leads";
 import Customers from "./relationship-officer/Customers";
 import Loans from "./relationship-officer/Loans";
 import ConversionChart from "./relationship-officer/components/CoversionChart";
-import LoanVerificationForm from "./loan/LoanVerificationForm";
 import Approval from "./relationship-officer/Approval";
 import Amendments from "./relationship-officer/amendments/Amendments";
 
@@ -60,7 +59,7 @@ function App() {
               <Route path="/reports/*" element={<Reports />} />
 
 
-              <Route path="/loans" element={<LoanVerificationForm/>} />
+     
 
               <Route path="/officer" element={<OfficerDashboard />} />
               <Route path="/officer/leads" element={<Leads />} />

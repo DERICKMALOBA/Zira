@@ -10,7 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../supabaseClient";
 import CustomerDetailsModal from "../../relationship-officer/components/CustomerDetailsModal.jsx";
-import LoanVerificationForm from "../../loan/LoanVerificationForm.jsx";
+import CustomerVerificationForm from "./CustomerVerification.jsx";
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -27,12 +27,7 @@ const Customers = () => {
 
       const { data, error } = await supabase
         .from("customers")
-        .select(
-          `
-        *,
-        loans ( id, prequalified_amount )
-      `
-        )
+        .select()
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -52,33 +47,33 @@ const Customers = () => {
     fetchCustomers();
   }, []);
 
-  const viewCustomerDetails = (customer) => {
-    setSelectedCustomer(customer);
-    setShowDetailsModal(true);
-  };
-  
+  // const viewCustomerDetails = (customer) => {
+  //   setSelectedCustomer(customer);
+  //   setShowDetailsModal(true);
+  // };
+
   const verifyCustomer = (customer) => {
     setSelectedCustomer(customer);
     setShowForm(true);
   };
 
-  const deleteCustomer = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this customer?"))
-      return;
+  // const deleteCustomer = async (id) => {
+  //   if (!window.confirm("Are you sure you want to delete this customer?"))
+  //     return;
 
-    try {
-      const { error } = await supabase.from("customers").delete().eq("id", id);
+  //   try {
+  //     const { error } = await supabase.from("customers").delete().eq("id", id);
 
-      if (error) {
-        console.error("Error deleting customer:", error);
-        return;
-      }
+  //     if (error) {
+  //       console.error("Error deleting customer:", error);
+  //       return;
+  //     }
 
-      setCustomers(customers.filter((c) => c.id !== id));
-    } catch (error) {
-      console.error("Error:", error);
-    }
-  };
+  //     setCustomers(customers.filter((c) => c.id !== id));
+  //   } catch (error) {
+  //     console.error("Error:", error);
+  //   }
+  // };
 
   // 🔍 Filter customers by name, phone, or id
   const filteredCustomers = customers.filter(
@@ -92,7 +87,6 @@ const Customers = () => {
 
   return (
     <div className="p-6">
-    
       {/* Filters and Search */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
         <div className="flex flex-col md:flex-row md:items-end gap-4">
@@ -162,7 +156,7 @@ const Customers = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Prequalified Amount
                   </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -175,23 +169,26 @@ const Customers = () => {
                   <tr key={customer.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">{customer.Firstname || "N/A"}</td>
                     <td className="px-6 py-4">{customer.Surname || "N/A"}</td>
-                    <td className="px-6 py-4">{customer.Middlename || "N/A"}</td>
+                    <td className="px-6 py-4">
+                      {customer.Middlename || "N/A"}
+                    </td>
                     <td className="px-6 py-4">{customer.mobile || "N/A"}</td>
                     <td className="px-6 py-4">{customer.id_number || "N/A"}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {customer.loans && customer.loans.length > 0
-                        ? customer.loans[0].prequalified_amount.toLocaleString("en-KE", {
+                      {customer.prequalifiedAmount
+                        ? customer.prequalifiedAmount.toLocaleString("en-KE", {
                             style: "currency",
                             currency: "KES",
                           })
                         : "N/A"}
                     </td>
-                                        <td className="px-6 py-4">{customer.verification_status|| "N/A"}</td>
+
+                    <td className="px-6 py-4">
+                      {customer.verification_status || "N/A"}
+                    </td>
 
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-2">
-                        
-
                         <button
                           onClick={() => verifyCustomer(customer)}
                           className="text-green-600 hover:text-green-900 px-2 py-1 border border-green-600 rounded"
@@ -199,7 +196,6 @@ const Customers = () => {
                         >
                           Verify
                         </button>
-                        
                       </div>
                     </td>
                   </tr>
@@ -210,7 +206,9 @@ const Customers = () => {
 
           {filteredCustomers.length === 0 && !loading && (
             <div className="text-center py-12 text-gray-400">
-              {searchTerm ? "No customers found matching your search." : "No customers found."}
+              {searchTerm
+                ? "No customers found matching your search."
+                : "No customers found."}
             </div>
           )}
         </div>
@@ -238,7 +236,7 @@ const Customers = () => {
 
             {/* Loan form takes the whole screen */}
             <div className="p-6 h-full overflow-y-auto">
-              <LoanVerificationForm
+              <CustomerVerificationForm
                 customerId={selectedCustomer.id}
                 onClose={() => setShowForm(false)}
               />

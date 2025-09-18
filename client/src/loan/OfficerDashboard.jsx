@@ -1,7 +1,7 @@
 // src/components/OfficerDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import LoanVerificationForm from './LoanVerificationForm';
+import LoanVerificationForm from '../pages/registry/CustomerVerification';
 import LoanBookingForm from './LoanBookingForm';
 
 const OfficerDashboard = () => {
