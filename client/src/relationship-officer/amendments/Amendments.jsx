@@ -78,18 +78,22 @@ function Amendments() {
         onBookLoan={(a) => setBookLoan(a)} // pass down handler
         onRefresh={fetchAmendments}
       />
+{showForm && (
+  <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 overflow-y-auto">
+    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <EditAmendment
+        amendmentId={editAmendment.id}
+        customerId={editAmendment.customer_id || editAmendment.customers?.id}
+        onClose={() => {
+          setShowForm(false);
+          fetchAmendments();
+        }}
+      />
+    </div>
+  </div>
+)}
 
-      {/* Edit Amendment */}
-      {showForm && (
-        <EditAmendment
-          amendmentId={editAmendment.id}
-          customerId={editAmendment.customer_id || editAmendment.customers?.id}
-          onClose={() => {
-            setShowForm(false);
-            fetchAmendments();
-          }}
-        />
-      )}
+
       
       {/* View Amendment */}
       {viewAmendment && (
