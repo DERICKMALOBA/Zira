@@ -47,33 +47,13 @@ const Customers = () => {
     fetchCustomers();
   }, []);
 
-  // const viewCustomerDetails = (customer) => {
-  //   setSelectedCustomer(customer);
-  //   setShowDetailsModal(true);
-  // };
 
   const verifyCustomer = (customer) => {
     setSelectedCustomer(customer);
     setShowForm(true);
   };
 
-  // const deleteCustomer = async (id) => {
-  //   if (!window.confirm("Are you sure you want to delete this customer?"))
-  //     return;
-
-  //   try {
-  //     const { error } = await supabase.from("customers").delete().eq("id", id);
-
-  //     if (error) {
-  //       console.error("Error deleting customer:", error);
-  //       return;
-  //     }
-
-  //     setCustomers(customers.filter((c) => c.id !== id));
-  //   } catch (error) {
-  //     console.error("Error:", error);
-  //   }
-  // };
+  
 
   // 🔍 Filter customers by name, phone, or id
   const filteredCustomers = customers.filter(

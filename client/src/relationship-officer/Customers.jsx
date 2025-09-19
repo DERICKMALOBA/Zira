@@ -79,12 +79,7 @@ const fetchCustomerDetails = async (id) => {
 
   return (
     <div className="p-6">
-      {/* Header */}
-     <div className="mb-8 text-center">
-             <h1 className="text-green-600 font-serif mb-2 mt-0 text-xl ">Customers' Table</h1>
-              <p className="text-gray-600 mb-6">Manage your customers here.</p>
-     </div>
-   
+     
 
       {/* Table */}
       <CustomersTable

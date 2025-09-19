@@ -5,6 +5,7 @@ import AmendmentDetailsModal from "./AmendmentDetailsModal";
 import EditAmendment from "./EditAmendment";
 import LoanBookingForm from "./LoanBooking";
 
+
 function Amendments() {
   const [amendments, setAmendments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -105,11 +106,15 @@ function Amendments() {
 
       {/* Loan Booking */}
       {bookLoan && (
-        <LoanBookingForm
-          amendment={bookLoan}
-          onClose={() => setBookLoan(null)}
-          onBooked={fetchAmendments}
-        />
+        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
+          <LoanBookingForm
+            amendment={bookLoan}
+            onComplete={() => {
+              setBookLoan(null);
+              fetchAmendments();
+            }}
+          />
+        </div>
       )}
     </div>
   );
