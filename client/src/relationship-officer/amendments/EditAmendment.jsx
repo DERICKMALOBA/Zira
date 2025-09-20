@@ -151,122 +151,112 @@ function EditAmendment({ customerId, onClose }) {
         documentsError ? "Error:" + documentsError.message : "✅"
       );
 
-      // Build form data
-      const updatedFormData = {
-        prefix: customer?.prefix || "",
-        Firstname: customer?.Firstname || "",
-        Middlename: customer?.Middlename || "",
-        Surname: customer?.Surname || "",
-        maritalStatus: customer?.marital_status || "",
-        residenceStatus: customer?.residence_status || "",
-        mobile: customer?.mobile || "",
-        alternativeMobile: customer?.alternative_mobile || "",
-        occupation: customer?.occupation || "",
-        dateOfBirth: customer?.date_of_birth || "",
-        gender: customer?.gender || "",
-        idNumber: customer?.id_number || "",
-        postalAddress: customer?.postal_address || "",
-        code: customer?.code || "",
-        town: customer?.town || "",
-        county: customer?.county || "",
-        businessName: customer?.business_name || "",
-        businessType: customer?.business_type || "",
-        yearEstablished: customer?.year_established || "",
-        businessLocation: customer?.business_location || "",
-        daily_Sales: customer?.daily_Sales || "",
-        road: customer?.road || "",
-        landmark: customer?.landmark || "",
-        hasLocalAuthorityLicense: customer?.has_local_authority_license
-          ? "Yes"
-          : "No",
+      
+    // Build form data
+const updatedFormData = {
+  prefix: customer?.prefix || "",
+  Firstname: customer?.Firstname || "",
+  Middlename: customer?.Middlename || "",
+  Surname: customer?.Surname || "",
+  maritalStatus: customer?.marital_status || "",
+  residenceStatus: customer?.residence_status || "",
+  mobile: customer?.mobile || "",
+  alternativeMobile: customer?.alternative_mobile || "",
+  occupation: customer?.occupation || "",
+  dateOfBirth: customer?.date_of_birth || "",
+  gender: customer?.gender || "",
+  idNumber: customer?.id_number || "",
+  postalAddress: customer?.postal_address || "",
+  code: customer?.code || "",
+  town: customer?.town || "",
+  county: customer?.county || "",
+  businessName: customer?.business_name || "",
+  businessType: customer?.business_type || "",
+  yearEstablished: customer?.year_established || "",
+  businessLocation: customer?.business_location || "",
+  daily_Sales: customer?.daily_Sales || "",
+  road: customer?.road || "",
+  landmark: customer?.landmark || "",
+  hasLocalAuthorityLicense: customer?.has_local_authority_license
+    ? "Yes"
+    : "No",
 
-        guarantor: guarantor
-          ? {
-              prefix: guarantor.prefix || "",
-              Firstname: guarantor.Firstname || "",
-              Surname: guarantor.Surname || "",
-              idNumber: guarantor.id_number || "",
-              maritalStatus: guarantor.marital_status || "",
-              Middlename: guarantor.Middlename || "",
-              dateOfBirth: guarantor.date_of_birth || "",
-              residenceStatus: guarantor.residence_status || "",
-              gender: guarantor.gender || "",
-              mobile: guarantor.mobile || "",
-              postalAddress: guarantor.postal_address || "",
-              code: guarantor.code || "",
-              occupation: guarantor.occupation || "",
-              relationship: guarantor.relationship || "",
-              county: guarantor.county || "",
-              cityTown: guarantor.city_town || "",
-            }
-          : {
-              prefix: "",
-              Firstname: "",
-              Surname: "",
-              idNumber: "",
-              maritalStatus: "",
-              Middlename: "",
-              dateOfBirth: "",
-              residenceStatus: "",
-              gender: "",
-              mobile: "",
-              postalAddress: "",
-              code: "",
-              occupation: "",
-              relationship: "",
-              county: "",
-              cityTown: "",
-            },
+  guarantor: guarantor
+    ? {
+        prefix: guarantor.prefix || "",
+        Firstname: guarantor.Firstname || "",
+        Surname: guarantor.Surname || "",
+        idNumber: guarantor.id_number || "",
+        maritalStatus: guarantor.marital_status || "",
+        Middlename: guarantor.Middlename || "",
+        dateOfBirth: guarantor.date_of_birth || "",
+        residenceStatus: guarantor.residence_status || "",
+        gender: guarantor.gender || "",
+        mobile: guarantor.mobile || "",
+        postalAddress: guarantor.postal_address || "",
+        code: guarantor.code || "",
+        occupation: guarantor.occupation || "",
+        relationship: guarantor.relationship || "",
+        county: guarantor.county || "",
+        cityTown: guarantor.city_town || "",
+      }
+    : {
+        prefix: "",
+        Firstname: "",
+        Surname: "",
+        idNumber: "",
+        maritalStatus: "",
+        Middlename: "",
+        dateOfBirth: "",
+        residenceStatus: "",
+        gender: "",
+        mobile: "",
+        postalAddress: "",
+        code: "",
+        occupation: "",
+        relationship: "",
+        county: "",
+        cityTown: "",
+      },
 
-        nextOfKin: nextOfKin
-          ? {
-              Firstname: nextOfKin.Firstname || "",
-              Surname: nextOfKin.Surname || "",
-              Middlename: nextOfKin.Middlename || "",
-              idNumber: nextOfKin.id_number || "",
-              relationship: nextOfKin.relationship || "",
-              mobile: nextOfKin.mobile || "",
-              alternativeNumber: nextOfKin.alternative_number || "",
-              employmentStatus: nextOfKin.employment_status || "",
-              county: nextOfKin.county || "",
-              cityTown: nextOfKin.city_town || "",
-            }
-          : {
-              Firstname: "",
-              Surname: "",
-              Middlename: "",
-              idNumber: "",
-              relationship: "",
-              mobile: "",
-              alternativeNumber: "",
-              employmentStatus: "",
-              county: "",
-              cityTown: "",
-            },
+  nextOfKin: nextOfKin
+    ? {
+        Firstname: nextOfKin.Firstname || "",
+        Surname: nextOfKin.Surname || "",
+        Middlename: nextOfKin.Middlename || "",
+        idNumber: nextOfKin.id_number || "",
+        relationship: nextOfKin.relationship || "",
+        mobile: nextOfKin.mobile || "",
+        alternativeNumber: nextOfKin.alternative_number || "",
+        employmentStatus: nextOfKin.employment_status || "",
+        county: nextOfKin.county || "",
+        cityTown: nextOfKin.city_town || "",
+      }
+    : {
+        Firstname: "",
+        Surname: "",
+        Middlename: "",
+        idNumber: "",
+        relationship: "",
+        mobile: "",
+        alternativeNumber: "",
+        employmentStatus: "",
+        county: "",
+        cityTown: "",
+      },
 
-        loan: loanData
-          ? { prequalifiedAmount: loanData.prequalified_amount || "" }
-          : { prequalifiedAmount: "" },
+  loan: loanData
+    ? { prequalifiedAmount: loanData.prequalified_amount || "" }
+    : { prequalifiedAmount: "" },
 
-        documents:
-          documentsData?.length > 0
-            ? documentsData.map((doc) => ({
-                id: doc.id,
-                type: doc.document_type || "",
-                url: doc.image_url || "", // Change from doc.url to doc.image_url
-              }))
-            : [
-                officerClientImage1
-                  ? { type: "officer_client1", url: officerClientImage1 }
-                  : null,
-                officerClientImage2
-                  ? { type: "officer_client2", url: officerClientImage2 }
-                  : null,
-                bothOfficersImage
-                  ? { type: "both_officers", url: bothOfficersImage }
-                  : null,
-              ].filter(Boolean),
-      };
+  documents: documentsData?.length > 0
+    ? documentsData.map((doc) => ({
+        id: doc.id,
+        document_type: doc.document_type || "", // Fixed: Use document_type
+        document_url: doc.document_url || "",   // Fixed: Use document_url (not image_url)
+      }))
+    : [],
+};
 
       setFormData(updatedFormData);
       console.log("✅ Form data set:", updatedFormData);
@@ -350,15 +340,15 @@ function EditAmendment({ customerId, onClose }) {
         officerClient1:
           documentsData?.find(
             (doc) => doc.document_type === "First Officer and Client Image"
-          )?.image_url || null,
+          )?.document_url || null,
         officerClient2:
           documentsData?.find(
             (doc) => doc.document_type === "Second Officer and Client Image"
-          )?.image_url || null,
+          )?.document_url || null,
         bothOfficers:
           documentsData?.find(
             (doc) => doc.document_type === "Both Officers Image"
-          )?.image_url || null,
+          )?.document_url || null,
       };
 
       setExistingImages(imageData);
@@ -435,6 +425,9 @@ function EditAmendment({ customerId, onClose }) {
       cityTown: "",
     },
   });
+
+
+ 
 
   // File upload state
   const [passportFile, setPassportFile] = useState(null);
@@ -546,28 +539,381 @@ function EditAmendment({ customerId, onClose }) {
     setExistingImages((prev) => ({ ...(prev || {}), [key]: null }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsSubmitting(true);
 
-    // Mock submission
-    setTimeout(() => {
-      setIsSubmitting(false);
-      onClose();
-    }, 2000);
-  };
+  try {
+    // Helper function to safely parse numbers
+    const safeParseInt = (value) => {
+      if (!value || value === "" || isNaN(parseInt(value))) return null;
+      return parseInt(value);
+    };
+
+    const safeParseFloat = (value) => {
+      if (!value || value === "" || isNaN(parseFloat(value))) return null;
+      return parseFloat(value);
+    };
+
+    // 1. Update customer details
+    const { error: customerError } = await supabase
+      .from('customers')
+      .update({
+        prefix: formData.prefix || null,
+        Firstname: formData.Firstname || null,
+        Middlename: formData.Middlename || null,
+        Surname: formData.Surname || null,
+        marital_status: formData.maritalStatus || null,
+        residence_status: formData.residenceStatus || null,
+        occupation: formData.occupation || null,
+        date_of_birth: formData.dateOfBirth || null,
+        gender: formData.gender || null,
+        id_number: safeParseInt(formData.idNumber), // Fixed: Use safeParseInt
+        postal_address: formData.postalAddress || null,
+        code: safeParseInt(formData.code), // Fixed: Use safeParseInt
+        town: formData.town || null,
+        county: formData.county || null,
+        business_name: formData.businessName || null,
+        business_type: formData.businessType || null,
+        year_established: formData.yearEstablished || null,
+        business_location: formData.businessLocation || null,
+        daily_Sales: safeParseFloat(formData.daily_Sales), // Fixed: Use safeParseFloat
+        road: formData.road || null,
+        landmark: formData.landmark || null,
+        has_local_authority_license: formData.hasLocalAuthorityLicense === "Yes",
+            edited_at: new Date().toISOString(),
+      })
+      .eq('id', customerId);
+
+    if (customerError) throw customerError;
+
+    // 2. Helper function for file uploads
+    const uploadFile = async (file, folderPath, fileNamePrefix) => {
+      if (!file) return null;
+      
+      // If file is already a URL string (existing image), return it as-is
+      if (typeof file === 'string') {
+        return file;
+      }
+      
+      // If file is a File object, upload it
+      if (file instanceof File) {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `${folderPath}/${fileNamePrefix}_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('customers')
+          .upload(filePath, file, { upsert: true });
+        
+        if (uploadError) throw uploadError;
+        
+        const { data: { publicUrl } } = supabase.storage
+          .from('customers')
+          .getPublicUrl(filePath);
+        
+        return publicUrl;
+      }
+      
+      return null;
+    };
+
+    // 3. Upload customer personal images
+    const passportUrl = await uploadFile(passportFile, 'personal', 'passport');
+    const idFrontUrl = await uploadFile(idFrontFile, 'personal', 'id_front');
+    const idBackUrl = await uploadFile(idBackFile, 'personal', 'id_back');
+    const houseImageUrl = await uploadFile(houseImageFile, 'personal', 'house');
+
+    // Update customer with new image URLs
+    if (passportUrl || idFrontUrl || idBackUrl || houseImageUrl) {
+      const updateData = {};
+      if (passportUrl) updateData.passport_url = passportUrl;
+      if (idFrontUrl) updateData.id_front_url = idFrontUrl;
+      if (idBackUrl) updateData.id_back_url = idBackUrl;
+      if (houseImageUrl) updateData.house_image_url = houseImageUrl;
+
+      const { error: imageError } = await supabase
+        .from('customers')
+        .update(updateData)
+        .eq('id', customerId);
+
+      if (imageError) throw imageError;
+    }
+
+    // 4. Update guarantor details - FIRST GET EXISTING GUARANTOR ID
+    let existingGuarantorId = null;
+    
+    // Check if guarantor exists and get their ID
+    const { data: existingGuarantor } = await supabase
+      .from('guarantors')
+      .select('id')
+      .eq('customer_id', customerId)
+      .single();
+
+    if (existingGuarantor) {
+      existingGuarantorId = existingGuarantor.id;
+      
+      // Upload guarantor images
+      const guarantorPassportUrl = await uploadFile(guarantorPassportFile, 'guarantor', 'passport');
+      const guarantorIdFrontUrl = await uploadFile(guarantorIdFrontFile, 'guarantor', 'id_front');
+      const guarantorIdBackUrl = await uploadFile(guarantorIdBackFile, 'guarantor', 'id_back');
+
+      const { error: guarantorError } = await supabase
+        .from('guarantors')
+        .update({
+          prefix: formData.guarantor.prefix || null,
+          Firstname: formData.guarantor.Firstname || null,
+          Surname: formData.guarantor.Surname || null,
+          Middlename: formData.guarantor.Middlename || null,
+          id_number: safeParseInt(formData.guarantor.idNumber), // Fixed
+          marital_status: formData.guarantor.maritalStatus || null,
+          date_of_birth: formData.guarantor.dateOfBirth || null,
+          residence_status: formData.guarantor.residenceStatus || null,
+          gender: formData.guarantor.gender || null,
+          mobile: formData.guarantor.mobile || null,
+          postal_address: formData.guarantor.postalAddress || null,
+          code: safeParseInt(formData.guarantor.code), // Fixed
+          occupation: formData.guarantor.occupation || null,
+          relationship: formData.guarantor.relationship || null,
+          county: formData.guarantor.county || null,
+          city_town: formData.guarantor.cityTown || null,
+          ...(guarantorPassportUrl && { passport_url: guarantorPassportUrl }),
+          ...(guarantorIdFrontUrl && { id_front_url: guarantorIdFrontUrl }),
+          ...(guarantorIdBackUrl && { id_back_url: guarantorIdBackUrl }),
+        })
+        .eq('id', existingGuarantorId); // Use the actual guarantor ID
+
+      if (guarantorError) throw guarantorError;
+    }
+
+    // 5. Update next of kin details
+    const { data: existingNextOfKin } = await supabase
+      .from('next_of_kin')
+      .select('id')
+      .eq('customer_id', customerId)
+      .single();
+
+    if (existingNextOfKin && formData.nextOfKin) {
+      const { error: nextOfKinError } = await supabase
+        .from('next_of_kin')
+        .update({
+          Firstname: formData.nextOfKin.Firstname || null,
+          Surname: formData.nextOfKin.Surname || null,
+          Middlename: formData.nextOfKin.Middlename || null,
+          id_number: safeParseInt(formData.nextOfKin.idNumber), // Fixed
+          relationship: formData.nextOfKin.relationship || null,
+          mobile: formData.nextOfKin.mobile || null,
+          alternative_number: formData.nextOfKin.alternativeNumber || null,
+          employment_status: formData.nextOfKin.employmentStatus || null,
+          county: formData.nextOfKin.county || null,
+          city_town: formData.nextOfKin.cityTown || null,
+        })
+        .eq('id', existingNextOfKin.id);
+
+      if (nextOfKinError) throw nextOfKinError;
+    }
+
+    // 6. Update loan details
+    const { data: existingLoan } = await supabase
+      .from('loans')
+      .select('id')
+      .eq('customer_id', customerId)
+      .single();
+
+    if (existingLoan && formData.loan) {
+      const { error: loanError } = await supabase
+        .from('loans')
+        .update({
+          prequalified_amount: safeParseFloat(formData.loan.prequalifiedAmount), // Fixed
+        })
+        .eq('id', existingLoan.id);
+
+      if (loanError) throw loanError;
+    }
+
+    // 7. Handle business images
+    if (businessImages.length > 0) {
+      // Delete existing business images
+      await supabase
+        .from('business_images')
+        .delete()
+        .eq('customer_id', customerId);
+
+      // Upload new business images
+      for (const image of businessImages) {
+        const businessImageUrl = await uploadFile(image, 'business', 'business');
+        
+        if (businessImageUrl) {
+          const { error: insertError } = await supabase
+            .from('business_images')
+            .insert({
+              customer_id: customerId,
+              image_url: businessImageUrl,
+            });
+
+          if (insertError) throw insertError;
+        }
+      }
+    }
+
+    // 8. Handle security items
+    await supabase
+      .from('security_items')
+      .delete()
+      .eq('customer_id', customerId);
+
+    for (const [index, item] of securityItems.entries()) {
+      const { data: securityItem, error: securityError } = await supabase
+        .from('security_items')
+        .insert({
+          customer_id: customerId,
+          item: item.item || null,
+          description: item.description || null,
+          identification: item.identification || null,
+          value: safeParseFloat(item.value), // Fixed
+        })
+        .select()
+        .single();
+
+      if (securityError) throw securityError;
+
+      // Handle security item images
+      if (securityItemImages[index] && securityItemImages[index].length > 0) {
+        for (const image of securityItemImages[index]) {
+          const securityImageUrl = await uploadFile(image, 'borrower_security', `item_${securityItem.id}`);
+          
+          if (securityImageUrl) {
+            const { error: imageError } = await supabase
+              .from('security_item_images')
+              .insert({
+                security_item_id: securityItem.id,
+                image_url: securityImageUrl,
+              });
+
+            if (imageError) throw imageError;
+          }
+        }
+      }
+    }
+
+    // 9. Handle guarantor security items (only if guarantor exists)
+    if (existingGuarantorId) {
+      await supabase
+        .from('guarantor_security')
+        .delete()
+        .eq('guarantor_id', existingGuarantorId);
+
+      for (const [index, item] of guarantorSecurityItems.entries()) {
+        const { data: securityItem, error: securityError } = await supabase
+          .from('guarantor_security')
+          .insert({
+            guarantor_id: existingGuarantorId, // Use actual guarantor ID
+            item: item.item || null,
+            description: item.description || null,
+            identification: item.identification || null,
+            estimated_market_value: safeParseFloat(item.value), // Fixed
+          })
+          .select()
+          .single();
+
+        if (securityError) throw securityError;
+
+        // Handle guarantor security item images
+        if (guarantorSecurityImages[index] && guarantorSecurityImages[index].length > 0) {
+          for (const image of guarantorSecurityImages[index]) {
+            const securityImageUrl = await uploadFile(image, 'guarantor_security', `item_${securityItem.id}`);
+            
+            if (securityImageUrl) {
+              const { error: imageError } = await supabase
+                .from('guarantor_security_images')
+                .insert({
+                  guarantor_security_id: securityItem.id,
+                  image_url: securityImageUrl,
+                });
+
+              if (imageError) throw imageError;
+            }
+          }
+        }
+      }
+    }
+
+    // 10. Handle document verification images
+    const documentUpload = async (file, documentType) => {
+      if (!file) return;
+
+      const documentUrl = await uploadFile(file, 'documents', documentType.replace(/\s+/g, '_'));
+      
+      if (documentUrl) {
+        // Check if document already exists
+        const { data: existingDoc } = await supabase
+          .from('documents')
+          .select('id')
+          .eq('customer_id', customerId)
+          .eq('document_type', documentType)
+          .single();
+
+        if (existingDoc) {
+          // Update existing document
+          const { error: updateError } = await supabase
+            .from('documents')
+            .update({ document_url: documentUrl })
+            .eq('id', existingDoc.id);
+
+          if (updateError) throw updateError;
+        } else {
+          // Insert new document
+          const { error: insertError } = await supabase
+            .from('documents')
+            .insert({
+              customer_id: customerId,
+              document_type: documentType,
+              document_url: documentUrl,
+            });
+
+          if (insertError) throw insertError;
+        }
+      }
+    };
+
+    await documentUpload(officerClientImage1, 'First Officer and Client Image');
+    await documentUpload(officerClientImage2, 'Second Officer and Client Image');
+    await documentUpload(bothOfficersImage, 'Both Officers Image');
+
+    toast.success('Customer information updated successfully!');
+    onClose();
+
+  } catch (error) {
+    console.error('Error updating customer:', error);
+    toast.error(`Failed to update customer: ${error.message}`);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
 
+const handleRemoveDocument = (documentType) => {
+  setFormData((prev) => {
+    const updatedDocuments = prev.documents?.filter(
+      doc => doc.document_type !== documentType
+    ) || [];
+    
+    return {
+      ...prev,
+      documents: updatedDocuments
+    };
+  });
+};
 
 const existingDocuments = useMemo(() => {
   const docs = {};
   formData.documents?.forEach((doc) => {
-    docs[doc.document_type] = doc.document_url;
+    if (doc.document_type && doc.document_url) {
+      docs[doc.document_type] = doc.document_url;
+    }
   });
   return docs;
 }, [formData.documents]);
 
-console.log("existingDocuments", existingDocuments);
 
 
   if (loading) {
@@ -1797,13 +2143,20 @@ console.log("existingDocuments", existingDocuments);
             alt={file.label}
             className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
           />
-          <button
-            type="button"
-            onClick={() => handleRemoveFile(file.key, file.handler)}
-            className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
-          >
-            <XIcon className="w-4 h-4" />
-          </button>
+         <button
+  type="button"
+  onClick={() => {
+    const documentTypeMap = {
+      officerClient1: "First Officer and Client Image",
+      officerClient2: "Second Officer and Client Image",
+      bothOfficers: "Both Officers Image"
+    };
+    handleRemoveDocument(documentTypeMap[file.key]);
+  }}
+  className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+>
+  <XIcon className="w-4 h-4" />
+</button>
         </div>
       ) : (
         <div className="mt-4 text-center text-gray-500 text-sm w-full">
@@ -1819,72 +2172,66 @@ console.log("existingDocuments", existingDocuments);
 
             )}
 
-            {/* Action Buttons */}
-            <div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
-              <div className="flex gap-4">
-                {sections.map(({ id }, index) => {
-                  if (index === 0) return null;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setActiveSection(sections[index - 1].id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                        activeSection === id
-                          ? "bg-gray-200 text-gray-700"
-                          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                      }`}
-                    >
-                      <ChevronLeftIcon className="h-4 w-4" />
-                      Previous
-                    </button>
-                  );
-                })}
-                {sections.map(({ id }, index) => {
-                  if (index === sections.length - 1) return null;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setActiveSection(sections[index + 1].id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                        activeSection === id
-                          ? "bg-indigo-100 text-indigo-700"
-                          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                      }`}
-                    >
-                      Next
-                      <ChevronRightIcon className="h-4 w-4" />
-                    </button>
-                  );
-                })}
-              </div>
+            
+         {/* Action Buttons */}
+<div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
+  <div className="flex gap-4">
+    {/* Single Previous button */}
+    {activeSection !== sections[0].id && (
+      <button
+        type="button"
+        onClick={() => {
+          const currentIndex = sections.findIndex(s => s.id === activeSection);
+          setActiveSection(sections[currentIndex - 1].id);
+        }}
+        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+      >
+        <ChevronLeftIcon className="h-4 w-4" />
+        Previous
+      </button>
+    )}
+    
+    {/* Single Next button */}
+    {activeSection !== sections[sections.length - 1].id && (
+      <button
+        type="button"
+        onClick={() => {
+          const currentIndex = sections.findIndex(s => s.id === activeSection);
+          setActiveSection(sections[currentIndex + 1].id);
+        }}
+        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+      >
+        Next
+        <ChevronRightIcon className="h-4 w-4" />
+      </button>
+    )}
+  </div>
 
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      Saving Changes...
-                    </div>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </button>
-              </div>
-            </div>
+  <div className="flex gap-4">
+    <button
+      type="button"
+      onClick={onClose}
+      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+      disabled={isSubmitting}
+    >
+      Cancel
+    </button>
+    <button
+      type="submit"
+      disabled={isSubmitting}
+      className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {isSubmitting ? (
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+          Saving Changes...
+        </div>
+      ) : (
+        "Save Changes"
+      )}
+    </button>
+  </div>
+</div>
           </form>
         </div>
       </div>
