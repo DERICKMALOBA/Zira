@@ -3,7 +3,7 @@ import { supabase } from "../../supabaseClient";
 import AmendmentsTable from "./AmendmentsTable";
 import AmendmentDetailsModal from "./AmendmentDetailsModal";
 import EditAmendment from "./EditAmendment";
-import LoanBookingForm from "./LoanBooking";
+import LoanBookingForm from "../loans/LoanBooking";
 
 
 function Amendments() {

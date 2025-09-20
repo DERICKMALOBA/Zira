@@ -11,6 +11,7 @@ import {
 import { supabase } from "../../supabaseClient";
 import CustomerDetailsModal from "../../relationship-officer/components/CustomerDetailsModal.jsx";
 import CustomerVerificationForm from "./CustomerVerification.jsx";
+import ViewCustomer from "./ViewCustomer.jsx";
 
 const Customers = () => {
   const [customers, setCustomers] = useState([]);
@@ -48,10 +49,15 @@ const Customers = () => {
   }, []);
 
 
-  const verifyCustomer = (customer) => {
-    setSelectedCustomer(customer);
-    setShowForm(true);
-  };
+  const handleViewCustomer = (customer) => {
+  setSelectedCustomer(customer);
+  setShowForm(true);
+};
+
+  // const verifyCustomer = (customer) => {
+  //   setSelectedCustomer(customer);
+  //   setShowForm(true);
+  // };
 
   
 
@@ -170,11 +176,11 @@ const Customers = () => {
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => verifyCustomer(customer)}
+                          onClick={() => handleViewCustomer(customer)}
                           className="text-green-600 hover:text-green-900 px-2 py-1 border border-green-600 rounded"
                           title="Verify Loan"
                         >
-                          Verify
+                          View
                         </button>
                       </div>
                     </td>
@@ -202,7 +208,7 @@ const Customers = () => {
         />
       )}
 
-      {/* Loan Verification Form Modal */}
+      {/* customer Verification Form Modal */}
       {showForm && selectedCustomer && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white w-full h-full relative rounded-none shadow-xl">
@@ -216,8 +222,8 @@ const Customers = () => {
 
             {/* Loan form takes the whole screen */}
             <div className="p-6 h-full overflow-y-auto">
-              <CustomerVerificationForm
-                customerId={selectedCustomer.id}
+              <ViewCustomer
+                customer={selectedCustomer}
                 onClose={() => setShowForm(false)}
               />
             </div>

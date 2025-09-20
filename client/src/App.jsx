@@ -13,17 +13,20 @@ import Dashboard from "./pages/Dashboard";
 import Accounting from "./pages/accounting/Accounting";
 import CreditSettings from "./pages/Credit-settings/CreditSettings";
 import Registry from "./pages/registry/Registry";
-import Loaning from "./pages/loaning/Loaning";
+
 import Reports from "./pages/reports/Reports";
 
 import "./index.css";
 import OfficerDashboard from "./relationship-officer/Dashboard";
 import Leads from "./relationship-officer/Leads";
 import Customers from "./relationship-officer/Customers";
-import Loans from "./relationship-officer/Loans";
+
 import ConversionChart from "./relationship-officer/components/CoversionChart";
 import Approval from "./relationship-officer/Approval";
 import Amendments from "./relationship-officer/amendments/Amendments";
+import Loans from "./relationship-officer/loans/Loans";
+import LoanApplication from "./relationship-officer/loans/LoanApplication";
+import ApprovalQueue from "./relationship-officer/loans/ApprovalQueue";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -55,7 +58,7 @@ function App() {
               <Route path="/accounting/*" element={<Accounting />} />
               <Route path="/credit-settings/*" element={<CreditSettings />} />
               <Route path="/registry/*" element={<Registry />} />
-              <Route path="/loaning/*" element={<Loaning />} />
+            
               <Route path="/reports/*" element={<Reports />} />
 
 
@@ -65,6 +68,9 @@ function App() {
               <Route path="/officer/leads" element={<Leads />} />
               <Route path="/officer/customers" element={<Customers />} />
               <Route path="/officer/loans" element={<Loans />} />
+                 <Route path="/officer/loans" element={<Loans />} />
+                   <Route path="/officer/loans/approval" element={<ApprovalQueue/>} />
+              
                             <Route path="/officer/customers/approval" element={<Approval />} />
               <Route path="/officer/customers/amendments" element={<Amendments/>} />
 

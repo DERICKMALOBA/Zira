@@ -11,12 +11,17 @@ import {
   CalendarIcon
 } from '@heroicons/react/24/outline';
 import { supabase } from "../../supabaseClient";
+import CustomerVerificationForm from './CustomerVerification';
+import ViewCustomer from './ViewCustomer';
 
 const ApprovalPending = () => {
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+    const [selectedCustomer, setSelectedCustomer] = useState(null);
+   const [showForm, setShowForm] = useState(false);
+   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Fetch customers with pending status
   const fetchPendingCustomers = async () => {
@@ -57,31 +62,16 @@ const ApprovalPending = () => {
     setFilteredCustomers(filtered);
   }, [searchTerm, customers]);
 
-  const handleApprove = async (customerId) => {
-    try {
-      const { error } = await supabase
-        .from("customers")
-        .update({ status: "approved" })
-        .eq("id", customerId);
-
-      if (error) {
-        console.error("Error approving customer:", error.message);
-        alert("Error approving customer");
-      } else {
-        alert("Customer approved successfully");
-        fetchPendingCustomers(); // Refresh the list
-      }
-    } catch (err) {
-      console.error("Error:", err);
-      alert("Error approving customer");
-    }
-  };
+  const handleApprove = (customer) => {
+  setSelectedCustomer(customer);
+  setShowForm(true);
+};
 
 
-  const handleView = (customerId) => {
-    console.log('Viewing customer:', customerId);
-    // Add your existing view logic here - integrate with your fetchCustomerDetails function
-  };
+ const handleView= (customer) => {
+  setSelectedCustomer(customer); // pass full object not just id
+  setIsModalOpen(true);
+};
 
   return (
   <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 p-8">
@@ -178,7 +168,7 @@ const ApprovalPending = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-3">
                       <button
-                        onClick={() => handleView(customer.id)}
+                        onClick={() => handleView(customer)}
                         className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-full hover:bg-blue-200 transition-all"
                         title="View Details"
                       >
@@ -215,6 +205,52 @@ const ApprovalPending = () => {
       )}
     </div>
   </div>
+
+  {isModalOpen && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-none shadow-2xl w-full h-full overflow-y-auto relative">
+        {/* Close button */}
+        <button
+          onClick={() => setIsModalOpen(false)}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold"
+        >
+          ✕
+        </button>
+  
+        {/* Render the ViewCustomer component */}
+        <div className="p-6">
+          <ViewCustomer
+            customer={selectedCustomer}
+            onClose={() => setIsModalOpen(false)}
+          />
+        </div>
+      </div>
+    </div>
+  )}
+
+   {/* customer Verification Form Modal */}
+        {showForm && selectedCustomer && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white w-full h-full relative rounded-none shadow-xl">
+              {/* Close button */}
+              <button
+                onClick={() => setShowForm(false)}
+                className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
+              >
+                ✕
+              </button>
+  
+              {/* Loan form takes the whole screen */}
+              <div className="p-6 h-full overflow-y-auto">
+              <CustomerVerificationForm
+    customerId={selectedCustomer}   // ✅ Only send the id
+    onClose={() => setShowForm(false)}
+  />
+  
+              </div>
+            </div>
+          </div>
+        )}
 </div>
 
   );

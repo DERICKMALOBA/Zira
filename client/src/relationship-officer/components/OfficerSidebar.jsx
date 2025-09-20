@@ -45,17 +45,31 @@ const OfficerSidebar = ({ sidebarOpen, setSidebarOpen }) => {
         { name: 'Pending Amendments', href: '/officer/customers/amendments', icon: ClipboardList },
       ],
     },
-    {
-      name: 'Loan Processing',
-      href: '/officer/loans',
-      icon: FileText,
-      color: 'text-red-400',
-      bgColor: 'bg-red-400/10',
-      children: [
-        { name: 'Loan Applications', href: '/officer/loans/applications', icon: FileText },
-        { name: 'Approval Queue', href: '/officer/loans/approval', icon: CheckCircle },
-      ],
+   {
+  name: 'Loan Processing',
+  href: '/officer/loans',
+  icon: FileText,
+  color: 'text-red-400',
+  bgColor: 'bg-red-400/10',
+  children: [
+    { 
+      name: 'Loan Applications', 
+      href: '/officer/loans/applications', 
+      icon: FileText 
     },
+    { 
+      name: 'Approval Queue', 
+      href: '/officer/loans/approval', 
+      icon: CheckCircle 
+    },
+    { 
+      name: 'Loans', 
+      href: '/officer/loans',   // 👈 new route for viewing all loans
+      icon: FileText 
+    },
+  ],
+}
+,
     {
       name: 'Leads',
       href: '/officer/leads',

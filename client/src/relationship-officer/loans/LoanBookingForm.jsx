@@ -1,6 +1,6 @@
 // src/components/LoanBookingForm.jsx
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../supabaseClient';
 
 const LoanBookingForm = ({ loanId, onComplete }) => {
   const [loan, setLoan] = useState(null);

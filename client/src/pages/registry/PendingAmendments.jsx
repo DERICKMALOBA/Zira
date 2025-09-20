@@ -13,6 +13,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../supabaseClient";
 import ViewCustomer from "./ViewCustomer";
+import CustomerVerificationForm from "./CustomerVerification";
+
 
 const PendingAmendments = () => {
   const [customers, setCustomers] = useState([]);
@@ -21,6 +23,7 @@ const PendingAmendments = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   // Fetch customers where updated_at > created_at
   const fetchAmendmentCustomers = async () => {
@@ -100,10 +103,10 @@ const [isModalOpen, setIsModalOpen] = useState(false);
     setFilteredCustomers(filtered);
   }, [searchTerm, customers]);
 
-  const handleApproveAmendment = async (customerId) => {
-    console.log("✅ Approving amendment for customer:", customerId);
-    alert("Amendment reviewed and approved");
-  };
+   const handleApproveAmendment = (customer) => {
+  setSelectedCustomer(customer);
+  setShowForm(true);
+};
 
 
  const handleViewChanges = (customer) => {
@@ -253,7 +256,7 @@ const [isModalOpen, setIsModalOpen] = useState(false);
 </button>
 
                   <button
-                    onClick={() => handleApproveAmendment(customer.id)}
+                    onClick={() => handleApproveAmendment(customer)}
                     className="flex items-center justify-center p-3 bg-green-100 text-green-700 rounded-xl hover:bg-green-200 transition-colors shadow-sm"
                     title="Approve Changes"
                   >
@@ -307,6 +310,29 @@ const [isModalOpen, setIsModalOpen] = useState(false);
   </div>
 )}
 
+ {/* customer Verification Form Modal */}
+      {showForm && selectedCustomer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white w-full h-full relative rounded-none shadow-xl">
+            {/* Close button */}
+            <button
+              onClick={() => setShowForm(false)}
+              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
+            >
+              ✕
+            </button>
+
+            {/* Loan form takes the whole screen */}
+            <div className="p-6 h-full overflow-y-auto">
+            <CustomerVerificationForm
+  customerId={selectedCustomer?.id}   // ✅ Only send the id
+  onClose={() => setShowForm(false)}
+/>
+
+            </div>
+          </div>
+        </div>
+      )}
 
 
     </div>
