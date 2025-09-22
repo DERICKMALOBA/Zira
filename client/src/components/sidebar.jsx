@@ -87,17 +87,23 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         { name: 'Customer Edits', href: '/registry/customer-edits', icon: ClipboardList },
       ],
     },
-    {
-      name: 'Loaning',
-      href: '/loaning',
-      icon: FileText,
-      color: 'text-red-400',
-      bgColor: 'bg-red-400/10',
-      children: [
-        { name: 'Loans', href: '/loaning/loans', icon: FileText },
-        { name: 'Loan Approval', href: '/loaning/loan-approval', icon: CheckCircle },
-      ],
-    },
+   {
+  name: 'Loaning',
+  href: '/loaning',
+  icon: FileText,
+  color: 'text-red-400',
+  bgColor: 'bg-red-400/10',
+  children: [
+    { name: 'Loans', href: '/loaning/all', icon: FileText },
+    { name: 'Loan Approval', href: '/loaning/loan-approval', icon: CheckCircle },
+    { name: 'Loan Pending Branch Manager', href: '/loaning/pending-branch-manager', icon: FileText },
+    { name: 'Loan Pending Regional Manager', href: '/loaning/pending-regional-manager', icon: FileText },
+    { name: 'Loan Pending Disbursement', href: '/loaning/pending-disbursement', icon: FileText },
+    { name: 'Disbursement Loans', href: '/loaning/disbursement-loans', icon: FileText },
+    { name: 'Rejected Loans', href: '/loaning/rejected-loans', icon: FileText },
+  ],
+}
+,
     {
       name: 'Reports',
       href: '/reports',

@@ -1,83 +1,86 @@
 // src/pages/Login.jsx
-import React, { useState } from 'react'
-import { supabase } from '../supabaseClient'
+import { useState } from "react";
+import { supabase } from "../supabaseClient";
+import { useNavigate } from "react-router-dom";
 
-const Login = () => {
-  const [loading, setLoading] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+export default function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
-    e.preventDefault()
-    
-    try {
-      setLoading(true)
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      })
-      if (error) throw error
-    } catch (error) {
-      alert(error.error_description || error.message)
-    } finally {
-      setLoading(false)
+    e.preventDefault();
+    setError(null);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+      return;
     }
-  }
+
+    // fetch role & branch from your `users` table
+    const { data: profile, error: profileError } = await supabase
+      .from("users")
+      .select("role, branch_id, region_id")
+      .eq("id", data.user.id)
+      .single();
+
+    if (profileError) {
+      setError("Profile not found");
+      return;
+    }
+
+    // redirect by role
+    switch (profile.role) {
+      case "relationship_officer":
+        navigate("/officer");
+        break;
+      case "branch_manager":
+      case "regional_manager":
+      case "credit_analyst":
+      case "customer_service_officer":
+        navigate("/dashboard");
+        break;
+      default:
+        setError("Unauthorized role");
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Zira Lending System
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your account
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <input
-                id="email-address"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-          </div>
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <form onSubmit={handleLogin} className="bg-white p-6 rounded-lg shadow-md w-96">
+        <h2 className="text-2xl font-bold mb-4">Login</h2>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              {loading ? 'Loading...' : 'Sign in'}
-            </button>
-          </div>
-        </form>
-      </div>
+        {error && <p className="text-red-500 mb-2">{error}</p>}
+
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full mb-3 p-2 border rounded"
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full mb-3 p-2 border rounded"
+        />
+
+        <button
+          type="submit"
+          className="w-full bg-indigo-600 text-white py-2 rounded hover:bg-indigo-700"
+        >
+          Sign In
+        </button>
+      </form>
     </div>
-  )
+  );
 }
-
-export default Login
