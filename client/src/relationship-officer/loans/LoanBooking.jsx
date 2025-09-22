@@ -9,12 +9,14 @@ import {
   CheckCircleIcon,
   ClockIcon,
   TagIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
 
 const LoanBookingForm = ({ amendment, onComplete }) => {
   const [loan, setLoan] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [duration, setDuration] = useState(4);
+  const [principalAmount, setPrincipalAmount] = useState(0);
   const [calculated, setCalculated] = useState({});
   const [repaymentSchedule, setRepaymentSchedule] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -31,10 +33,10 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
   }, [amendment]);
 
   useEffect(() => {
-    if (loan) {
+    if (loan && principalAmount > 0) {
       calculateLoan();
     }
-  }, [loan, duration, isNewCustomer]);
+  }, [loan, duration, isNewCustomer, principalAmount]);
 
   const fetchVerificationAndCustomer = async () => {
     try {
@@ -59,6 +61,7 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
 
       if (data) {
         setLoan({ approved_amount: data.loan_scored_amount });
+        setPrincipalAmount(data.loan_scored_amount);
         setCustomer(data.customers);
       }
     } catch (error) {
@@ -66,8 +69,36 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
     }
   };
 
+  const getProductInfo = (amount) => {
+    if (amount >= 1000 && amount <= 5000) {
+      return {
+        product: "Inuka",
+        productName: "Inuka (1K-5K)",
+        range: "KES 1,000 - 5,000"
+      };
+    } else if (amount >= 6000 && amount <= 10000) {
+      return {
+        product: "Kuza",
+        productName: "Kuza (6K-10K)",
+        range: "KES 6,000 - 10,000"
+      };
+    } else if (amount > 10000) {
+      return {
+        product: "Fadhili",
+        productName: "Fadhili (10K+)",
+        range: "KES 10,000 and above"
+      };
+    } else {
+      return {
+        product: "",
+        productName: "Invalid Amount",
+        range: "Amount must be KES 1,000 or more"
+      };
+    }
+  };
+
   const calculateLoan = () => {
-    const principal = Number(amendment.loan_scored_amount) || 0;
+    const principal = Number(principalAmount) || 0;
     let processingFee = principal <= 10000 ? 500 : principal * 0.05;
     let registrationFee = isNewCustomer ? 300 : 0;
 
@@ -78,19 +109,7 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
     const totalPayable = principal + totalInterest + processingFee + registrationFee;
     const weeklyPayment = totalPayable / duration;
 
-    let product = "";
-    let productName = "";
-    
-    if (principal >= 3000 && principal <= 5000) {
-      product = "Inuka";
-      productName = "Inuka (3K-5K)";
-    } else if (principal >= 6000 && principal <= 10000) {
-      product = "Kuza";
-      productName = "Kuza (6K-10K)";
-    } else if (principal >= 11000) {
-      product = "Fadhili";
-      productName = "Fadhili (11K+)";
-    }
+    const productInfo = getProductInfo(principal);
 
     setCalculated({
       principal,
@@ -100,8 +119,9 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
       totalInterest,
       totalPayable,
       weeklyPayment,
-      product,
-      productName,
+      product: productInfo.product,
+      productName: productInfo.productName,
+      productRange: productInfo.range,
     });
 
     // Generate repayment schedule
@@ -126,7 +146,30 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
     setRepaymentSchedule(schedule);
   };
 
+  const handlePrincipalChange = (e) => {
+    const value = parseFloat(e.target.value) || 0;
+    const maxAmount = loan.approved_amount || 0;
+    
+    // Don't allow amount to exceed prequalified amount
+    if (value <= maxAmount) {
+      setPrincipalAmount(value);
+    } else {
+      // Set to max allowed amount if user tries to exceed it
+      setPrincipalAmount(maxAmount);
+    }
+  };
+
+  const isValidAmount = () => {
+    const maxAmount = loan.approved_amount || 0;
+    return principalAmount >= 1000 && principalAmount <= maxAmount && calculated.product !== "";
+  };
+
   const handleBookLoan = async () => {
+    if (!isValidAmount()) {
+      alert("Please enter a valid loan amount (KES 1,000 - " + loan.approved_amount?.toLocaleString() + ")");
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase.from("loans").insert([
@@ -198,9 +241,15 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
                 Review and confirm loan disbursement details
               </p>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-100 to-green-100 rounded-lg border border-emerald-200">
-              <CheckCircleIcon className="h-5 w-5 text-emerald-600" />
-              <span className="text-emerald-700 font-medium">Ready to Book</span>
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${
+              isValidAmount() 
+                ? 'bg-gradient-to-r from-emerald-100 to-green-100 border-emerald-200' 
+                : 'bg-gradient-to-r from-amber-100 to-yellow-100 border-amber-200'
+            }`}>
+              <CheckCircleIcon className={`h-5 w-5 ${isValidAmount() ? 'text-emerald-600' : 'text-amber-600'}`} />
+              <span className={`font-medium ${isValidAmount() ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {isValidAmount() ? 'Ready to Book' : 'Check Amount'}
+              </span>
             </div>
           </div>
         </div>
@@ -253,19 +302,52 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600 font-medium">Product:</span>
-                    <span className="text-indigo-600 font-semibold">
-                      {calculated.productName}
+                    <span className={`font-semibold ${
+                      calculated.product ? 'text-indigo-600' : 'text-red-600'
+                    }`}>
+                      {calculated.productName || 'Select Valid Amount'}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 font-medium">Principal Amount:</span>
-                    <span className="text-2xl font-bold text-emerald-600">
-                      KES {calculated.principal?.toLocaleString() || '0'}
-                    </span>
+                  
+                  {/* Editable Principal Amount */}
+                  <div className="space-y-2">
+                    <label className="text-gray-600 font-medium">Principal Amount:</label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 relative">
+                        <input
+                          type="number"
+                          value={principalAmount}
+                          onChange={handlePrincipalChange}
+                          min="1000"
+                          max={loan.approved_amount}
+                          step="100"
+                          className={`w-full p-3 pr-12 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors font-bold text-lg ${
+                            isValidAmount() 
+                              ? 'border-green-300 bg-green-50 text-emerald-600' 
+                              : 'border-red-300 bg-red-50 text-red-600'
+                          }`}
+                          placeholder="Enter amount"
+                        />
+                        <PencilIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Maximum allowed: KES {loan.approved_amount?.toLocaleString()} (Prequalified amount)
+                    </p>
+                    {!isValidAmount() && principalAmount > 0 && (
+                      <p className="text-xs text-red-600">
+                        {principalAmount < 1000 
+                          ? "Minimum amount is KES 1,000" 
+                          : principalAmount > loan.approved_amount 
+                          ? "Amount exceeds prequalified limit" 
+                          : "Invalid amount"}
+                      </p>
+                    )}
                   </div>
+
                   <div className="flex justify-between">
-                    <span className="text-gray-600 font-medium">Interest Rate:</span>
-                    <span className="text-gray-900 font-semibold">{calculated.interestRate}% ({duration} weeks)</span>
+                    <span className="text-gray-600 font-medium">Duration:</span>
+                    <span className="text-gray-900 font-semibold"> ({duration} weeks)</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 font-medium">Processing Fee:</span>
@@ -310,7 +392,7 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
                 >
                   {[4, 5, 6, 7, 8].map(weeks => (
                     <option key={weeks} value={weeks}>
-                      {weeks} weeks - {6.25 * weeks}% interest
+                      {weeks}
                     </option>
                   ))}
                 </select>
@@ -318,86 +400,89 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
             </div>
 
             {/* Repayment Schedule */}
-            <div className="mb-8">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center mb-6">
-                <DocumentTextIcon className="h-6 w-6 text-purple-600 mr-3" />
-                Repayment Schedule
-              </h3>
-              
-              <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
-                        <th className="px-6 py-4 text-left font-semibold">Week</th>
-                        <th className="px-6 py-4 text-left font-semibold">Due Date</th>
-                        <th className="px-6 py-4 text-right font-semibold">Principal</th>
-                        <th className="px-6 py-4 text-right font-semibold">Interest</th>
-                        <th className="px-6 py-4 text-right font-semibold">Fees</th>
-                        <th className="px-6 py-4 text-right font-semibold">Total Payment</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {repaymentSchedule.map((payment, index) => (
-                        <tr 
-                          key={index} 
-                          className={`${
-                            index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                          } hover:bg-indigo-50 transition-colors`}
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center">
-                              <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                                <span className="text-indigo-600 font-semibold text-sm">
-                                  {payment.week}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center text-gray-900">
-                              <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
-                              {new Date(payment.due_date).toLocaleDateString('en-GB')}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                            KES {payment.principal.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 text-right font-semibold text-orange-600">
-                            KES {payment.interest.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 text-right font-semibold text-amber-600">
-                            KES {(payment.processing_fee + payment.registration_fee).toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 text-right font-bold text-indigo-600">
-                            KES {payment.total.toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                      
-                      {/* Totals Row */}
-                      <tr className="bg-gradient-to-r from-indigo-100 to-blue-100 border-t-2 border-indigo-200">
-                        <td className="px-6 py-4 font-bold text-gray-900" colSpan="2">
-                          TOTAL
-                        </td>
-                        <td className="px-6 py-4 text-right font-bold text-gray-900">
-                          KES {loan.approved_amount?.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 text-right font-bold text-orange-600">
-                          KES {(repaymentSchedule.reduce((sum, payment) => sum + payment.interest, 0)).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 text-right font-bold text-amber-600">
-                          KES {(repaymentSchedule.reduce((sum, payment) => sum + payment.processing_fee + payment.registration_fee, 0)).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 text-right font-bold text-indigo-600 text-lg">
-                          KES {(repaymentSchedule.reduce((sum, payment) => sum + payment.total, 0)).toLocaleString()}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+            {repaymentSchedule.length > 0 && (
+              <div className="mb-8">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center mb-6">
+                  <DocumentTextIcon className="h-6 w-6 text-purple-600 mr-3" />
+                  Repayment Schedule
+                </h3>
+                
+               <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200 overflow-hidden">
+  <div className="overflow-x-auto">
+    <table className="min-w-full">
+      <thead>
+        <tr className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
+          <th className="px-6 py-4 text-left font-semibold">Week</th>
+          <th className="px-6 py-4 text-left font-semibold">Due Date</th>
+          <th className="px-6 py-4 text-right font-semibold">Principal</th>
+          <th className="px-6 py-4 text-right font-semibold">Fees</th>
+          <th className="px-6 py-4 text-right font-semibold">Installments</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {repaymentSchedule.map((payment, index) => (
+          <tr
+            key={index}
+            className={`${
+              index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+            } hover:bg-indigo-50 transition-colors`}
+          >
+            <td className="px-6 py-4">
+              <div className="flex items-center">
+                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                  <span className="text-indigo-600 font-semibold text-sm">
+                    {payment.week}
+                  </span>
                 </div>
               </div>
-            </div>
+            </td>
+            <td className="px-6 py-4">
+              <div className="flex items-center text-gray-900">
+                <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
+                {new Date(payment.due_date).toLocaleDateString('en-GB')}
+              </div>
+            </td>
+            <td className="px-6 py-4 text-right font-semibold text-gray-900">
+              KES {payment.principal.toLocaleString()}
+            </td>
+            <td className="px-6 py-4 text-right font-semibold text-amber-600">
+              KES {(payment.processing_fee + payment.registration_fee).toLocaleString()}
+            </td>
+            <td className="px-6 py-4 text-right font-bold text-indigo-600">
+              KES {payment.total.toLocaleString()}
+            </td>
+          </tr>
+        ))}
+
+        {/* Totals Row */}
+        <tr className="bg-gradient-to-r from-indigo-100 to-blue-100 border-t-2 border-indigo-200">
+          <td className="px-6 py-4 font-bold text-gray-900" colSpan="2">
+            TOTAL
+          </td>
+          <td className="px-6 py-4 text-right font-bold text-gray-900">
+            KES {principalAmount?.toLocaleString()}
+          </td>
+          <td className="px-6 py-4 text-right font-bold text-amber-600">
+            KES {(
+              repaymentSchedule.reduce(
+                (sum, payment) => sum + payment.processing_fee + payment.registration_fee,
+                0
+              )
+            ).toLocaleString()}
+          </td>
+          <td className="px-6 py-4 text-right font-bold text-indigo-600 text-lg">
+            KES {(
+              repaymentSchedule.reduce((sum, payment) => sum + payment.total, 0)
+            ).toLocaleString()}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+              </div>
+            )}
 
             {/* Loan Product Information */}
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200 mb-8">
@@ -406,19 +491,25 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
                 Loan Product Details
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white p-4 rounded-lg border border-purple-100">
+                <div className={`bg-white p-4 rounded-lg border ${
+                  calculated.product === 'Inuka' ? 'border-purple-300 ring-2 ring-purple-200' : 'border-purple-100'
+                }`}>
                   <h4 className="font-semibold text-purple-700 mb-2">Inuka</h4>
-                  <p className="text-sm text-gray-600">KES 3,000 - 5,000</p>
+                  <p className="text-sm text-gray-600">KES 1,000 - 5,000</p>
                   <p className="text-xs text-gray-500 mt-2">4-8 weeks duration</p>
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-blue-100">
+                <div className={`bg-white p-4 rounded-lg border ${
+                  calculated.product === 'Kuza' ? 'border-blue-300 ring-2 ring-blue-200' : 'border-blue-100'
+                }`}>
                   <h4 className="font-semibold text-blue-700 mb-2">Kuza</h4>
                   <p className="text-sm text-gray-600">KES 6,000 - 10,000</p>
                   <p className="text-xs text-gray-500 mt-2">4-8 weeks duration</p>
                 </div>
-                <div className="bg-white p-4 rounded-lg border border-green-100">
+                <div className={`bg-white p-4 rounded-lg border ${
+                  calculated.product === 'Fadhili' ? 'border-green-300 ring-2 ring-green-200' : 'border-green-100'
+                }`}>
                   <h4 className="font-semibold text-green-700 mb-2">Fadhili</h4>
-                  <p className="text-sm text-gray-600">KES 11,000 and above</p>
+                  <p className="text-sm text-gray-600">KES 10,000 and above</p>
                   <p className="text-xs text-gray-500 mt-2">4-8 weeks duration</p>
                 </div>
               </div>
@@ -433,8 +524,12 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
             <div className="flex justify-end pt-8 border-t border-gray-200">
               <button
                 onClick={handleBookLoan}
-                disabled={loading}
-                className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || !isValidAmount()}
+                className={`flex items-center gap-3 px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isValidAmount() 
+                    ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700' 
+                    : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
+                }`}
               >
                 {loading ? (
                   <>
@@ -444,7 +539,7 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
                 ) : (
                   <>
                     <CheckCircleIcon className="h-6 w-6" />
-                    Confirm Loan Booking
+                    {isValidAmount() ? 'Confirm Loan Booking' : 'Enter Valid Amount'}
                   </>
                 )}
               </button>

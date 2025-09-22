@@ -68,7 +68,7 @@ function App() {
               <Route path="/officer/leads" element={<Leads />} />
               <Route path="/officer/customers" element={<Customers />} />
               <Route path="/officer/loans" element={<Loans />} />
-                 <Route path="/officer/loans" element={<Loans />} />
+                 <Route path="/officer/loans/applications" element={<LoanApplication />} />
                    <Route path="/officer/loans/approval" element={<ApprovalQueue/>} />
               
                             <Route path="/officer/customers/approval" element={<Approval />} />

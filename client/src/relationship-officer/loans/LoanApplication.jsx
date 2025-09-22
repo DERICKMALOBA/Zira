@@ -1,11 +1,197 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../../supabaseClient';
+import LoanBookingForm from './LoanBooking';
+
+
 
 function LoanApplication() {
-  return (
-    <div>
-      <h1>Loan Application</h1>
+  const [customers, setCustomers] = useState([]);
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [bookLoan, setBookLoan] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Fetch approved customers
+  const fetchApprovedCustomers = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('customer_verifications')
+        .select(`
+          *,
+          customers:customer_id (
+            id,
+            id_number,
+            Firstname,
+            Surname,
+            mobile
+          )
+        `)
+        .eq('final_decision', 'approved');
+
+      if (error) {
+        console.error('Error fetching approved customers:', error.message);
+      } else {
+        setCustomers(data);
+        setFilteredCustomers(data);
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchApprovedCustomers();
+  }, []);
+
+  // Handle search
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredCustomers(customers);
+      return;
+    }
+
+    const term = searchTerm.toLowerCase();
+    const filtered = customers.filter(customer => 
+      customer.customers?.id_number?.toLowerCase().includes(term) ||
+      customer.customers?.mobile?.toLowerCase().includes(term) ||
+      `${customer.customers?.Firstname} ${customer.customers?.Surname}`.toLowerCase().includes(term)
+    );
+    
+    setFilteredCustomers(filtered);
+  }, [searchTerm, customers]);
+
+  if (loading) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
     </div>
-  )
+  );
+
+  return (
+    <div className="p-6">
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        {/* Header */}
+        <div className="p-4 flex flex-col md:flex-row justify-between items-center bg-gray-50 gap-4">
+          <h1 className="text-xl font-semibold text-gray-700">Loan Applications</h1>
+          
+          <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+            {/* Centered Search Bar */}
+            <div className="relative w-full md:w-96 mx-auto">
+              <input
+                type="text"
+                placeholder="Search by ID, phone or name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-600 focus:border-transparent"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            
+            <button 
+              onClick={fetchApprovedCustomers}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center justify-center whitespace-nowrap"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+        
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loan Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredCustomers.map((application) => (
+                <tr key={application.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                        <span className="font-medium text-green-800">
+                          {application.customers?.Firstname?.charAt(0)}{application.customers?.Surname?.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {application.customers?.Firstname} {application.customers?.Surname}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{application.customers?.id_number}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{application.customers?.mobile}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      Ksh {application.loan_scored_amount ? Number(application.loan_scored_amount).toLocaleString() : "N/A"}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                      Approved
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button 
+                      onClick={() => setBookLoan(application)} 
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
+                    >
+                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      Book Loan
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        {filteredCustomers.length === 0 && (
+          <div className="p-8 text-center text-gray-500 bg-gray-50">
+            {searchTerm ? (
+              <p>No approved applications match your search</p>
+            ) : (
+              <p>No approved applications found</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Loan Booking Modal */}
+      {bookLoan && (
+        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
+          <LoanBookingForm
+            amendment={bookLoan}
+            onComplete={() => {
+              setBookLoan(null);
+              fetchApprovedCustomers();
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
-export default LoanApplication
+export default LoanApplication;
