@@ -12,13 +12,15 @@ import {
   EyeIcon,
   FunnelIcon,
 } from "@heroicons/react/24/outline";
+import ViewLoan from "./ViewLoan";
 
-const AllLoans = ({ onLoanSelect }) => {
+const AllLoans = () => {
   const [loans, setLoans] = useState([]);
   const [filteredLoans, setFilteredLoans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+    const [selectedLoan, setSelectedLoan] = useState(null);
 
   useEffect(() => {
     fetchLoans();
@@ -197,97 +199,108 @@ const AllLoans = ({ onLoanSelect }) => {
           </div>
         </div>
 
-        {/* Loans Table */}
-        <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
-                  <th className="px-6 py-4 text-left font-semibold">Loan ID</th>
-                  <th className="px-6 py-4 text-left font-semibold">Customer</th>
-                  <th className="px-6 py-4 text-left font-semibold">Product</th>
-                  <th className="px-6 py-4 text-right font-semibold">Amount</th>
-                  <th className="px-6 py-4 text-center font-semibold">Duration</th>
-                  <th className="px-6 py-4 text-center font-semibold">Status</th>
-                  <th className="px-6 py-4 text-center font-semibold">Date</th>
-                  <th className="px-6 py-4 text-center font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredLoans.map((loan, index) => (
-                  <tr
-                    key={loan.id}
-                    className={`${
-                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                    } hover:bg-indigo-50 transition-colors`}
-                  >
-                    <td className="px-6 py-4">{loan.id}</td>
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-gray-900">
-                        {loan.customers?.Firstname} {loan.customers?.Surname}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {loan.customers?.mobile}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">{loan.product_name || loan.product}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="font-bold text-emerald-600">
-                        KES {loan.scored_amount?.toLocaleString()}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        Total: KES {loan.total_payable?.toLocaleString()}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                        {loan.duration_weeks} weeks
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${getStatusBadge(
-                          loan.status
-                        )}`}
-                      >
-                        {getStatusIcon(loan.status)}
-                        {loan.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center text-gray-600">
-                        <CalendarIcon className="h-4 w-4 mr-1" />
-                        {new Date(loan.created_at).toLocaleDateString("en-GB")}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => onLoanSelect && onLoanSelect(loan)}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:from-orange-700 hover:to-red-700 transition-all shadow-md hover:shadow-lg font-semibold"
-                      >
-                        <EyeIcon className="h-4 w-4" />
-                        Review
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+       
+    
+{/* Loans Table */}
+<div className="bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden">
+  <table className="w-full border-collapse table-fixed">
+    <thead>
+      <tr className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white text-sm">
+        <th className="px-3 py-3 text-left font-semibold w-1/6">Customer</th>
+        <th className="px-3 py-3 text-left font-semibold w-1/6">ID Number</th>
+        <th className="px-3 py-3 text-left font-semibold w-1/6">Phone</th>
+        <th className="px-3 py-3 text-center font-semibold w-1/6">Product</th>
+        <th className="px-3 py-3 text-right font-semibold w-1/6">Amount</th>
+        <th className="px-3 py-3 text-center font-semibold w-1/12">Weeks</th>
+        <th className="px-3 py-3 text-center font-semibold w-1/6">Status</th>
+        <th className="px-3 py-3 text-center font-semibold w-1/6">Date</th>
+        <th className="px-3 py-3 text-center font-semibold w-1/6">Actions</th>
+      </tr>
+    </thead>
 
-          {filteredLoans.length === 0 && (
-            <div className="text-center py-12">
-              <ClockIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                No loans found
-              </h3>
-              <p className="text-gray-600">
-                Try adjusting your filters or search criteria.
-              </p>
+    <tbody className="divide-y divide-gray-200 text-sm">
+      {filteredLoans.map((loan, index) => (
+        <tr
+          key={loan.id}
+          className={`${
+            index % 2 === 0 ? "bg-white" : "bg-gray-50"
+          } hover:bg-indigo-50 transition-colors`}
+        >
+          {/* Full name in one column */}
+          <td className="px-3 py-3 truncate">
+            {loan.customers?.Firstname} {loan.customers?.Surname}
+          </td>
+
+          <td className="px-3 py-3 truncate">{loan.customers?.id_number}</td>
+          <td className="px-3 py-3 truncate">{loan.customers?.mobile}</td>
+          <td className="px-3 py-3 text-center truncate">{loan.product_name || loan.product}</td>
+
+          {/* Amount in one row */}
+          <td className="px-3 py-3 text-right font-bold text-emerald-600 truncate">
+            KES {loan.scored_amount?.toLocaleString()}
+          </td>
+
+          {/* Weeks in one row */}
+          <td className="px-3 py-3 text-center truncate">
+            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+              {loan.duration_weeks}
+            </span>
+          </td>
+
+          {/* Status */}
+          <td className="px-3 py-3 text-center truncate">
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(
+                loan.status
+              )}`}
+            >
+              {getStatusIcon(loan.status)}
+              {loan.status}
+            </span>
+          </td>
+
+          {/* Date */}
+          <td className="px-3 py-3 text-center truncate">
+            <div className="flex items-center justify-center text-gray-600">
+              <CalendarIcon className="h-4 w-4 mr-1" />
+              {new Date(loan.created_at).toLocaleDateString("en-GB")}
             </div>
-          )}
-        </div>
+          </td>
+
+          {/* Review Button */}
+          <td className="px-3 py-3 text-center">
+             <button
+                  onClick={() => setSelectedLoan(loan)}
+                  className="flex items-center justify-center gap-1 px-3 py-1.5 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:from-orange-700 hover:to-red-700 transition-all shadow-md hover:shadow-lg text-sm font-semibold"
+                >
+                  <EyeIcon className="h-4 w-4" />
+                  Review
+                </button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  {filteredLoans.length === 0 && (
+    <div className="text-center py-12">
+      <ClockIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        No loans found
+      </h3>
+      <p className="text-gray-600">
+        Try adjusting your filters or search criteria.
+      </p>
+    </div>
+  )}
+</div>
+
+
       </div>
+            {/* Modal */}
+      {selectedLoan && (
+        <ViewLoan loan={selectedLoan} onClose={() => setSelectedLoan(null)} />
+      )}
     </div>
   );
 };

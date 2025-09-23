@@ -95,7 +95,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   bgColor: 'bg-red-400/10',
   children: [
     { name: 'Loans', href: '/loaning/all', icon: FileText },
-    { name: 'Loan Approval', href: '/loaning/loan-approval', icon: CheckCircle },
     { name: 'Loan Pending Branch Manager', href: '/loaning/pending-branch-manager', icon: FileText },
     { name: 'Loan Pending Regional Manager', href: '/loaning/pending-regional-manager', icon: FileText },
     { name: 'Loan Pending Disbursement', href: '/loaning/pending-disbursement', icon: FileText },

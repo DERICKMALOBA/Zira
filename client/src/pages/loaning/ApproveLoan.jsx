@@ -5,22 +5,79 @@ import {
   XCircleIcon,
   UserIcon,
   CurrencyDollarIcon,
-  DocumentTextIcon,
-  CalendarIcon,
   ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "../../hooks/userAuth"; // ✅ corrected import
+
+// helper function for approvals
+const approveLoan = async (loanId, approved, comment, profile) => {
+  let updateData = {};
+
+  console.log("🔍 DEBUG - approveLoan called with:", {
+    loanId,
+    approved,
+    comment,
+    profile
+  });
+
+  if (profile.role === "branch_manager") {
+    updateData = approved
+      ? {
+          approved_by_bm: profile?.id,
+          approved_by_bm_at: new Date().toISOString(),
+          bm_comment: comment,
+          status: "pending_regional_manager",
+        }
+      : {
+          rejected_by_bm: profile?.id,
+          bm_rejected_at: new Date().toISOString(),
+          bm_comment: comment,
+          status: "rejected",
+        };
+  } else if (profile.role === "regional_manager") {
+    updateData = approved
+      ? {
+          approved_by_rm: profile?.id,
+          approved_by_rm_at: new Date().toISOString(),
+          rm_comment: comment,
+          status: "approved",
+        }
+      : {
+          rejected_by_rm: profile?.id,
+          rm_rejected_at: new Date().toISOString(),
+          rm_comment: comment,
+          status: "rejected",
+        };
+  } else {
+    console.error("❌ Unknown role:", profile.role);
+    throw new Error(`Unknown role: ${profile.role}`);
+  }
+
+  console.log("📝 DEBUG - Update data:", updateData);
+
+  const { data, error } = await supabase
+    .from("loans")
+    .update(updateData)
+    .eq("id", loanId);
+
+  if (error) {
+    console.error("❌ Approval error:", error);
+    throw error;
+  }
+
+  console.log("✅ Loan updated successfully");
+  return data;
+};
 
 const ApproveLoan = ({ loan, onComplete }) => {
+  const { role, profile, user } = useAuth(); // ✅ hook used correctly
   const [loanDetails, setLoanDetails] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [comment, setComment] = useState('');
-  const [decision, setDecision] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (loan) {
-      fetchLoanDetails();
-    }
+    if (loan) fetchLoanDetails();
   }, [loan]);
 
   const fetchLoanDetails = async () => {
@@ -35,9 +92,10 @@ const ApproveLoan = ({ loan, onComplete }) => {
         .single();
 
       if (error) throw error;
-      
+
       setLoanDetails(data);
       setCustomer(data.customers);
+      console.log("📋 DEBUG - Current loan status:", data.status);
     } catch (error) {
       console.error("Error fetching loan details:", error);
     }
@@ -49,31 +107,32 @@ const ApproveLoan = ({ loan, onComplete }) => {
       return;
     }
 
+    if (!profile?.id) {
+      alert('Error: User profile ID not found. Please check your authentication.');
+      return;
+    }
+
+    console.log("🔄 DEBUG - Starting approval process...");
+
     setLoading(true);
     try {
-      const newStatus = approved ? 'pending_rm' : 'rejected';
-      
-      const { error } = await supabase
-        .from("loans")
-        .update({
-          status: newStatus,
-          bm_comment: comment,
-          bm_approved_at: approved ? new Date().toISOString() : null,
-          bm_rejected_at: !approved ? new Date().toISOString() : null,
-        })
-        .eq('id', loan.id);
-
-      if (error) throw error;
-
-      alert(`Loan ${approved ? 'approved' : 'rejected'} successfully!`);
+      await approveLoan(loan.id, approved, comment, profile);
+      alert(`Loan ${approved ? "approved" : "rejected"} successfully!`);
       onComplete();
     } catch (error) {
-      console.error("Error updating loan:", error);
+      console.error("❌ Error updating loan:", error);
       alert("Error processing loan decision. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  const getCurrentUserRole = () => {
+    if (role) return role;
+    return profile?.role || user?.user_metadata?.role || "unknown";
+  };
+
+  const currentRole = getCurrentUserRole();
 
   if (!loanDetails || !customer) {
     return (
@@ -89,12 +148,24 @@ const ApproveLoan = ({ loan, onComplete }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
       <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* Debug Info - Remove in production */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          <div className="text-sm text-yellow-800">
+            <strong>Debug Info:</strong> Role: {currentRole || 'Not detected'}, 
+            Profile ID: {profile?.id || 'Not found'}, 
+            User ID: {user?.id || 'Not found'}
+          </div>
+        </div>
+
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
                 Loan Approval Review
+                <span className="block text-sm font-normal text-gray-600 mt-1">
+                  ({currentRole ? `Logged in as ${currentRole.replace('_', ' ')}` : 'Role not detected'})
+                </span>
               </h1>
               <p className="text-gray-600 mt-2">
                 Review loan application details and make approval decision
@@ -103,6 +174,9 @@ const ApproveLoan = ({ loan, onComplete }) => {
             <div className="text-right">
               <div className="text-2xl font-bold text-indigo-600">
                 Loan #{loanDetails.id}
+              </div>
+              <div className="text-sm text-gray-500">
+                Status: <span className="font-semibold">{loanDetails.status}</span>
               </div>
               <div className="text-sm text-gray-500">
                 Applied: {new Date(loanDetails.created_at).toLocaleDateString('en-GB')}

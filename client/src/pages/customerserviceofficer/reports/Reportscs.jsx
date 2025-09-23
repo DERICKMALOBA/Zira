@@ -1,19 +1,19 @@
-// src/pages/credit-settings/CreditSettings.jsx
+// src/pages/reports/Reports.jsx
 import React from 'react'
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import DocumentSettings from './DocumentSettings'
-import KPICategories from './KPICategories'
+import CallCenterReports from './CallCenterReportscs'
+import HQReports from './HQReportscs'
 
-const CreditSettings = () => {
+const Reportscs = () => {
   const location = useLocation()
   const tabs = [
-    { name: 'Document Settings', href: '/credit-settings/document-settings' },
-    { name: 'KPI Categories', href: '/credit-settings/kpi-categories' },
+    { name: 'Call Center Reports', href: '/reports/call-center-reports' },
+    { name: 'HQ Reports', href: '/reports/hq-reports' },
   ]
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Credit Settings</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Reports</h1>
       
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
@@ -35,13 +35,13 @@ const CreditSettings = () => {
       
       <div className="mt-6">
         <Routes>
-          <Route path="document-settings" element={<DocumentSettings />} />
-          <Route path="kpi-categories" element={<KPICategories />} />
-          <Route path="*" element={<Navigate to="document-settings" />} />
+          <Route path="call-center-reports" element={<CallCenterReports />} />
+          <Route path="hq-reports" element={<HQReports />} />
+          <Route path="*" element={<Navigate to="call-center-reports" />} />
         </Routes>
       </div>
     </div>
   )
 }
 
-export default CreditSettings
+export default Reportscs

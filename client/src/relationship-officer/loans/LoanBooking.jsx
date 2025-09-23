@@ -1,6 +1,7 @@
 // src/components/LoanBookingForm.jsx
-import  { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
+import { useAuth } from "../../hooks/userAuth";
 import {
   CurrencyDollarIcon,
   CalendarIcon,
@@ -21,13 +22,13 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
   const [repaymentSchedule, setRepaymentSchedule] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
+  const [customerType, setCustomerType] = useState("Unknown"); // track type
+    const { profile } = useAuth(); 
 
-    const handleClose = () => {
-    onComplete();
-  };
+  const handleClose = () => onComplete();
 
   useEffect(() => {
-    if (amendment) {
+    if (amendment?.customer_id) {
       fetchVerificationAndCustomer();
     }
   }, [amendment]);
@@ -36,21 +37,41 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
     if (loan && principalAmount > 0) {
       calculateLoan();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loan, duration, isNewCustomer, principalAmount]);
+
+  // 🔄 Helper function: check if customer is new or returning
+  const getCustomerType = async (customerId) => {
+    const { data: loans, error } = await supabase
+      .from("loans")
+      .select("status")
+      .eq("customer_id", customerId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching loans:", error.message);
+      return "Unknown";
+    }
+
+    if (!loans || loans.length === 0) return "New Customer";
+
+    // Look for any past loan with a valid status
+    const hasApprovedLoan = loans.some(
+      (ln) =>
+        ln.status === "disbursed" || ln.status === "pending_disbursement"
+    );
+
+    return hasApprovedLoan ? "Returning Customer" : "New Customer";
+  };
 
   const fetchVerificationAndCustomer = async () => {
     try {
-      // Check if customer has previous loans to determine if they're new
-      const { data: previousLoans, error: loansError } = await supabase
-        .from("loans")
-        .select("id")
-        .eq("customer_id", amendment.customer_id);
+      // Decide if customer is new/returning
+      const type = await getCustomerType(amendment.customer_id);
+      setCustomerType(type);
+      setIsNewCustomer(type === "New Customer");
 
-      if (loansError) throw loansError;
-      
-      // Customer is new if they have no previous loans
-      setIsNewCustomer(!previousLoans || previousLoans.length === 0);
-
+      // Fetch verification
       const { data, error } = await supabase
         .from("customer_verifications")
         .select("loan_scored_amount, customer_id, customers(*)")
@@ -61,11 +82,11 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
 
       if (data) {
         setLoan({ approved_amount: data.loan_scored_amount });
-        setPrincipalAmount(data.loan_scored_amount);
-        setCustomer(data.customers);
+        setPrincipalAmount(data.loan_scored_amount || 0);
+        setCustomer(data.customers || null);
       }
     } catch (error) {
-      console.error("Error fetching verification/customer:", error);
+      console.error("Error fetching verification/customer:", error.message);
     }
   };
 
@@ -74,39 +95,40 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
       return {
         product: "Inuka",
         productName: "Inuka (1K-5K)",
-        range: "KES 1,000 - 5,000"
+        range: "KES 1,000 - 5,000",
       };
     } else if (amount >= 6000 && amount <= 10000) {
       return {
         product: "Kuza",
         productName: "Kuza (6K-10K)",
-        range: "KES 6,000 - 10,000"
+        range: "KES 6,000 - 10,000",
       };
     } else if (amount > 10000) {
       return {
         product: "Fadhili",
         productName: "Fadhili (10K+)",
-        range: "KES 10,000 and above"
+        range: "KES 10,000 and above",
       };
     } else {
       return {
         product: "",
         productName: "Invalid Amount",
-        range: "Amount must be KES 1,000 or more"
+        range: "Amount must be KES 1,000 or more",
       };
     }
   };
 
   const calculateLoan = () => {
     const principal = Number(principalAmount) || 0;
-    let processingFee = principal <= 10000 ? 500 : principal * 0.05;
-    let registrationFee = isNewCustomer ? 300 : 0;
+    const processingFee = principal <= 10000 ? 500 : principal * 0.05;
+    const registrationFee = isNewCustomer ? 300 : 0;
 
     const weeklyRate = 6.25;
     const interestRate = weeklyRate * duration;
     const totalInterest = (principal * interestRate) / 100;
 
-    const totalPayable = principal + totalInterest + processingFee + registrationFee;
+    const totalPayable =
+      principal + totalInterest + processingFee + registrationFee;
     const weeklyPayment = totalPayable / duration;
 
     const productInfo = getProductInfo(principal);
@@ -124,54 +146,73 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
       productRange: productInfo.range,
     });
 
-    // Generate repayment schedule
+    // Repayment schedule
     const schedule = [];
     const today = new Date();
-    
+
     for (let week = 1; week <= duration; week++) {
       const dueDate = new Date(today);
-      dueDate.setDate(today.getDate() + (week * 7));
-      
+      dueDate.setDate(today.getDate() + week * 7);
+
       schedule.push({
         week,
-        due_date: dueDate.toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split("T")[0],
         principal: week === duration ? principal : 0,
         interest: totalInterest / duration,
         processing_fee: week === 1 ? processingFee : 0,
         registration_fee: week === 1 ? registrationFee : 0,
-        total: weeklyPayment
+        total: weeklyPayment,
       });
     }
-    
+
     setRepaymentSchedule(schedule);
   };
 
   const handlePrincipalChange = (e) => {
     const value = parseFloat(e.target.value) || 0;
-    const maxAmount = loan.approved_amount || 0;
-    
-    // Don't allow amount to exceed prequalified amount
+    const maxAmount = loan?.approved_amount || 0;
+
     if (value <= maxAmount) {
       setPrincipalAmount(value);
     } else {
-      // Set to max allowed amount if user tries to exceed it
       setPrincipalAmount(maxAmount);
     }
   };
 
   const isValidAmount = () => {
-    const maxAmount = loan.approved_amount || 0;
-    return principalAmount >= 1000 && principalAmount <= maxAmount && calculated.product !== "";
+    const maxAmount = loan?.approved_amount || 0;
+    return (
+      principalAmount >= 1000 &&
+      principalAmount <= maxAmount &&
+      calculated.product !== ""
+    );
   };
 
   const handleBookLoan = async () => {
     if (!isValidAmount()) {
-      alert("Please enter a valid loan amount (KES 1,000 - " + loan.approved_amount?.toLocaleString() + ")");
+      alert(
+        `Please enter a valid loan amount (KES 1,000 - ${loan?.approved_amount?.toLocaleString() || 0})`
+      );
       return;
     }
 
     setLoading(true);
     try {
+      // Step 1: Check if customer already has disbursed loans
+      const { data: previousLoans, error: prevError } = await supabase
+        .from("loans")
+        .select("id")
+        .eq("customer_id", amendment.customer_id)
+        .eq("status", "disbursed");
+
+      if (prevError) throw prevError;
+
+      const isFirstLoan = !previousLoans || previousLoans.length === 0;
+
+      // Step 2: Decide initial status
+      const initialStatus = "pending_branch_manager"; // future: differentiate logic
+
+      // Step 3: Insert loan
       const { error } = await supabase.from("loans").insert([
         {
           customer_id: amendment.customer_id,
@@ -186,24 +227,26 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
           total_interest: calculated.totalInterest,
           total_payable: calculated.totalPayable,
           weekly_payment: calculated.weeklyPayment,
-          status: "booked",
+          status: initialStatus,
           booked_at: new Date().toISOString(),
-          is_new_customer: isNewCustomer,
+          is_new_customer: isFirstLoan,
+          booked_by: profile?.id || null,
         },
       ]);
 
       if (error) throw error;
 
-      console.log("Would send notification to customer:", customer.mobile);
+      console.log("Loan successfully booked for:", customer?.firstname || "Customer");
       alert("Loan successfully booked!");
       onComplete();
     } catch (error) {
-      console.error("Error booking loan:", error);
+      console.error("Error booking loan:", error.message);
       alert("Error booking loan. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+console.log("profile id",profile?.id)
 
   if (!loan || !customer) {
     return (
