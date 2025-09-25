@@ -47,32 +47,32 @@ const Sidebarrm = ({ sidebarOpen, setSidebarOpen }) => {
       color: 'text-blue-400',
       bgColor: 'bg-blue-400/10'
     },
+    // {
+    //   name: 'Accounting',
+    //   href: '/accounting/rm',
+    //   icon: Calculator,
+    //   color: 'text-green-400',
+    //   bgColor: 'bg-green-400/10',
+    //   children: [
+    //     { name: 'Chart of Accounts', href: '/accounting/chart-of-accounts/rm', icon: BookOpen },
+    //     { name: 'Journals', href: '/accounting/journals/rm', icon: Book },
+    //     { name: 'Transactions', href: '/accounting/transactions/rm', icon: CreditCard },
+    //     { name: 'Bank Reconciliations', href: '/accounting/bank-reconciliations/rm', icon: Landmark },
+    //   ],
+    // },
+    // {
+    //   name: 'Credit Settings',
+    //   href: '/credit-settings/rm',
+    //   icon: Settings,
+    //   color: 'text-purple-400',
+    //   bgColor: 'bg-purple-400/10',
+    //   children: [
+    //     { name: 'Document Settings', href: '/credit-settings/document-settings/rm', icon: FileCheck },
+    //     { name: 'KPI Categories', href: '/credit-settings/kpi-categories/rm', icon: Target },
+    //   ],
+    // },
     {
-      name: 'Accounting',
-      href: '/accounting/rm',
-      icon: Calculator,
-      color: 'text-green-400',
-      bgColor: 'bg-green-400/10',
-      children: [
-        { name: 'Chart of Accounts', href: '/accounting/chart-of-accounts/rm', icon: BookOpen },
-        { name: 'Journals', href: '/accounting/journals/rm', icon: Book },
-        { name: 'Transactions', href: '/accounting/transactions/rm', icon: CreditCard },
-        { name: 'Bank Reconciliations', href: '/accounting/bank-reconciliations/rm', icon: Landmark },
-      ],
-    },
-    {
-      name: 'Credit Settings',
-      href: '/credit-settings/rm',
-      icon: Settings,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-400/10',
-      children: [
-        { name: 'Document Settings', href: '/credit-settings/document-settings/rm', icon: FileCheck },
-        { name: 'KPI Categories', href: '/credit-settings/kpi-categories/rm', icon: Target },
-      ],
-    },
-    {
-      name: 'Registry/rm',
+      name: 'Registry',
       href: '/registry/rm',
       icon: Users,
       color: 'text-orange-400',

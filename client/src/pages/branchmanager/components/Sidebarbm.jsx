@@ -3,8 +3,7 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Home,
-  Calculator,
-  Settings,
+ 
   Users,
   FileText,
   BarChart3,
@@ -12,19 +11,14 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  BookOpen,
-  Book,
-  CreditCard,
-  Landmark,
-  FileCheck,
-  Target,
+ 
   FolderOpen,
   UserCheck,
   PhoneCall,
   UserCog,
   UserPlus,
   ClipboardList,
-  CheckCircle,
+ 
   PieChart,
   TrendingUp
 } from 'lucide-react';
@@ -47,30 +41,30 @@ const Sidebarbm = ({ sidebarOpen, setSidebarOpen }) => {
       color: 'text-blue-400',
       bgColor: 'bg-blue-400/10'
     },
-    {
-      name: 'Accounting',
-      href: '/accounting/bm',
-      icon: Calculator,
-      color: 'text-green-400',
-      bgColor: 'bg-green-400/10',
-      children: [
-        { name: 'Chart of Accounts', href: '/accounting/chart-of-accounts/bm', icon: BookOpen },
-        { name: 'Journals', href: '/accounting/journals/bm', icon: Book },
-        { name: 'Transactions', href: '/accounting/transactions/bm', icon: CreditCard },
-        { name: 'Bank Reconciliations', href: '/accounting/bank-reconciliations/bm', icon: Landmark },
-      ],
-    },
-    {
-      name: 'Credit Settings/bm',
-      href: '/credit-settings/bm',
-      icon: Settings,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-400/10',
-      children: [
-        { name: 'Document Settings', href: '/credit-settings/document-settings/bm', icon: FileCheck },
-        { name: 'KPI Categories', href: '/credit-settings/kpi-categories/bm', icon: Target },
-      ],
-    },
+    // {
+    //   name: 'Accounting',
+    //   href: '/accounting/bm',
+    //   icon: Calculator,
+    //   color: 'text-green-400',
+    //   bgColor: 'bg-green-400/10',
+    //   children: [
+    //     { name: 'Chart of Accounts', href: '/accounting/chart-of-accounts/bm', icon: BookOpen },
+    //     { name: 'Journals', href: '/accounting/journals/bm', icon: Book },
+    //     { name: 'Transactions', href: '/accounting/transactions/bm', icon: CreditCard },
+    //     { name: 'Bank Reconciliations', href: '/accounting/bank-reconciliations/bm', icon: Landmark },
+    //   ],
+    // },
+    // {
+    //   name: 'Credit Settings/bm',
+    //   href: '/credit-settings/bm',
+    //   icon: Settings,
+    //   color: 'text-purple-400',
+    //   bgColor: 'bg-purple-400/10',
+    //   children: [
+    //     { name: 'Document Settings', href: '/credit-settings/document-settings/bm', icon: FileCheck },
+    //     { name: 'KPI Categories', href: '/credit-settings/kpi-categories/bm', icon: Target },
+    //   ],
+    // },
     {
       name: 'Registry',
       href: '/registry/bm',
