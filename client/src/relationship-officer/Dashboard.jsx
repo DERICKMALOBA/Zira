@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import StatsCards from './components/StatsCards'
 import RecentActivity from './components/RecentActivity'
 import ConversionChart from './components/CoversionChart'
+import { useAuth } from "../hooks/userAuth";
 
 const OfficerDashboard = () => {
   const [stats, setStats] = useState({
@@ -16,79 +17,92 @@ const OfficerDashboard = () => {
   
   const [recentActivity, setRecentActivity] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+   const { profile } = useAuth();
 
-  // Fetch dashboard data
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setIsLoading(true)
-        
-        // Fetch leads data
-        const { data: leadsData, error: leadsError } = await supabase
-          .from('leads')
-          .select('*')
-        
-        if (leadsError) throw leadsError
-        
-        // Fetch customers data
-        const { data: customersData, error: customersError } = await supabase
-          .from('customers')
-          .select('*')
-        
-        if (customersError) throw customersError
-        
-        // Fetch loans data (assuming you have a loans table)
-        const { data: loansData} = await supabase
-          .from('loans')
-          .select('*')
-        
-        // Count leads by status
-        const hotLeads = leadsData.filter(lead => lead.status === 'Hot').length
-        const warmLeads = leadsData.filter(lead => lead.status === 'Warm').length
-        const coldLeads = leadsData.filter(lead => lead.status === 'Cold').length
-        
-        // Calculate conversion rate
-        const conversionRate = customersData.length > 0 
-          ? (customersData.length / (customersData.length + leadsData.length)) * 100 
-          : 0
-        
-        // Get recent leads (last 5)
-        const recentLeads = leadsData
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-          .slice(0, 5)
-          .map(lead => ({
-            id: lead.id,
-            full_name: `${lead.Firstname || ''} ${lead.Surname || ''}`.trim(),
-            phone: lead.mobile || lead.phone || 'N/A',
-            status: lead.status?.toLowerCase() || 'cold',
-            created_at: lead.created_at ? new Date(lead.created_at) : new Date()
-          }))
-        
-        // Update stats
-        setStats({
-          totalLeads: leadsData.length,
-          totalCustomers: customersData.length,
-          totalLoans: loansData?.length || 0,
-          conversionRate: parseFloat(conversionRate.toFixed(1)),
-          activeLeads: { 
-            hot: hotLeads, 
-            warm: warmLeads, 
-            cold: coldLeads 
-          }
-        })
-        
-        // Update recent activity
-        setRecentActivity(recentLeads)
-        
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-      } finally {
-        setIsLoading(false)
-      }
+ // ✅ Fetch dashboard data only for the logged-in Relationship Officer
+useEffect(() => {
+  const fetchDashboardData = async () => {
+    if (!profile?.id || profile.role !== "relationship_officer") {
+      return; // stop if not logged in or not RO
     }
 
-    fetchDashboardData()
-  }, [])
+    try {
+      setIsLoading(true);
+
+      // ✅ Fetch leads created by this RO
+      const { data: leadsData, error: leadsError } = await supabase
+        .from("leads")
+        .select("*")
+        .eq("created_by", profile.id);
+
+      if (leadsError) throw leadsError;
+
+      // ✅ Fetch customers created by this RO
+      const { data: customersData, error: customersError } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("created_by", profile.id);
+
+      if (customersError) throw customersError;
+
+      // ✅ Fetch loans related to this RO's customers
+      const { data: loansData, error: loansError } = await supabase
+        .from("loans")
+        .select("*, customer:customer_id(created_by)") // join customer
+        .eq("customer.created_by", profile.id);
+
+      if (loansError) throw loansError;
+
+      // ✅ Count leads by status
+      const hotLeads = leadsData.filter((lead) => lead.status === "Hot").length;
+      const warmLeads = leadsData.filter((lead) => lead.status === "Warm").length;
+      const coldLeads = leadsData.filter((lead) => lead.status === "Cold").length;
+
+      // ✅ Conversion rate
+      const conversionRate =
+        customersData.length > 0
+          ? (customersData.length / (customersData.length + leadsData.length)) * 100
+          : 0;
+
+      // ✅ Recent leads (last 5)
+      const recentLeads = leadsData
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 5)
+        .map((lead) => ({
+          id: lead.id,
+          full_name: `${lead.Firstname || ""} ${lead.Surname || ""}`.trim(),
+          phone: lead.mobile || lead.phone || "N/A",
+          status: lead.status?.toLowerCase() || "cold",
+          created_at: lead.created_at ? new Date(lead.created_at) : new Date(),
+        }));
+
+      // ✅ Update stats
+      setStats({
+        totalLeads: leadsData.length,
+        totalCustomers: customersData.length,
+        totalLoans: loansData?.length || 0,
+        conversionRate: parseFloat(conversionRate.toFixed(1)),
+        activeLeads: {
+          hot: hotLeads,
+          warm: warmLeads,
+          cold: coldLeads,
+        },
+      });
+
+      // ✅ Update recent activity
+      setRecentActivity(recentLeads);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (profile) {
+    fetchDashboardData();
+  }
+}, [profile]);
+
 
   if (isLoading) {
     return (

@@ -1,4 +1,4 @@
-function AmendmentsTable({ amendments, loading, onEdit, onView, onBookLoan, onRefresh }) {
+function AmendmentsTable({ amendments, loading, onEdit, onView, onRefresh }) {
   
   if (loading) return (
     <div className="flex justify-center items-center h-64">
@@ -52,11 +52,7 @@ function AmendmentsTable({ amendments, loading, onEdit, onView, onBookLoan, onRe
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <button onClick={() => onView(amendment.id)} className="mr-3 text-indigo-600 hover:text-indigo-900">View</button>
                   <button onClick={() => onEdit(amendment)} className="mr-3 text-green-600 hover:text-green-900">Edit</button>
-                  {amendment.final_decision === "approved" && (
-                    <button onClick={() => onBookLoan(amendment)} className="text-blue-600 hover:text-blue-900">
-                      Book Loan
-                    </button>
-                  )}
+                 
                 </td>
               </tr>
             ))}

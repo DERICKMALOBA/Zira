@@ -41,7 +41,7 @@ const OfficerSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       bgColor: 'bg-orange-400/10',
       children: [
         { name: 'View Customers', href: '/officer/customers', icon: Users },
-        { name: 'Approval Pending', href: '/officer/customers/approval', icon: FileText },
+       
         { name: 'Pending Amendments', href: '/officer/customers/amendments', icon: ClipboardList },
       ],
     },
@@ -57,11 +57,7 @@ const OfficerSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       href: '/officer/loans/applications', 
       icon: FileText 
     },
-    { 
-      name: 'Approval Queue', 
-      href: '/officer/loans/approval', 
-      icon: CheckCircle 
-    },
+    
     { 
       name: 'Loans', 
       href: '/officer/loans',   // 👈 new route for viewing all loans
@@ -78,28 +74,7 @@ const OfficerSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       bgColor: 'bg-green-400/10',
       noChildren: true, // direct NavLink
     },
-    // {
-    //   name: 'Communications',
-    //   href: '/officer/communications',
-    //   icon: PhoneCall,
-    //   color: 'text-cyan-400',
-    //   bgColor: 'bg-cyan-400/10',
-    //   children: [
-    //     { name: 'Callbacks', href: '/officer/communications/callbacks', icon: PhoneCall },
-    //     { name: 'Customer Follow-ups', href: '/officer/communications/followups', icon: PhoneCall },
-    //   ],
-    // },
-    // {
-    //   name: 'Reports',
-    //   href: '/officer/reports',
-    //   icon: BarChart3,
-    //   color: 'text-cyan-400',
-    //   bgColor: 'bg-cyan-400/10',
-    //   children: [
-    //     { name: 'Daily Summary', href: '/officer/reports/daily', icon: BarChart3 },
-    //     { name: 'Performance Metrics', href: '/officer/reports/performance', icon: BarChart3 },
-    //   ],
-    // },
+   
   ];
 
   return (

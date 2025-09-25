@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 import LoanBookingForm from './LoanBooking';
-
+import { useAuth } from "../../hooks/userAuth";
 
 
 function LoanApplication() {
@@ -10,40 +10,62 @@ function LoanApplication() {
   const [loading, setLoading] = useState(true);
   const [bookLoan, setBookLoan] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+     const { profile } = useAuth();
+  
 
-  // Fetch approved customers
-  const fetchApprovedCustomers = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('customer_verifications')
-        .select(`
-          *,
-          customers:customer_id (
-            id,
-            id_number,
-            Firstname,
-            Surname,
-            mobile
-          )
-        `)
-        .eq('final_decision', 'approved');
 
-      if (error) {
-        console.error('Error fetching approved customers:', error.message);
-      } else {
-        setCustomers(data);
-        setFilteredCustomers(data);
-      }
-    } catch (err) {
-      console.error('Unexpected error:', err);
-    }
+
+ // ✅ Fetch approved customers for logged-in Relationship Officer
+const fetchApprovedCustomers = async () => {
+  if (!profile?.id || profile.role !== "relationship_officer") {
+    setCustomers([]);
+    setFilteredCustomers([]);
     setLoading(false);
-  };
+    return;
+  }
 
-  useEffect(() => {
+  setLoading(true);
+  try {
+    const { data, error } = await supabase
+      .from("customer_verifications")
+      .select(`
+        *,
+        customers:customer_id (
+          id,
+          id_number,
+          Firstname,
+          Surname,
+          mobile,
+          created_by
+        )
+      `)
+      .eq("final_decision", "approved") // ✅ only approved
+      .eq("customers.created_by", profile.id); // ✅ only for this RO
+
+    if (error) {
+      console.error("Error fetching approved customers:", error.message);
+      setCustomers([]);
+      setFilteredCustomers([]);
+    } else {
+      setCustomers(data);
+      setFilteredCustomers(data);
+    }
+  } catch (err) {
+    console.error("Unexpected error:", err);
+    setCustomers([]);
+    setFilteredCustomers([]);
+  }
+  setLoading(false);
+};
+
+
+// Fetch approved customers when profile is loaded
+useEffect(() => {
+  if (profile) {
     fetchApprovedCustomers();
-  }, []);
+  }
+}, [profile]); // ✅ re-run when profile is available
+
 
   // Handle search
   useEffect(() => {

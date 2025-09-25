@@ -82,6 +82,9 @@ import ApprovalPendingbm from "./pages/branchmanager/registry copy/ApprovalPendi
 import CustomerTransferbm from "./pages/branchmanager/registry copy/CustomerTransferbm";
 import CustomerCategoriesbm from "./pages/branchmanager/registry copy/CustomerCategoriesbm";
 import CustomerEditsbm from "./pages/branchmanager/registry copy/CustomerEditsbm";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 
 
 
@@ -152,7 +155,20 @@ function App() {
 
   return (
     <Router>
+       <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="colored"
+        />
       <div className="flex h-screen bg-gray-100 overflow-hidden">
+        
         {/* Only show sidebars + headers if user is logged in */}
         {profile && (
           <>

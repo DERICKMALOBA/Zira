@@ -1,10 +1,87 @@
-import { useState } from "react";
-import { supabase } from "../../supabaseClient";
-import "react-toastify/dist/ReactToastify.css";
-import { toast } from "react-toastify";
-import { Upload, Camera, XIcon } from "lucide-react";
+  import { useState, memo, useCallback } from "react";
+import {
+  UserCircleIcon,
+  BuildingOffice2Icon,
+  ShieldCheckIcon,
+  CurrencyDollarIcon,
+  UserGroupIcon,
+  IdentificationIcon,
+  DocumentTextIcon,
+  XCircleIcon,
+  ArrowUpTrayIcon,
+  CameraIcon,
+  XMarkIcon,
+  CheckCircleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  PlusIcon,
+  TrashIcon,
+} from "@heroicons/react/24/outline";
 
-const AddCustomer = ({ onClose }) => {
+import { supabase } from "../../supabaseClient";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { checkUniqueValue } from "../../utils/Unique";
+
+// Fixed FormField component outside of AddCustomer
+const FormField = memo(({
+  label,
+  name,
+  value,
+  onChange,
+  required = false,
+  type = "text",
+  options = null,
+  placeholder = "",
+  section = null,
+  className = "",
+  disabled = false,
+  errors = {},
+  handleNestedChange,
+}) => (
+  <div className={className}>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    {options ? (
+      <select
+        name={name}
+        value={value || ""}
+        onChange={section ? (e) => handleNestedChange(e, section) : onChange}
+        className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+          errors[name] ? "border-red-500" : ""
+        }`}
+        required={required}
+        disabled={disabled}
+      >
+        <option value="">{placeholder || `Select ${label}`}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    ) : (
+      <input
+        type={type}
+        name={name}
+        value={value || ""}
+        onChange={section ? (e) => handleNestedChange(e, section) : onChange}
+        placeholder={placeholder}
+        className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+          errors[name] ? "border-red-500" : ""
+        }`}
+        required={required}
+        disabled={disabled}
+      />
+    )}
+    {errors[name] && (
+      <span className="text-red-500 text-xs mt-1">{errors[name]}</span>
+    )}
+  </div>
+));
+
+const AddCustomer = ({ profile, onClose }) => {
   const [activeSection, setActiveSection] = useState("personal");
   const [securityItems, setSecurityItems] = useState([
     { item: "", description: "", identification: "", value: "" },
@@ -50,17 +127,16 @@ const AddCustomer = ({ onClose }) => {
       maritalStatus: "",
       Middlename: "",
       dateOfBirth: "",
-       residenceStatus: "",
+      residenceStatus: "",
       gender: "",
       mobile: "",
+         alternativeMobile: "",
       postalAddress: "",
       code: "",
       occupation: "",
       relationship: "",
       county: "",
       cityTown: "",
-    
-
     },
     nextOfKin: {
       Firstname: "",
@@ -74,8 +150,6 @@ const AddCustomer = ({ onClose }) => {
       county: "",
       cityTown: "",
     },
-      
-
   });
 
   // File upload state
@@ -92,60 +166,138 @@ const AddCustomer = ({ onClose }) => {
   const [officerClientImage1, setOfficerClientImage1] = useState(null);
   const [officerClientImage2, setOfficerClientImage2] = useState(null);
   const [bothOfficersImage, setBothOfficersImage] = useState(null);
-  const [files, setFiles] = useState({});
-const [previews, setPreviews] = useState({});
+  const [previews, setPreviews] = useState({});
 
+  // Navigation sections with proper icons
+  const sections = [
+    { id: "personal", label: "Personal Info", icon: UserCircleIcon },
+    { id: "business", label: "Business Info", icon: BuildingOffice2Icon },
+    { id: "borrowerSecurity", label: "Borrower Security", icon: ShieldCheckIcon },
+    { id: "loan", label: "Loan Details", icon: CurrencyDollarIcon },
+    { id: "guarantor", label: "Guarantor", icon: UserGroupIcon },
+    { id: "guarantorSecurity", label: "Guarantor Security", icon: ShieldCheckIcon },
+    { id: "nextOfKin", label: "Next of Kin", icon: UserGroupIcon },
+    { id: "documents", label: "Documents", icon: DocumentTextIcon },
+  ];
+
+  // Fixed change handlers with useCallback to prevent re-renders
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: null }));
+    }
+  }, [errors]);
+
+  const handleNestedChange = useCallback((e, section) => {
+    if (!e || !e.target) return;
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [section]: { ...prev[section], [name]: value },
+    }));
+    const errorKey = `${section}${name.charAt(0).toUpperCase() + name.slice(1)}`;
+    if (errors[errorKey]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        return newErrors;
+      });
+    }
+  }, [errors]);
+
+  const handleSecurityChange = useCallback((e, index) => {
+    const { name, value } = e.target;
+    setSecurityItems((prev) => {
+      const newItems = [...prev];
+      newItems[index][name] = value;
+      return newItems;
+    });
+    const errorKey = `securityValue_${index}`;
+    if (errors[errorKey]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        return newErrors;
+      });
+    }
+  }, [errors]);
+
+  const handleGuarantorSecurityChange = useCallback((e, index) => {
+    const { name, value } = e.target;
+    setGuarantorSecurityItems((prev) => {
+      const newItems = [...prev];
+      newItems[index][name] = value;
+      return newItems;
+    });
+    const errorKey = `guarantorSecurityValue_${index}`;
+    if (errors[errorKey]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        return newErrors;
+      });
+    }
+  }, [errors]);
+
+  // Validation functions (keep the same as before)
 const validatePersonalDetails = async () => {
   const newErrors = {};
 
   if (!formData.Firstname) newErrors.Firstname = "First name is required";
   if (!formData.Surname) newErrors.Surname = "Surname is required";
   if (!formData.mobile) newErrors.mobile = "Mobile number is required";
+  if (!formData.alternativeMobile) newErrors.alternativeMobile = "Alternative mobile number is required";
   if (!formData.idNumber) newErrors.idNumber = "ID number is required";
 
-  if (
-    formData.mobile &&
-    !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))
-  ) {
+  // Mobile number format
+  if (formData.mobile && !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))) {
     newErrors.mobile = "Please enter a valid mobile number";
   }
+  if (formData.alternativeMobile && !/^[0-9]{10,15}$/.test(formData.alternativeMobile.replace(/\D/g, ""))) {
+    newErrors.altMobile = "Please enter a valid alternative mobile number";
+  }
 
+  // ID format
   if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
     newErrors.idNumber = "Please enter a valid ID number";
   }
 
+  // Age validation
   if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
     newErrors.dateOfBirth = "Customer must be at least 18 years old";
   }
 
-  // Check uniqueness for ID and mobile only at this stage
-  if (formData.mobile && !newErrors.mobile) {
-    const isMobileUnique = await checkUniqueValue(
-      ["customers", "guarantors", "next_of_kin"],
-      "mobile",
-      formData.mobile
-    );
-    if (!isMobileUnique) {
-      newErrors.mobile = "Mobile number already exists in our system";
-    }
-  }
+  // Check uniqueness across customers, guarantors, next_of_kin
+  const fieldsToCheck = [
+    { field: "mobile", value: formData.mobile },
+   { field: "alternativeMobile", value: formData.alternativeMobile },
+    { field: "idNumber", value: formData.idNumber },
+  ];
 
-  if (formData.idNumber && !newErrors.idNumber) {
-    const isIdUnique = await checkUniqueValue(
-      ["customers", "guarantors", "next_of_kin"],
-      "id_number",
-      formData.idNumber
-    );
-    if (!isIdUnique) {
-      newErrors.idNumber = "ID number already exists in our system";
+ for (const { field, value } of fieldsToCheck) {
+  if (value && !newErrors[field]) {
+    try {
+      const isUnique = await checkUniqueValue(
+        ["customers", "guarantors", "next_of_kin"],
+        field === "idNumber" ? "id_number" : "mobile",
+        value
+      );
+      if (!isUnique) {
+        newErrors[field] = `${field} already exists in our system`;
+      }
+    } catch (error) {
+      console.error("Error checking uniqueness:", error);
+      newErrors[field] = `Error validating ${field}`;
     }
   }
+}
+
 
   setErrors(newErrors);
-
-  // ✅ Return boolean for handleNext
   return Object.keys(newErrors).length === 0;
 };
+
 
 const validateBusinessDetails = () => {
   let errorsFound = {};
@@ -193,15 +345,7 @@ const validateBusinessDetails = () => {
     errorsFound.daily_Sales = "Daily sales estimate is required";
   }
 
-  // // Local Authority License
-  // if (formData.hasLocalAuthorityLicense === "" || formData.hasLocalAuthorityLicense == null) {
-  //   errorsFound.hasLocalAuthorityLicense = "License status must be selected";
-  // }
-
-  // // Business Images
-  // if (!files.businessImages || files.businessImages.length === 0) {
-  //   errorsFound.businessImages = "At least one business image is required";
-  // }
+  
 
   setErrors(errorsFound);
 
@@ -211,526 +355,294 @@ const validateBusinessDetails = () => {
 };
 
 
-const validateBorrowerSecurity = () => {
-  let errorsFound = {};
-  let isValid = true;
+  const validateBorrowerSecurity = () => {
+    let errorsFound = {};
+    let isValid = true;
+    if (securityItems.length === 0) return false;
 
-  if (securityItems.length === 0) {
-    toast.error("Please add at least one security item.");
-    return false;
-  }
-
-  securityItems.forEach((item, index) => {
-    // Item name
-    if (!item.item) {
-      errorsFound[`securityItem_${index}`] = "Item name is required";
-      isValid = false;
-    }
-
-    // Description
-    if (!item.description) {
-      errorsFound[`securityDescription_${index}`] = "Description is required";
-      isValid = false;
-    }
-
-    // Identification
-    if (!item.identification) {
-      errorsFound[`securityIdentification_${index}`] = "Identification is required";
-      isValid = false;
-    }
-
-    // Value
-    if (!item.value || parseFloat(item.value) <= 0) {
-      errorsFound[`securityValue_${index}`] = "Estimated value must be greater than 0";
-      isValid = false;
-    }
-
-    // Images
-    if (!securityItemImages[index] || securityItemImages[index].length === 0) {
-      toast.error(`Please upload at least one image for item #${index + 1}`);
-      isValid = false;
-    }
-  });
-
-  setErrors(errorsFound);
-  return isValid;
-};
-
-const validateLoanDetails = () => {
-  let errorsFound = {};
-  let isValid = true;
-
-  // Principal / Pre-qualified Amount
-  if (!formData.prequalifiedAmount || parseFloat(formData.prequalifiedAmount) <= 0) {
-    errorsFound.Prequalifiedamount = "Please enter a valid loan amount greater than 0";
-    isValid = false;
-  }
-
-  // (Optional) Add other validations like interestRate, duration, processingFee if present
-
-  setErrors(errorsFound);
-  return isValid;
-};
-
-const validateGuarantorDetails = () => {
-  let errorsFound = {};
-  let isValid = true;
-
-  const guarantor = formData.guarantor;
-
-  // Firstname
-  if (!guarantor.Firstname || guarantor.Firstname.trim() === "") {
-    errorsFound.guarantorFirstname = "First Name is required";
-    isValid = false;
-  }
-
-  // Surname
-  if (!guarantor.Surname || guarantor.Surname.trim() === "") {
-    errorsFound.guarantorSurname = "Surname is required";
-    isValid = false;
-  }
-
-  // ID Number
-  if (!guarantor.idNumber || guarantor.idNumber.trim() === "") {
-    errorsFound.guarantorIdNumber = "ID Number is required";
-    isValid = false;
-  }
-
-  // Phone
-  if (!guarantor.phone || guarantor.phone.trim() === "") {
-    errorsFound.guarantorPhone = "Phone Number is required";
-    isValid = false;
-  }
-
-  // Gender
-  if (!guarantor.gender || guarantor.gender.trim() === "") {
-    errorsFound.guarantorGender = "Gender is required";
-    isValid = false;
-  }
-
-  setErrors(errorsFound);
-    console.log("Guarantor validation result:", isValid, errorsFound); // 👈 check here
-
-  return isValid;
-};
-
-const validateGuarantorSecurity = () => {
-  let isValid = true;
-  let errorsFound = {};
-
-  guarantorSecurityItems.forEach((item, index) => {
-    if (!item.item || item.item.trim() === "") {
-      errorsFound[`guarantorSecurityItem_${index}`] = "Item is required";
-      isValid = false;
-    }
-    if (!item.description || item.description.trim() === "") {
-      errorsFound[`guarantorSecurityDescription_${index}`] = "Description is required";
-      isValid = false;
-    }
-    if (!item.identification || item.identification.trim() === "") {
-      errorsFound[`guarantorSecurityIdentification_${index}`] = "Identification is required";
-      isValid = false;
-    }
-    if (item.value === "" || item.value === null || isNaN(item.value) || Number(item.value) <= 0) {
-      errorsFound[`guarantorSecurityValue_${index}`] = "Valid Value is required";
-      isValid = false;
-    }
-  });
-
-  setErrors(errorsFound);
-  return isValid;
-};
-
-const validateNextOfKinDetails = () => {
-  let isValid = true;
-  let errorsFound = {};
-
-  const nextOfKin = formData.nextOfKin;
-
-  // Validate First Name
-  if (!nextOfKin.Firstname || nextOfKin.Firstname.trim() === "") {
-    errorsFound.nextOfKinFirstname = "First Name is required";
-    isValid = false;
-  }
-
-  // Validate Surname
-  if (!nextOfKin.Surname || nextOfKin.Surname.trim() === "") {
-    errorsFound.nextOfKinSurname = "Surname is required";
-    isValid = false;
-  }
-
-  // Validate ID Number
-  if (!nextOfKin.idNumber || nextOfKin.idNumber.trim() === "") {
-    errorsFound.nextOfKinIdNumber = "ID Number is required";
-    isValid = false;
-  }
-
-  // Validate Mobile Number
-  if (!nextOfKin.mobile || nextOfKin.mobile.trim() === "") {
-    errorsFound.nextOfKinMobile = "Mobile Number is required";
-    isValid = false;
-  }
-
-  setErrors(errorsFound);
-  return isValid;
-};
-
-const validateDocuments = () => {
-  let isValid = true;
-  let errorsFound = {};
-
-  if (!officerClientImage1) {
-    errorsFound.officerClientImage1 = "First Officer and Client Image is required";
-    isValid = false;
-  }
-
-  if (!officerClientImage2) {
-    errorsFound.officerClientImage2 = "Second Officer and Client Image is required";
-    isValid = false;
-  }
-
-  if (!bothOfficersImage) {
-    errorsFound.bothOfficersImage = "Both Officers Image is required";
-    isValid = false;
-  }
-
-  setErrors(errorsFound);
-  return isValid;
-};
-
-
-const handleNext = async () => {
-  let isValid = false;
-
-  switch (activeSection) {
-    case "personal":
-      isValid = await validatePersonalDetails();
-      break;
-    case "business":
-      isValid = validateBusinessDetails();
-      break;
-    case "borrowerSecurity":
-      isValid = validateBorrowerSecurity();
-      break;
-    case "loan":
-      isValid = validateLoanDetails();
-      break;
-    case "guarantor":
-      isValid = validateGuarantorDetails();
-      break;
-    case "guarantorSecurity":
-      isValid = validateGuarantorSecurity();
-      break;
-    case "nextOfKin":
-      isValid = validateNextOfKinDetails();
-      break;
-    case "documents":
-      isValid = validateDocuments();
-      break;
-    default:
-      break;
-  }
-
-  if (isValid) {
-    const nextIndex = navItems.findIndex((item) => item.id === activeSection) + 1;
-    if (nextIndex < navItems.length) {
-      setActiveSection(navItems[nextIndex].id);
-    }
-  } else {
-    toast.error("Please fix the highlighted errors before continuing.");
-  }
-};
-
-
-
-  // Check if a value is unique in the database across multiple tables
-  const checkUniqueValue = async (tables, field, value) => {
-    for (const table of tables) {
-      const { data, error } = await supabase
-        .from(table)
-        .select(field)
-        .eq(field, value);
-
-      if (error) {
-        console.error(`Error checking unique ${field} in ${table}:`, error);
-        return false;
+    securityItems.forEach((item, index) => {
+      if (!item.item) {
+        errorsFound[`securityItem_${index}`] = "Item name is required";
+        isValid = false;
       }
-
-      if (data && data.length > 0) {
-        return false; // Value exists in this table
+      if (!item.description) {
+        errorsFound[`securityDescription_${index}`] = "Description is required";
+        isValid = false;
       }
-    }
+      if (!item.identification) {
+        errorsFound[`securityIdentification_${index}`] = "Identification is required";
+        isValid = false;
+      }
+      if (!item.value || parseFloat(item.value) <= 0) {
+        errorsFound[`securityValue_${index}`] = "Estimated value must be greater than 0";
+        isValid = false;
+      }
+    });
 
-    return true; // Value is unique across all tables
+    setErrors(errorsFound);
+    return isValid;
   };
 
-  // Validate date is at least 18 years old
-  const isAtLeast18YearsOld = (dateString) => {
-    if (!dateString) return true; // Skip validation if empty
+  const validateLoanDetails = () => {
+    const errorsFound = {};
+    let isValid = true;
+    if (!formData.prequalifiedAmount || parseFloat(formData.prequalifiedAmount) <= 0) {
+      errorsFound.prequalifiedAmount = "Please enter a valid loan amount greater than 0";
+      isValid = false;
+    }
+    setErrors(errorsFound);
+    return isValid;
+  };
 
+// GUARANTOR DETAILS
+const validateGuarantorDetails = async () => {
+  const errorsFound = {};
+  const { Firstname, Surname, mobile, alternativeMobile, idNumber, dateOfBirth, gender } = formData.guarantor;
+
+  // Required fields
+  if (!Firstname?.trim()) errorsFound.guarantorFirstname = "First Name is required";
+  if (!Surname?.trim()) errorsFound.guarantorSurname = "Surname is required";
+  if (!gender?.trim()) errorsFound.guarantorGender = "Gender is required";
+  if (!mobile?.trim()) errorsFound.guarantorMobile = "Mobile number is required";
+  if (!alternativeMobile?.trim()) errorsFound.guarantorAlternativeMobile = "Alternative mobile number is required";
+  if (!idNumber?.trim()) errorsFound.guarantorIdNumber = "ID number is required";
+
+  // Format checks
+  if (mobile && !/^[0-9]{10,15}$/.test(mobile.replace(/\D/g, ""))) errorsFound.guarantorMobile = "Please enter a valid mobile number";
+  if (alternativeMobile && !/^[0-9]{10,15}$/.test(alternativeMobile.replace(/\D/g, ""))) errorsFound.guarantorAlternativeMobile = "Please enter a valid alternative mobile number";
+  if (idNumber && !/^[0-9]{6,12}$/.test(idNumber)) errorsFound.guarantorIdNumber = "Please enter a valid ID number";
+
+  // Age check
+  if (dateOfBirth && !isAtLeast18YearsOld(dateOfBirth)) errorsFound.guarantorDateOfBirth = "Guarantor must be at least 18 years old";
+
+  // Uniqueness
+  const fieldsToCheck = [
+    { field: "guarantorMobile", value: mobile },
+    { field: "guarantorAlternativeMobile", value: alternativeMobile },
+    { field: "guarantorIdNumber", value: idNumber },
+  ];
+
+  for (const { field, value } of fieldsToCheck) {
+    if (value && !errorsFound[field]) {
+      try {
+        const isUnique = await checkUniqueValue(
+          ["customers", "guarantors", "next_of_kin"],
+          field.includes("IdNumber") ? "id_number" : "mobile",
+          value
+        );
+        if (!isUnique) errorsFound[field] = `${field} already exists in our system`;
+      } catch (err) {
+        console.error("Error checking uniqueness:", err);
+        errorsFound[field] = `Error validating ${field}`;
+      }
+    }
+  }
+
+  setErrors(errorsFound);
+  return Object.keys(errorsFound).length === 0;
+}
+
+  const validateGuarantorSecurity = () => {
+    let isValid = true;
+    let errorsFound = {};
+    guarantorSecurityItems.forEach((item, index) => {
+      if (!item.item || item.item.trim() === "") {
+        errorsFound[`guarantorSecurityItem_${index}`] = "Item is required";
+        isValid = false;
+      }
+      if (!item.description || item.description.trim() === "") {
+        errorsFound[`guarantorSecurityDescription_${index}`] = "Description is required";
+        isValid = false;
+      }
+      if (!item.identification || item.identification.trim() === "") {
+        errorsFound[`guarantorSecurityIdentification_${index}`] = "Identification is required";
+        isValid = false;
+      }
+      if (item.value === "" || item.value === null || isNaN(item.value) || Number(item.value) <= 0) {
+        errorsFound[`guarantorSecurityValue_${index}`] = "Valid Value is required";
+        isValid = false;
+      }
+    });
+    setErrors(errorsFound);
+    return isValid;
+  };
+
+
+// NEXT OF KIN DETAILS
+const validateNextOfKinDetails = async () => {
+  const errorsFound = {};
+  const { Firstname, Surname, mobile, alternativeNumber, idNumber } = formData.nextOfKin;
+
+  // Required fields
+  if (!Firstname?.trim()) errorsFound.nextOfKinFirstname = "First Name is required";
+  if (!Surname?.trim()) errorsFound.nextOfKinSurname = "Surname is required";
+  if (!mobile?.trim()) errorsFound.nextOfKinMobile = "Mobile number is required";
+  if (!alternativeNumber?.trim()) errorsFound.nextOfKinAlternativeNumber = "Alternative mobile number is required";
+  if (!idNumber?.trim()) errorsFound.nextOfKinIdNumber = "ID number is required";
+
+  // Format checks
+  if (mobile && !/^[0-9]{10,15}$/.test(mobile.replace(/\D/g, ""))) {
+    errorsFound.nextOfKinMobile = "Please enter a valid mobile number";
+  }
+  if (alternativeNumber && !/^[0-9]{10,15}$/.test(alternativeNumber.replace(/\D/g, ""))) {
+    errorsFound.nextOfKinAlternativeNumber = "Please enter a valid alternative mobile number";
+  }
+  if (idNumber && !/^[0-9]{6,12}$/.test(idNumber)) {
+    errorsFound.nextOfKinIdNumber = "Please enter a valid ID number";
+  }
+
+  // Uniqueness
+  const fieldsToCheck = [
+    { field: "nextOfKinMobile", value: mobile },
+    { field: "nextOfKinAlternativeNumber", value: alternativeNumber },
+    { field: "nextOfKinIdNumber", value: idNumber },
+  ];
+
+  for (const { field, value } of fieldsToCheck) {
+    if (value && !errorsFound[field]) {
+      try {
+        const isUnique = await checkUniqueValue(
+          ["customers", "guarantors", "next_of_kin"],
+          field.toLowerCase().includes("idnumber") ? "id_number" : "mobile",
+          value
+        );
+        if (!isUnique) errorsFound[field] = `${field} already exists in our system`;
+      } catch (err) {
+        console.error("Error checking uniqueness:", err);
+        errorsFound[field] = `Error validating ${field}`;
+      }
+    }
+  }
+
+  setErrors(errorsFound);
+  return Object.keys(errorsFound).length === 0;
+};
+
+
+  const validateDocuments = () => {
+    let isValid = true;
+    let errorsFound = {};
+    if (!officerClientImage1) {
+      errorsFound.officerClientImage1 = "First Officer and Client Image is required";
+      isValid = false;
+    }
+    if (!officerClientImage2) {
+      errorsFound.officerClientImage2 = "Second Officer and Client Image is required";
+      isValid = false;
+    }
+    if (!bothOfficersImage) {
+      errorsFound.bothOfficersImage = "Both Officers Image is required";
+      isValid = false;
+    }
+    setErrors(errorsFound);
+    return isValid;
+  };
+
+  // Navigation handler
+  const handleNext = async () => {
+    let isValid = false;
+    switch (activeSection) {
+      case "personal":
+        isValid = await validatePersonalDetails();
+        break;
+      case "business":
+        isValid = validateBusinessDetails();
+        break;
+      case "borrowerSecurity":
+        isValid = validateBorrowerSecurity();
+        break;
+      case "loan":
+        isValid = validateLoanDetails();
+        break;
+      case "guarantor":
+        isValid = validateGuarantorDetails();
+        break;
+      case "guarantorSecurity":
+        isValid = validateGuarantorSecurity();
+        break;
+      case "nextOfKin":
+        isValid = validateNextOfKinDetails();
+        break;
+      case "documents":
+        isValid = validateDocuments();
+        break;
+      default:
+        break;
+    }
+
+    if (isValid) {
+      const nextIndex = sections.findIndex((item) => item.id === activeSection) + 1;
+      if (nextIndex < sections.length) {
+        setActiveSection(sections[nextIndex].id);
+      }
+    } else {
+      toast.error("Please fix the highlighted errors before continuing.", {
+      position: "top-right",
+      autoClose: 3000,
+      theme: "colored",
+    });
+      console.log("Please fix the highlighted errors before continuing.");
+    }
+  };
+
+  // Helper functions
+  const isAtLeast18YearsOld = (dateString) => {
+    if (!dateString) return true;
     const birthDate = new Date(dateString);
     const today = new Date();
-    const eighteenYearsAgo = new Date(
-      today.getFullYear() - 18,
-      today.getMonth(),
-      today.getDate()
-    );
-
+    const eighteenYearsAgo = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
     return birthDate <= eighteenYearsAgo;
   };
 
-  // Validate business establishment date (at least 6 months ago)
-  const isAtLeast6MonthsOld = (dateString) => {
-    if (!dateString) return true;
-
-    const establishedDate = new Date(dateString);
-    const today = new Date();
-    const sixMonthsAgo = new Date(
-      today.getFullYear(),
-      today.getMonth() - 6,
-      today.getDate()
-    );
-
-    return establishedDate <= sixMonthsAgo;
+  const addSecurityItem = () => {
+    setSecurityItems([...securityItems, { item: "", description: "", identification: "", value: "" }]);
+    setSecurityItemImages([...securityItemImages, []]);
   };
 
-  // Validation function
-  const validateForm = async () => {
-    const newErrors = {};
-
-    // Required fields validation
-    if (!formData.Firstname) newErrors.Firstname = "First name is required";
-    if (!formData.Surname) newErrors.Surname = "Surname is required";
-    if (!formData.mobile) newErrors.mobile = "Mobile number is required";
-    if (!formData.idNumber) newErrors.idNumber = "ID number is required";
-
-    // Mobile number format validation
-    if (
-      formData.mobile &&
-      !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))
-    ) {
-      newErrors.mobile = "Please enter a valid mobile number";
-    }
-
-    // ID number validation
-    if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
-      newErrors.idNumber = "Please enter a valid ID number";
-    }
-
-    // Date of birth validation - must be at least 18 years old
-    if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
-      newErrors.dateOfBirth = "Customer must be at least 18 years old";
-    }
-
-    // Business establishment date validation
-    if (formData.yearEstablished && !isAtLeast6MonthsOld(formData.yearEstablished)) {
-      newErrors.yearEstablished = "Business must be established at least 6 months ago";
-    }
-
-    // Guarantor date of birth validation
-    if (
-      formData.guarantor.dateOfBirth &&
-      !isAtLeast18YearsOld(formData.guarantor.dateOfBirth)
-    ) {
-      newErrors.guarantorDateOfBirth = "Guarantor must be at least 18 years old";
-    }
-
-    // Validate security items
-    securityItems.forEach((item, index) => {
-      if (item.value && isNaN(parseFloat(item.value))) {
-        newErrors[`securityValue_${index}`] = "Value must be a number";
-      }
-    });
-
-    // Validate guarantor security items
-    guarantorSecurityItems.forEach((item, index) => {
-      if (item.value && isNaN(parseFloat(item.value))) {
-        newErrors[`guarantorSecurityValue_${index}`] = "Value must be a number";
-      }
-    });
-
-    // Check for unique mobile number across all relevant tables
-    if (formData.mobile && !newErrors.mobile) {
-      const isMobileUnique = await checkUniqueValue(
-        ["customers", "guarantors", "next_of_kin"],
-        "mobile",
-        formData.mobile
-      );
-      if (!isMobileUnique) {
-        newErrors.mobile = "Mobile number already exists in our system";
-      }
-    }
-
-    // Check for unique ID number across all relevant tables
-    if (formData.idNumber && !newErrors.idNumber) {
-      const isIdUnique = await checkUniqueValue(
-        ["customers", "guarantors", "next_of_kin"],
-        "id_number",
-        formData.idNumber
-      );
-      if (!isIdUnique) {
-        newErrors.idNumber = "ID number already exists in our system";
-      }
-    }
-
-    // Check for unique guarantor mobile number if provided
-    if (formData.guarantor.mobile) {
-      const isGuarantorMobileUnique = await checkUniqueValue(
-        ["customers", "guarantors", "next_of_kin"],
-        "mobile",
-        formData.guarantor.mobile
-      );
-      if (!isGuarantorMobileUnique) {
-        newErrors.guarantorMobile =
-          "Guarantor mobile number already exists in our system";
-      }
-    }
-
-    // Check for unique guarantor ID number if provided
-    if (formData.guarantor.idNumber) {
-      const isGuarantorIdUnique = await checkUniqueValue(
-        ["customers", "guarantors", "next_of_kin"],
-        "id_number",
-        formData.guarantor.idNumber
-      );
-      if (!isGuarantorIdUnique) {
-        newErrors.guarantorIdNumber =
-          "Guarantor ID number already exists in our system";
-      }
-    }
-
-    // Check for unique next of kin mobile number if provided
-    if (formData.nextOfKin.mobile) {
-      const isNextOfKinMobileUnique = await checkUniqueValue(
-        ["customers", "guarantors", "next_of_kin"],
-        "mobile",
-        formData.nextOfKin.mobile
-      );
-      if (!isNextOfKinMobileUnique) {
-        newErrors.nextOfKinMobile =
-          "Next of kin mobile number already exists in our system";
-      }
-    }
-
-    // Check for unique next of kin ID number if provided
-    if (formData.nextOfKin.idNumber) {
-      const isNextOfKinIdUnique = await checkUniqueValue(
-        ["customers", "guarantors", "next_of_kin"],
-        "id_number",
-        formData.nextOfKin.idNumber
-      );
-      if (!isNextOfKinIdUnique) {
-        newErrors.nextOfKinIdNumber =
-          "Next of kin ID number already exists in our system";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Handle top-level form changes
- const handleChange = (e) => {
-  const { name, value } = e.target;
-
-  if (name === "yearEstablished") {
-    const selectedDate = new Date(value);
-    const today = new Date();
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(today.getMonth() - 6);
-
-    if (selectedDate > sixMonthsAgo) {
-      setErrors((prev) => ({
-        ...prev,
-        yearEstablished: "Business must be at least 6 months old.",
-      }));
-    } else {
-      setErrors((prev) => ({ ...prev, yearEstablished: "" }));
-    }
-  }
-
-  setFormData((prev) => ({ ...prev, [name]: value }));
-};
-
-
-  const handleGuarantorSecurityChange = (e, index) => {
-    const { name, value } = e.target;
-    const newItems = [...guarantorSecurityItems];
-    newItems[index][name] = value;
-    setGuarantorSecurityItems(newItems);
-
-    // Clear error when field is edited
-    const errorKey = `guarantorSecurityValue_${index}`;
-    if (errors[errorKey]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[errorKey];
-        return newErrors;
-      });
-    }
+  const removeSecurityItem = (index) => {
+    setSecurityItems((prev) => prev.filter((_, i) => i !== index));
+    setSecurityItemImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const addGuarantorSecurityItem = () => {
-    setGuarantorSecurityItems([
-      ...guarantorSecurityItems,
-      { item: "", description: "", identification: "", value: "" },
-    ]);
+    setGuarantorSecurityItems([...guarantorSecurityItems, { item: "", description: "", identification: "", value: "" }]);
+    setGuarantorSecurityImages([...guarantorSecurityImages, []]);
   };
 
-  // Handle nested objects (guarantor, nextOfKin)
-const handleNestedChange = (e, section) => {
-  if (!e || !e.target) return; // ✅ prevent crash
+const handleFileUpload = async (e, setter, key) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-  const { name, value } = e.target;
+  try {
+    // Save file for upload using the individual setter
+    setter(file);
 
-  setFormData((prev) => ({
-    ...prev,
-    [section]: { ...prev[section], [name]: value },
-  }));
-
-  const errorKey = `${section}${name}`;
-  if (errors[errorKey]) {
-    setErrors((prev) => {
-      const newErrors = { ...prev };
-      delete newErrors[errorKey];
-      return newErrors;
-    });
+    // Save preview URL
+    setPreviews((prev) => ({ ...prev, [key]: URL.createObjectURL(file) }));
+    
+    console.log(`✅ File saved for ${key}:`, file.name);
+  } catch (err) {
+    console.error(err);
+    toast.error("Unexpected error during file selection.");
   }
 };
 
-
-
-  // Handle security items
-  const handleSecurityChange = (e, index) => {
-    const { name, value } = e.target;
-    const newItems = [...securityItems];
-    newItems[index][name] = value;
-    setSecurityItems(newItems);
-
-    // Clear error when field is edited
-    const errorKey = `securityValue_${index}`;
-    if (errors[errorKey]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[errorKey];
-        return newErrors;
-      });
-    }
-  };
-
-  const addSecurityItem = () => {
-    setSecurityItems([
-      ...securityItems,
-      { item: "", description: "", identification: "", value: "" },
-    ]);
+  const handleRemoveFile = (key, setter) => {
+    setter(null);
+    setPreviews((prev) => {
+      const url = prev?.[key];
+      if (url && typeof url === "string" && url.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (err) {
+          console.warn("Failed to revoke object URL", err);
+        }
+      }
+      return { ...prev, [key]: null };
+    });
   };
 
  
-
-
-
-
-
   const handleMultipleFiles = (e, setter) => {
     const files = Array.from(e.target.files);
     setter((prev) => [...prev, ...files]); // append new images
@@ -740,10 +652,47 @@ const handleNestedChange = (e, section) => {
     setBusinessImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  
+// ✅ Master validation function
+const validateForm = async () => {
+  const personalValid = await validatePersonalDetails();
+  const businessValid = validateBusinessDetails();
+  const borrowerSecurityValid = validateBorrowerSecurity();
+  const loanValid = validateLoanDetails();
+  const guarantorValid = await validateGuarantorDetails();
+  const guarantorSecurityValid = validateGuarantorSecurity();
+  const nextOfKinValid = await validateNextOfKinDetails();
+  const documentsValid = validateDocuments();
 
-// Upload file to Supabase Storage
-const uploadFile = async (file, path, bucket = "customers") => {
+  const isValid =
+    personalValid &&
+    businessValid &&
+    borrowerSecurityValid &&
+    loanValid &&
+    guarantorValid &&
+    guarantorSecurityValid &&
+    nextOfKinValid &&
+    documentsValid;
+
+  if (!isValid) {
+    console.warn("❌ Validation failed: ", {
+      personalValid,
+      businessValid,
+      borrowerSecurityValid,
+      loanValid,
+      guarantorValid,
+      guarantorSecurityValid,
+      nextOfKinValid,
+      documentsValid,
+    });
+  }
+
+  return isValid;
+};
+
+
+
+  // Upload file helper function (keep the same)
+ const uploadFile = async (file, path, bucket = "customers") => {
   try {
     const { data, error } = await supabase.storage
       .from(bucket)
@@ -765,25 +714,7 @@ const uploadFile = async (file, path, bucket = "customers") => {
   }
 };
 
-
-const handleFileUpload = async (e, setter, key) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  try {
-    // Save file for upload using the individual setter
-    setter(file);
-
-    // Save preview URL
-    setPreviews((prev) => ({ ...prev, [key]: URL.createObjectURL(file) }));
-    
-    console.log(`✅ File saved for ${key}:`, file.name);
-  } catch (err) {
-    console.error(err);
-    toast.error("Unexpected error during file selection.");
-  }
-};
-const handleSubmit = async (e) => {
+ const handleSubmit = async (e) => {
   e.preventDefault();
   console.log("🚀 Submit button clicked");
 
@@ -804,64 +735,28 @@ const handleSubmit = async (e) => {
 
   try {
     console.log("📁 Starting file uploads...");
-    
-    // ========= 1. Upload customer personal images to /personal folder =========
-    let passportUrl = null;
-    let idFrontUrl = null;
-    let idBackUrl = null;
-    let houseImageUrl = null;
 
-    // Debug: Log file states
-    console.log("📄 File states:", {
-      passportFile: !!passportFile,
-      idFrontFile: !!idFrontFile, 
-      idBackFile: !!idBackFile,
-      houseImageFile: !!houseImageFile
-    });
+    // ========= 1. Upload customer personal images =========
+    let passportUrl = null, idFrontUrl = null, idBackUrl = null, houseImageUrl = null;
 
-    // Upload customer personal images using the file states directly
     if (passportFile) {
-      console.log("⬆️ Uploading passport to personal folder...");
-      passportUrl = await uploadFile(
-        passportFile, 
-        `personal/${Date.now()}_passport_${passportFile.name}`,
-        "customers"
-      );
+      passportUrl = await uploadFile(passportFile, `personal/${Date.now()}_passport_${passportFile.name}`, "customers");
       if (!passportUrl) throw new Error("Failed to upload passport image");
-      console.log("✅ Passport URL:", passportUrl);
     }
 
     if (idFrontFile) {
-      console.log("⬆️ Uploading ID front to personal folder...");
-      idFrontUrl = await uploadFile(
-        idFrontFile, 
-        `personal/${Date.now()}_id_front_${idFrontFile.name}`,
-        "customers"
-      );
+      idFrontUrl = await uploadFile(idFrontFile, `personal/${Date.now()}_id_front_${idFrontFile.name}`, "customers");
       if (!idFrontUrl) throw new Error("Failed to upload ID front image");
-      console.log("✅ ID Front URL:", idFrontUrl);
     }
 
     if (idBackFile) {
-      console.log("⬆️ Uploading ID back to personal folder...");
-      idBackUrl = await uploadFile(
-        idBackFile, 
-        `personal/${Date.now()}_id_back_${idBackFile.name}`,
-        "customers"
-      );
+      idBackUrl = await uploadFile(idBackFile, `personal/${Date.now()}_id_back_${idBackFile.name}`, "customers");
       if (!idBackUrl) throw new Error("Failed to upload ID back image");
-      console.log("✅ ID Back URL:", idBackUrl);
     }
 
     if (houseImageFile) {
-      console.log("⬆️ Uploading house image to personal folder...");
-      houseImageUrl = await uploadFile(
-        houseImageFile, 
-        `personal/${Date.now()}_house_${houseImageFile.name}`,
-        "customers"
-      );
+      houseImageUrl = await uploadFile(houseImageFile, `personal/${Date.now()}_house_${houseImageFile.name}`, "customers");
       if (!houseImageUrl) throw new Error("Failed to upload house image");
-      console.log("✅ House Image URL:", houseImageUrl);
     }
 
     // ========= 2. Insert customer =========
@@ -896,9 +791,13 @@ const handleSubmit = async (e) => {
         id_front_url: idFrontUrl,
         id_back_url: idBackUrl,
         house_image_url: houseImageUrl,
-           prequalifiedAmount: formData.loan?.prequalifiedAmount 
-        ? parseFloat(formData.loan.prequalifiedAmount) 
-        : null,
+        prequalifiedAmount: formData.loan?.prequalifiedAmount ? parseFloat(formData.loan.prequalifiedAmount) : null,
+
+        // ✅ Metadata
+        created_by: profile?.id,
+        branch_id: profile?.branch_id,
+        region_id: profile?.region_id,
+        created_at: new Date().toISOString(),
       }])
       .select("id")
       .single();
@@ -921,14 +820,21 @@ const handleSubmit = async (e) => {
       if (businessImageUrls.length > 0) {
         const { error: businessImageError } = await supabase
           .from("business_images")
-          .insert(businessImageUrls.map((url) => ({ customer_id: customerId, image_url: url })));
+          .insert(businessImageUrls.map((url) => ({
+            customer_id: customerId,
+            image_url: url,
+            created_by: profile?.id,
+            branch_id: profile?.branch_id,
+            region_id: profile?.region_id,
+            created_at: new Date().toISOString(),
+          })));
         if (businessImageError) logError("Business Images", businessImageError);
       }
     }
 
     // ========= 4. Next of Kin =========
     const nextOfKin = formData.nextOfKin || {};
-    const nextOfKinFilled = Object.values(nextOfKin).some((val) => val != null && String(val).trim() !== "");
+    const nextOfKinFilled = Object.values(nextOfKin).some(val => val != null && String(val).trim() !== "");
     if (nextOfKinFilled) {
       const { error: nextOfKinError } = await supabase.from("next_of_kin").insert([{
         customer_id: customerId,
@@ -942,61 +848,31 @@ const handleSubmit = async (e) => {
         employment_status: nextOfKin.employmentStatus || null,
         county: nextOfKin.county || null,
         city_town: nextOfKin.cityTown || null,
+
+        created_by: profile?.id,
+        branch_id: profile?.branch_id,
+        region_id: profile?.region_id,
+        created_at: new Date().toISOString(),
       }]);
       if (nextOfKinError) logError("Next of Kin", nextOfKinError);
     }
 
     // ========= 5. Guarantor =========
     const guarantor = formData.guarantor || {};
-    const guarantorFilled = Object.values(guarantor).some((val) => val != null && String(val).trim() !== "");
+    const guarantorFilled = Object.values(guarantor).some(val => val != null && String(val).trim() !== "");
     let guarantorId = null;
 
     if (guarantorFilled) {
-      console.log("📁 Uploading guarantor images...");
-      
-      // Debug: Log guarantor file states
-      console.log("📄 Guarantor file states:", {
-        guarantorPassportFile: !!guarantorPassportFile,
-        guarantorIdFrontFile: !!guarantorIdFrontFile, 
-        guarantorIdBackFile: !!guarantorIdBackFile
-      });
-      
-      // Upload guarantor images to /guarantor folder
-      let guarantorPassportUrl = null;
-      let guarantorIdFrontUrl = null;
-      let guarantorIdBackUrl = null;
+      let guarantorPassportUrl = null, guarantorIdFrontUrl = null, guarantorIdBackUrl = null;
 
       if (guarantorPassportFile) {
-        console.log("⬆️ Uploading guarantor passport to guarantor folder...");
-        guarantorPassportUrl = await uploadFile(
-          guarantorPassportFile, 
-          `guarantor/${Date.now()}_passport_${guarantorPassportFile.name}`,
-          "customers"
-        );
-        if (!guarantorPassportUrl) throw new Error("Failed to upload guarantor passport image");
-        console.log("✅ Guarantor Passport URL:", guarantorPassportUrl);
+        guarantorPassportUrl = await uploadFile(guarantorPassportFile, `guarantor/${Date.now()}_passport_${guarantorPassportFile.name}`, "customers");
       }
-
       if (guarantorIdFrontFile) {
-        console.log("⬆️ Uploading guarantor ID front to guarantor folder...");
-        guarantorIdFrontUrl = await uploadFile(
-          guarantorIdFrontFile, 
-          `guarantor/${Date.now()}_id_front_${guarantorIdFrontFile.name}`,
-          "customers"
-        );
-        if (!guarantorIdFrontUrl) throw new Error("Failed to upload guarantor ID front image");
-        console.log("✅ Guarantor ID Front URL:", guarantorIdFrontUrl);
+        guarantorIdFrontUrl = await uploadFile(guarantorIdFrontFile, `guarantor/${Date.now()}_id_front_${guarantorIdFrontFile.name}`, "customers");
       }
-
       if (guarantorIdBackFile) {
-        console.log("⬆️ Uploading guarantor ID back to guarantor folder...");
-        guarantorIdBackUrl = await uploadFile(
-          guarantorIdBackFile, 
-          `guarantor/${Date.now()}_id_back_${guarantorIdBackFile.name}`,
-          "customers"
-        );
-        if (!guarantorIdBackUrl) throw new Error("Failed to upload guarantor ID back image");
-        console.log("✅ Guarantor ID Back URL:", guarantorIdBackUrl);
+        guarantorIdBackUrl = await uploadFile(guarantorIdBackFile, `guarantor/${Date.now()}_id_back_${guarantorIdBackFile.name}`, "customers");
       }
 
       const { data: guarantorData, error: guarantorError } = await supabase
@@ -1010,6 +886,7 @@ const handleSubmit = async (e) => {
           marital_status: guarantor.maritalStatus || null,
           gender: guarantor.gender || null,
           mobile: guarantor.mobile || null,
+            alternative_number: guarantor.alternativeNumber ,
           residence_status: guarantor.residenceStatus || null,
           postal_address: guarantor.postalAddress || null,
           code: guarantor.code ? parseInt(guarantor.code) : null,
@@ -1021,6 +898,11 @@ const handleSubmit = async (e) => {
           passport_url: guarantorPassportUrl,
           id_front_url: guarantorIdFrontUrl,
           id_back_url: guarantorIdBackUrl,
+
+          created_by: profile?.id,
+          branch_id: profile?.branch_id,
+          region_id: profile?.region_id,
+          created_at: new Date().toISOString(),
         }])
         .select("id")
         .single();
@@ -1037,6 +919,11 @@ const handleSubmit = async (e) => {
         description: s.description || null,
         identification: s.identification || null,
         estimated_market_value: s.value ? parseFloat(s.value) : null,
+
+        created_by: profile?.id,
+        branch_id: profile?.branch_id,
+        region_id: profile?.region_id,
+        created_at: new Date().toISOString(),
       }));
 
       const { data: insertedItems, error: gSecError } = await supabase
@@ -1055,49 +942,81 @@ const handleSubmit = async (e) => {
             if (url) urls.push(url);
           }
           if (urls.length > 0) {
-            const { error: gSecImgError } = await supabase.from("guarantor_security_images").insert(
-              urls.map((url) => ({ guarantor_security_id: securityId, image_url: url }))
-            );
+            const { error: gSecImgError } = await supabase
+              .from("guarantor_security_images")
+              .insert(urls.map((url) => ({
+                guarantor_security_id: securityId,
+                image_url: url,
+
+                created_by: profile?.id,
+                branch_id: profile?.branch_id,
+                region_id: profile?.region_id,
+                created_at: new Date().toISOString(),
+              })));
             if (gSecImgError) logError("Guarantor Security Images", gSecImgError);
           }
         }
       }
     }
 
-    // ========= 7. Borrower Security =========
-    if (securityItems.length > 0) {
-      const itemsToInsert = securityItems.map((s) => ({
-        customer_id: customerId,
-        item: s.item || null,
-        description: s.description || null,
-        identification: s.identification || null,
-        value: s.value ? parseFloat(s.value) : null,
-      }));
+ // ========= 7. Borrower Security =========
+if (securityItems.length > 0) {
+ 
+  const itemsToInsert = securityItems.map((s) => ({
+    customer_id: customerId,
+    item: s.item || null,
+    description: s.description || null,
+    identification: s.identification || null,
+    value: s.value ? parseFloat(s.value) : null,
 
-      const { data: insertedItems, error: secError } = await supabase
-        .from("security_items")
-        .insert(itemsToInsert)
-        .select("id");
+    created_by: profile?.id,
+    branch_id: profile?.branch_id,
+    region_id: profile?.region_id,
+    created_at: new Date().toISOString(),
+  }));
 
-      if (secError) logError("Borrower Security", secError);
-      else {
-        for (let i = 0; i < insertedItems.length; i++) {
-          const securityId = insertedItems[i].id;
-          const files = securityItemImages[i] || [];
-          const urls = [];
-          for (const file of files) {
-            const url = await uploadFile(file, `borrower_security/${Date.now()}_${file.name}`, "customers");
-            if (url) urls.push(url);
-          }
-          if (urls.length > 0) {
-            const { error: secImgError } = await supabase.from("security_item_images").insert(
-              urls.map((url) => ({ security_item_id: securityId, image_url: url }))
-            );
-            if (secImgError) logError("Borrower Security Images", secImgError);
-          }
-        }
+  const { data: insertedItems, error: secError } = await supabase
+    .from("security_items")
+    .insert(itemsToInsert)
+    .select("id");
+
+  if (secError) {
+    logError("Borrower Security", secError);
+  } else {
+    // 2. Upload images for each security item
+    for (let i = 0; i < insertedItems.length; i++) {
+      const securityId = insertedItems[i].id;
+      const files = securityItemImages[i] || []; // images from frontend
+      const urls = [];
+
+      for (const file of files) {
+        // Save in borrower_security folder
+        const filePath = `borrower_security/${Date.now()}_${file.name}`;
+        const url = await uploadFile(file, filePath, "customers"); // ensure bucket is 'customers'
+
+        if (url) urls.push(url);
+      }
+
+      // 3. Save URLs in security_item_images table
+      if (urls.length > 0) {
+        const { error: secImgError } = await supabase
+          .from("security_item_images")
+          .insert(
+            urls.map((url) => ({
+              security_item_id: securityId,
+              image_url: url,
+              created_by: profile?.id,
+              branch_id: profile?.branch_id,
+              region_id: profile?.region_id,
+              created_at: new Date().toISOString(),
+            }))
+          );
+
+        if (secImgError) logError("Borrower Security Images", secImgError);
       }
     }
+  }
+}
 
 
     // ========= 9. Documents =========
@@ -1111,7 +1030,16 @@ const handleSubmit = async (e) => {
     for (const doc of documentsToUpload) {
       if (doc.file) {
         const url = await uploadFile(doc.file, `documents/${Date.now()}_${doc.file.name}`, "customers");
-        if (url) uploadedDocs.push({ customer_id: customerId, document_type: doc.type, document_url: url });
+        if (url) uploadedDocs.push({
+          customer_id: customerId,
+          document_type: doc.type,
+          document_url: url,
+
+          created_by: profile?.id,
+          branch_id: profile?.branch_id,
+          region_id: profile?.region_id,
+          created_at: new Date().toISOString(),
+        });
       }
     }
 
@@ -1136,1681 +1064,1231 @@ const handleSubmit = async (e) => {
   }
 };
 
-
-
-  // Navigation tabs
-  const navItems = [
-    { id: "personal", label: "Personal Info" },
-    { id: "business", label: "Business Info" },
-    { id: "borrowerSecurity", label: "Borrower Security" },
-    { id: "loan", label: "Loan Details" },
-    { id: "guarantor", label: "Guarantor" },
-    { id: "guarantorSecurity", label: "Guarantor Security" },
-    { id: "nextOfKin", label: "Next of Kin" },
-    { id: "documents", label: "Documents" },
-  ];
-
-
-
-const handleRemoveFile = (key, setter) => {
-  console.log(`🗑️ Removing file for ${key}`);
-  
-  // Reset the file state
-  if (setter) {
-    setter(null); // For individual setters
-  } else {
-    setFiles(prev => ({ ...prev, [key]: null })); // For single files state
-  }
-  
-  // Remove preview
-  setPreviews(prev => ({ ...prev, [key]: null }));
-  
-  // Revoke object URL to prevent memory leaks
-  if (previews[key]) {
-    URL.revokeObjectURL(previews[key]);
-  }
-};
-
-
-
   return (
-   <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-75 z-50">
-  <div className="bg-white w-full max-w-6xl h-[90vh] overflow-y-auto rounded-xl shadow-2xl p-6">
-    {/* Header */}
-    <div className="flex justify-between items-center mb-6 border-b border-gray-200 pb-4">
-      <h2 className="text-2xl text-center font-bold text-green-600">
-         Customer Application
-      </h2>
-      <button
-        onClick={onClose}
-        className="text-gray-500 hover:text-red-600 text-xl font-bold transition-colors"
-        disabled={isSubmitting}
-      >
-        ✕
-      </button>
-    </div>
-
-    {/* Navigation Tabs */}
-    <div className="flex overflow-x-auto mb-6 pb-2 border-b border-gray-200">
-      {navItems.map((item) => (
-        <button
-          key={item.id}
-          onClick={() => setActiveSection(item.id)}
-          className={`px-4 py-2 mr-2 rounded-lg font-medium whitespace-nowrap transition-colors ${
-            activeSection === item.id
-              ? "bg-green-600 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
-
-    <form className="space-y-8">
-      {/* PERSONAL DETAILS */}
-      {activeSection === "personal" && (
-  <section className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg border border-green-200">
-  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
-    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
-    Personal Details
-  </h3>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {/* Prefix */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Prefix</label>
-      <select
-        name="prefix"
-        value={formData.prefix}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      >
-        <option value="">Select Prefix</option>
-        <option>Mr</option>
-        <option>Mrs</option>
-        <option>Ms</option>
-      </select>
-    </div>
-
-    {/* First Name */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">First Name *</label>
-      <input
-        type="text"
-        name="Firstname"
-        placeholder="First Name"
-        value={formData.Firstname}
-        onChange={handleChange}
-        className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
-          errors.Firstname ? "border-red-500" : "border-green-200"
-        }`}
-        required
-      />
-      {errors.Firstname && <p className="text-red-500 text-xs mt-1">{errors.Firstname}</p>}
-    </div>
-
-    {/* Surname */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Surname *</label>
-      <input
-        type="text"
-        name="Surname"
-        placeholder="Surname"
-        value={formData.Surname}
-        onChange={handleChange}
-        className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
-          errors.Surname ? "border-red-500" : "border-green-200"
-        }`}
-        required
-      />
-      {errors.Surname && <p className="text-red-500 text-xs mt-1">{errors.Surname}</p>}
-    </div>
-
-    {/* Middle Name */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Middle Name</label>
-      <input
-        type="text"
-        name="Middlename"
-        placeholder="Middle Name"
-        value={formData.Middlename}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
-      />
-    </div>
-
-    {/* Marital Status */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Marital Status</label>
-      <select
-        name="maritalStatus"
-        value={formData.maritalStatus}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      >
-        <option value="">Select Marital Status</option>
-        <option>Single</option>
-        <option>Married</option>
-        <option>Separated/Divorced</option>
-        <option>Other</option>
-      </select>
-    </div>
-
-    {/* Residence Status */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Residence Status</label>
-      <select
-        name="residenceStatus"
-        value={formData.residenceStatus}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      >
-        <option value="">Residence Status</option>
-        <option>Own</option>
-        <option>Rent</option>
-        <option>Family</option>
-        <option>Other</option>
-      </select>
-    </div>
-
-    {/* Mobile Number */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Mobile Number *</label>
-      <input
-        type="text"
-        name="mobile"
-        placeholder="Mobile Number"
-        onChange={handleChange}
-        value={formData.mobile}
-        className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
-          errors.mobile ? "border-red-500" : "border-green-200"
-        }`}
-        required
-      />
-      {errors.mobile && <p className="text-red-500 text-xs mt-1">{errors.mobile}</p>}
-    </div>
-
-    {/* Alternative Mobile */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Alternative Mobile Number</label>
-      <input
-        type="text"
-        name="alternativeMobile"
-        placeholder="Alternative Mobile Number"
-        value={formData.alternativeMobile}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
-      />
-    </div>
-
-    {/* Occupation */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Occupation</label>
-      <input
-        type="text"
-        name="occupation"
-        placeholder="Occupation"
-        value={formData.occupation}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
-      />
-    </div>
-
-    {/* Date of Birth */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Date of Birth</label>
-      <input
-        type="date"
-        name="dateOfBirth"
-        value={formData.dateOfBirth}
-        onChange={handleChange}
-        max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
-        className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
-          errors.dateOfBirth ? "border-red-500" : "border-green-200"
-        }`}
-      />
-      {errors.dateOfBirth && <p className="text-red-500 text-xs mt-1">{errors.dateOfBirth}</p>}
-    </div>
-
-    {/* Gender */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Gender</label>
-      <select
-        name="gender"
-        value={formData.gender}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      >
-        <option value="">Select Gender</option>
-        <option>Male</option>
-        <option>Female</option>
-      </select>
-    </div>
-
-    {/* ID Number */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">ID Number *</label>
-      <input
-        type="text"
-        name="idNumber"
-        placeholder="ID Number"
-        value={formData.idNumber}
-        onChange={handleChange}
-        className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
-          errors.idNumber ? "border-red-500" : "border-green-200"
-        }`}
-        required
-      />
-      {errors.idNumber && <p className="text-red-500 text-xs mt-1">{errors.idNumber}</p>}
-    </div>
-
-    {/* Postal Address */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Postal Address</label>
-      <input
-        type="text"
-        name="postalAddress"
-        placeholder="Postal Address"
-        value={formData.postalAddress}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
-      />
-    </div>
-
-    {/* Code */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Code</label>
-      <input
-        type="number"
-        name="code"
-        placeholder="Code"
-        value={formData.code}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
-      />
-    </div>
-
-    {/* Town */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Town / City</label>
-      <input
-        type="text"
-        name="town"
-        placeholder="Town / City"
-        value={formData.town}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
-      />
-    </div>
-
-    {/* County */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">County</label>
-      <input
-        type="text"
-        name="county"
-        placeholder="County"
-        value={formData.county}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
-      />
-    </div>
-
-    
-   {/* File Uploads */}
-<div className="md:col-span-2 lg:col-span-3 mt-6">
-  <h4 className="text-lg font-semibold text-green-800 mb-4">
-    Upload Documents
-  </h4>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-    {[
-      { key: "passport", label: "Passport Photo", handler: (f) => setPassportFile(f) },
-      { key: "idFront", label: "ID Front", handler: (f) => setIdFrontFile(f) },
-      { key: "idBack", label: "ID Back", handler: (f) => setIdBackFile(f) },
-      { key: "house", label: "House Image", handler: (f) => setHouseImageFile(f) },
-    ].map((file, idx) => (
-      <div
-        key={idx}
-        className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
-      >
-        <label className="block text-sm font-medium text-green-800 mb-3">
-          {file.label}
-        </label>
-
-        
-       {/* Action buttons */}
-<div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
-  {/* Upload */}
-  <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
-    <Upload className="w-5 h-5" />
-    <span className="text-sm font-medium">Upload</span>
-    <input
-      type="file"
-      accept="image/*"
-      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
-      className="hidden"
-    />
-  </label>
-
-  {/* Camera */}
-  <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
-    <Camera className="w-5 h-5" />
-    <input
-      type="file"
-      accept="image/*"
-      capture={file.key === "passport" ? "user" : "environment"}
-      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
-      className="hidden"
-    />
-  </label>
-</div>
-
-
-        {/* Preview with delete */}
-       {previews[file.key] && (
-  <div className="mt-4 w-full relative">
-    <img
-      src={previews[file.key]}
-      alt={`${file.label} preview`}
-      className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
-    />
-    <button
-      type="button"
-      onClick={() => handleRemoveFile(file.key, file.handler)}
-      className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
-    >
-      <XIcon className="w-4 h-4" />
-    </button>
-  </div>
-)}
-
-      </div>
-    ))}
-  </div>
-</div>
-
-  </div>
-</section>
-
-
-
-      )}
-
-      {/* BUSINESS INFORMATION */}
-      {activeSection === "business" && (
-  <section className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-2xl shadow-lg border border-green-200">
-  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
-    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
-    Business Information
-  </h3>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    {/* Business Name */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">
-        Business Name
-      </label>
-      <input
-        type="text"
-        name="businessName"
-        placeholder="Business Name"
-        value={formData.businessName}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Business Type */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">
-        Business Type
-      </label>
-      <input
-        type="text"
-        name="businessType"
-        placeholder="Business Type (e.g. Retail, Wholesale)"
-        value={formData.businessType}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Year Established */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">
-        Year Established *
-      </label>
-      <input
-        type="date"
-        name="yearEstablished"
-        placeholder="Year Established"
-        value={formData.yearEstablished}
-        onChange={handleChange}
-        className={`border p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white ${
-          errors.yearEstablished ? "border-red-500" : "border-green-200"
-        }`}
-        max={new Date().toISOString().split("T")[0]}
-      />
-      {errors.yearEstablished && (
-        <p className="text-red-500 text-xs mt-1">{errors.yearEstablished}</p>
-      )}
-    </div>
-
-    {/* Daily Sales */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">
-        Daily Sales (KES)
-      </label>
-      <input
-        type="number"
-        name="daily_Sales"
-        placeholder="Daily Sales (KES)"
-        value={formData.daily_Sales}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Business Location */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">
-        Business Location
-      </label>
-      <input
-        type="text"
-        name="businessLocation"
-        placeholder="Business Location"
-        value={formData.businessLocation}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Road */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">
-        Road
-      </label>
-      <input
-        type="text"
-        name="road"
-        placeholder="Road"
-        value={formData.road}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Landmark */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">
-        Landmark
-      </label>
-      <input
-        type="text"
-        name="landmark"
-        placeholder="Landmark (e.g. Mosque)"
-        value={formData.landmark}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Local Authority License */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">
-        Local Authority License
-      </label>
-      <select
-        name="hasLocalAuthorityLicense"
-        value={formData.hasLocalAuthorityLicense}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      >
-        <option value="">Have Local Authority Licence?</option>
-        <option value="Yes">Yes</option>
-        <option value="No">No</option>
-      </select>
-    </div>
-
-    {/* Upload Business Images - styled like Personal Details uploads */}
-   <div className="md:col-span-2 mt-6">
- 
-{/* File Upload for Security Item */}
-<div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-  <label className="block text-sm font-medium text-green-800 mb-3">
-    Upload Business Images <span className="text-red-500">*</span>
-  </label>
-
-  {/* Action buttons (Upload + Camera) */}
-  <div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
-    {/* Upload */}
-    <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
-      <Upload className="w-5 h-5" />
-      <span className="text-sm font-medium">Upload</span>
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        onChange={(e) => handleMultipleFiles(e, setBusinessImages)}
-        className="hidden"
-      />
-    </label>
-
-    {/* Camera */}
-    <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
-      <Camera className="w-5 h-5" />
-      <span className="text-sm font-medium">Camera</span>
-      <input
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        onChange={(e) => handleMultipleFiles(e, setBusinessImages)}
-        className="hidden"
-      />
-    </label>
-  </div>
-
-  {/* Preview grid */}
-  {businessImages.length > 0 && (
-    <div className="mt-4 w-full">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {businessImages.map((img, idx) => (
-          <div key={idx} className="relative group">
-            <img
-              src={URL.createObjectURL(img)}
-              alt={`Business ${idx + 1}`}
-              className="w-full h-32 object-cover rounded-lg border border-green-200 shadow-sm"
-            />
+  <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex justify-center items-start overflow-auto">
+  <div className="bg-white w-full max-w-7xl mx-4 my-8 rounded-xl shadow-lg p-8">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
+                Customer Application
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Complete customer onboarding and loan application
+              </p>
+            </div>
             <button
-              type="button"
-              onClick={() => handleRemoveBusinessImage(idx)}
-              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md opacity-90 group-hover:opacity-100"
+              onClick={onClose}
+              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
+              disabled={isSubmitting}
             >
-              <XIcon className="w-4 h-4" />
+              <XCircleIcon className="h-8 w-8" />
             </button>
           </div>
-        ))}
-      </div>
-
-      {/* Add Another Image */}
-      <div className="mt-4 flex justify-center">
-        <label className="flex items-center justify-center gap-2 px-5 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
-          <Upload className="w-5 h-5" />
-          <span className="text-sm font-medium">Add Another Image</span>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => handleMultipleFiles(e, setBusinessImages)}
-            className="hidden"
-          />
-        </label>
-      </div>
-    </div>
-  )}
-</div>
-
-
-
-
-</div>
-
-  </div>
-</section>
-
-
-      )}
-
-      {/* BORROWER SECURITY */}
-      {activeSection === "borrowerSecurity" && (
-       <section className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg border border-green-200">
-   <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
-    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
-    Borrower Security
-  </h3>
-
-  {securityItems.map((item, index) => (
-    <div
-      key={index}
-      className="mb-8 bg-white p-6 rounded-xl shadow-sm border border-green-200"
-    >
-      {/* Inputs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        {/* Item */}
-        <div>
-          <label className="block text-sm font-medium text-green-800 mb-1">
-            Item
-          </label>
-          <input
-            type="text"
-            name="item"
-            placeholder="Item"
-            value={item.item}
-            onChange={(e) => handleSecurityChange(e, index)}
-            className="border border-green-200 p-3 rounded-xl w-full 
-             focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-          />
         </div>
 
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-green-800 mb-1">
-            Description
-          </label>
-          <input
-            type="text"
-            name="description"
-            placeholder="Description"
-            value={item.description}
-            onChange={(e) => handleSecurityChange(e, index)}
-            className="border border-green-200 p-3 rounded-xl w-full 
-              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-          />
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-indigo-100">
+          <div className="flex flex-wrap gap-2">
+            {sections.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveSection(id)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
+                  activeSection === id
+                    ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md"
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Identification */}
-        <div>
-          <label className="block text-sm font-medium text-green-800 mb-1">
-            Identification
-          </label>
-          <input
-            type="text"
-            name="identification"
-            placeholder="Identification (e.g. Serial No.)"
-            value={item.identification}
-            onChange={(e) => handleSecurityChange(e, index)}
-            className="border border-green-200 p-3 rounded-xl w-full 
-              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-          />
-        </div>
+        {/* Content */}
+        <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden">
+          <form onSubmit={handleSubmit} className="p-8">
+            
+            {/* Personal Information */}
+            {activeSection === "personal" && (
+              <div className="space-y-8">
+                <div className="border-b border-gray-200 pb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
+                    Personal Information
+                  </h2>
+                  <p className="text-gray-600 mt-2">
+                    Enter customer's personal details and contact information
+                  </p>
+                </div>
 
-        {/* Value */}
-        <div>
-          <label className="block text-sm font-medium text-green-800 mb-1">
-            Est. Market Value (KES)
-          </label>
-          <input
-            type="number"
-            name="value"
-            placeholder="Est. Market Value (KES)"
-            value={item.value}
-            onChange={(e) => handleSecurityChange(e, index)}
-            className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm ${
-              errors[`securityValue_${index}`]
-                ? "border-red-500"
-                : "border-green-200"
-            }`}
-            min="0"
-            step="0.01"
-          />
-          {errors[`securityValue_${index}`] && (
-            <p className="text-red-500 text-xs mt-1">
-              {errors[`securityValue_${index}`]}
-            </p>
-          )}
-        </div>
-      </div>
-
-      
-      {/* File Upload */}
-<div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-  <label className="block text-sm font-medium text-green-800 mb-3">
-    Upload Images for Security Item
-  </label>
-
-  {/* Upload / Camera Buttons */}
-  <div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
-    {/* Upload */}
-    <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
-      <Upload className="w-5 h-5" />
-      <span className="text-sm font-medium">Upload</span>
-      <input
-        type="file"
-        accept="image/*"
-        multiple
-        onChange={(e) => {
-          const files = Array.from(e.target.files);
-          const newImages = [...(securityItemImages[index] || []), ...files];
-          const updatedImages = [...securityItemImages];
-          updatedImages[index] = newImages;
-          setSecurityItemImages(updatedImages);
-        }}
-        className="hidden"
-      />
-    </label>
-
-    {/* Camera */}
-    <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
-      <Camera className="w-5 h-5" />
-      <span className="text-sm font-medium">Camera</span>
-      <input
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        onChange={(e) => {
-          const files = Array.from(e.target.files);
-          const newImages = [...(securityItemImages[index] || []), ...files];
-          const updatedImages = [...securityItemImages];
-          updatedImages[index] = newImages;
-          setSecurityItemImages(updatedImages);
-        }}
-        className="hidden"
-      />
-    </label>
-  </div>
-
-  {/* Preview Grid */}
-  {securityItemImages[index] && securityItemImages[index].length > 0 && (
-    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
-      {securityItemImages[index].map((img, imgIdx) => (
-        <div key={imgIdx} className="relative">
-          <img
-            src={URL.createObjectURL(img)}
-            alt={`Security ${index + 1} - Image ${imgIdx + 1}`}
-            className="w-full h-32 object-cover rounded-lg border border-green-200 shadow-sm"
-          />
-          <button
-            type="button"
-            onClick={() => {
-              const updated = [...securityItemImages];
-              updated[index] = updated[index].filter((_, i) => i !== imgIdx);
-              setSecurityItemImages(updated);
-            }}
-            className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
-          >
-            <XIcon className="w-4 h-4" />
-          </button>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
-
-    </div>
-  ))}
-
-  {/* Add Security Item Button */}
-  <button
-    type="button"
-    onClick={addSecurityItem}
-    className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 text-sm font-semibold shadow-sm transition"
-    disabled={isSubmitting}
-  >
-    + Add Security Item
-  </button>
-</section>
-
-      )}
-
-      {/* LOAN INFORMATION */}
-      {activeSection === "loan" && (
-      <section className="bg-green-50 p-6 rounded-xl">
-  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
-    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
-    Loan Information
-  </h3>
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-      <label className="block text-sm font-medium text-green-800 mb-2">
-        Pre-qualified Amount *
-      </label>
-      <input
-        type="number"
-        name="prequalifiedAmount"
-        placeholder="Principal Amount"
-        value={formData.prequalifiedAmount}
-        onChange={handleChange} // ✅ correct
-        className="block w-full text-sm text-gray-600 border border-gray-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 placeholder-gray-400"
-      />
-    </div>
-
-  
-  </div>
-</section>
-
-      )}
-
-      {/* GUARANTOR DETAILS */}
-      {activeSection === "guarantor" && (
- <section className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg border border-green-200">
-  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
-    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
-    Guarantor Details
-  </h3>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {/* Prefix */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Prefix</label>
-      <select
-        name="prefix"
-        value={formData.guarantor.prefix}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      >
-        <option value="">Select Prefix</option>
-        <option>Mr</option>
-        <option>Mrs</option>
-        <option>Ms</option>
-      </select>
-    </div>
-
-    {/* First Name */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">First Name</label>
-      <input
-        type="text"
-        name="Firstname"
-        placeholder="First Name"
-        value={formData.guarantor.Firstname}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Middle Name */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Middle Name</label>
-      <input
-        type="text"
-        name="Middlename"
-        placeholder="Middle Name"
-        value={formData.guarantor.Middlename}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Surname */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Surname</label>
-      <input
-        type="text"
-        name="Surname"
-        placeholder="Surname"
-        value={formData.guarantor.Surname}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    
-   {/* Gender */}
-<div>
-  <label className="block text-sm font-medium text-green-800 mb-1">Gender</label>
-  <select
-    name="gender"
-    value={formData.guarantor.gender}
-    onChange={(e) => handleNestedChange(e, "guarantor")}  // ✅ fixed
-    className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-  >
-    <option value="">Select Gender</option>
-    <option value="Male">Male</option>
-    <option value="Female">Female</option>
-  </select>
-</div>
-
-
-    {/* Date of Birth */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Date of Birth</label>
-      <input
-        type="date"
-        name="dateOfBirth"
-        value={formData.guarantor.dateOfBirth}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split("T")[0]}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* ID Number */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">ID Number</label>
-      <input
-        type="text"
-        name="idNumber"
-        placeholder="National ID Number"
-        value={formData.guarantor.idNumber}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Phone Number */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Phone Number</label>
-      <input
-        type="tel"
-        name="phone"
-        placeholder="07 "
-        value={formData.guarantor.phone}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Alt Phone */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Alt Phone</label>
-      <input
-        type="tel"
-        name="altPhone"
-        placeholder="07XX XXX XXX"
-        value={formData.guarantor.altPhone}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Marital Status */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Marital Status</label>
-      <select
-        name="maritalStatus"
-        value={formData.guarantor.maritalStatus}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      >
-        <option value="">Select Status</option>
-        <option>Single</option>
-        <option>Married</option>
-        <option>Divorced</option>
-        <option>Widowed</option>
-      </select>
-    </div>
-
-    {/* Residence */}
-   <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Residence Status</label>
-      <select
-        name="residenceStatus"
-        value={formData.guarantor.residence}
-        onChange={handleChange}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      >
-        <option value="">Residence Status</option>
-        <option>Own</option>
-        <option>Rent</option>
-        <option>Family</option>
-        <option>Other</option>
-      </select>
-    </div>
-
-  
-
-    {/* Relationship with Borrower */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Relationship with Borrower</label>
-      <input
-        type="text"
-        name="relationship"
-        placeholder="e.g. Brother, Friend"
-        value={formData.guarantor.relationship}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Occupation */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Occupation</label>
-      <input
-        type="text"
-        name="occupation"
-        placeholder="Occupation"
-        value={formData.guarantor.occupation}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
- 
-
-    {/* Address */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Address</label>
-      <input
-        type="text"
-        name="address"
-        placeholder="Postal  Address"
-        value={formData.guarantor.address}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-      />
-    </div>
-
-    {/* Code */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Code</label>
-      <input
-        type="number"
-        name="code"
-        placeholder="Code"
-        value={formData.guarantor.code}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
-      />
-    </div>
-
-    {/* Town */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">Town / City</label>
-      <input
-        type="text"
-        name="town"
-        placeholder="Town / City"
-        value={formData.guarantor.town}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full  focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
-      />
-    </div>
-
-    
-   {/* County */}
-    <div>
-      <label className="block text-sm font-medium text-green-800 mb-1">County</label>
-      <input
-        type="text"
-        name="county"
-        placeholder="County"
-        value={formData.guarantor.county}
-        onChange={(e) => handleNestedChange(e, "guarantor")}
-        className="border border-green-200 p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 shadow-sm bg-white"
-      />
-    </div>
-
-
-
-  </div>
-
-  
-
-{/* Guarantor File Uploads */}
-<div className="md:col-span-2 lg:col-span-3 mt-6">
-  <h4 className="text-lg font-semibold text-green-800 mb-4">
-    Upload Guarantor Documents
-  </h4>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {[
-      { key: "guarantorPassport", label: "Upload Guarantor Passport", handler: setGuarantorPassportFile },
-      { key: "guarantorIdFront", label: "Upload Guarantor ID Front", handler: setGuarantorIdFrontFile },
-      { key: "guarantorIdBack", label: "Upload Guarantor ID Back", handler: setGuarantorIdBackFile },
-    ].map((file, idx) => (
-      <div
-        key={idx}
-        className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
-      >
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          {file.label} <span className="text-red-500">*</span>
-        </label>
-
-        {/* Action buttons */}
-        <div className="flex gap-3 flex-wrap w-full sm:flex-row lg:flex-row lg:justify-between">
-          {/* Upload button */}
-          <label className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
-            <Upload className="w-5 h-5" />
-            <span className="text-sm font-medium">Upload</span>
-            <input
-              key={files[file.key] ? files[file.key] : `${file.key}-empty`} // resets input when preview cleared
-              type="file"
-              accept="image/*"
-              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
-              className="hidden"
-            />
-          </label>
-
-          {/* Camera button */}
-          <label className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
-            <Camera className="w-5 h-5" />
-            <span className="text-sm font-medium">Camera</span>
-            <input
-              key={`cam-${files[file.key] ? files[file.key] : `${file.key}-empty`}`} // also resettable
-              type="file"
-              accept="image/*"
-              capture={file.key === "guarantorPassport" ? "user" : "environment"}
-              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
-              className="hidden"
-            />
-          </label>
-        </div>
-
-      {/* Preview with delete */}
-{previews[file.key] && (
-  <div className="mt-4 w-full relative">
-    <img
-      src={previews[file.key]}   // ✅ use previews, not files
-      alt={`${file.label} preview`}
-      className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
-    />
-    <button
-      type="button"
-      onClick={() => handleRemoveFile(file.key, file.handler)}
-      className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
-    >
-      <XIcon className="w-4 h-4" />
-    </button>
-  </div>
-)}
-
-      </div>
-    ))}
-  </div>
-</div>
-
-
-</section>
-
-
-
-      )}
-
-      {/* GUARANTOR SECURITY */}
-      {activeSection === "guarantorSecurity" && (
-<section className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl shadow-lg border border-green-200">
-  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
-    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
-    Guarantor Security
-  </h3>
-
-  {guarantorSecurityItems.map((item, index) => (
-    <div
-      key={index}
-      className="mb-8 bg-white p-6 rounded-xl shadow-sm border border-green-200"
-    >
-      {/* Inputs Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        {/* Item */}
-        <div>
-          <label className="block text-sm font-medium text-green-800 mb-1">
-            Item
-          </label>
-          <input
-            type="text"
-            name="item"
-            placeholder="Item"
-            value={item.item}
-            onChange={(e) => handleGuarantorSecurityChange(e, index)}
-            className="border border-green-200 p-3 rounded-xl w-full 
-             focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-          />
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-green-800 mb-1">
-            Description
-          </label>
-          <input
-            type="text"
-            name="description"
-            placeholder="Description"
-            value={item.description}
-            onChange={(e) => handleGuarantorSecurityChange(e, index)}
-            className="border border-green-200 p-3 rounded-xl w-full 
-              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-          />
-        </div>
-
-        {/* Identification */}
-        <div>
-          <label className="block text-sm font-medium text-green-800 mb-1">
-            Identification
-          </label>
-          <input
-            type="text"
-            name="identification"
-            placeholder="Identification (e.g. Serial No.)"
-            value={item.identification}
-            onChange={(e) => handleGuarantorSecurityChange(e, index)}
-            className="border border-green-200 p-3 rounded-xl w-full 
-              focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm"
-          />
-        </div>
-
-        {/* Value */}
-        <div>
-          <label className="block text-sm font-medium text-green-800 mb-1">
-            Est. Market Value (KES)
-          </label>
-          <input
-            type="number"
-            name="value"
-            placeholder="Est. Market Value (KES)"
-            value={item.value}
-            onChange={(e) => handleGuarantorSecurityChange(e, index)}
-            className={`border p-3 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white shadow-sm ${
-              errors[`guarantorSecurityValue_${index}`]
-                ? "border-red-500"
-                : "border-green-200"
-            }`}
-            min="0"
-            step="0.01"
-          />
-          {errors[`guarantorSecurityValue_${index}`] && (
-            <p className="text-red-500 text-xs mt-1">
-              {errors[`guarantorSecurityValue_${index}`]}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* File Upload for Guarantor Security Item */}
-      <div className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-        <label className="block text-sm font-medium text-green-800 mb-3">
-          Upload Images for Guarantor Security Item
-        </label>
-
-        {/* Upload / Camera Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
-          {/* Upload */}
-          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
-            <Upload className="w-5 h-5" />
-            <span className="text-sm font-medium">Upload</span>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files);
-                const newImages = [
-                  ...(guarantorSecurityImages[index] || []),
-                  ...files,
-                ];
-                const updatedImages = [...guarantorSecurityImages];
-                updatedImages[index] = newImages;
-                setGuarantorSecurityImages(updatedImages);
-              }}
-              className="hidden"
-            />
-          </label>
-
-          {/* Camera */}
-          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
-            <Camera className="w-5 h-5" />
-            <span className="text-sm font-medium">Camera</span>
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              multiple
-              onChange={(e) => {
-                const files = Array.from(e.target.files);
-                const newImages = [
-                  ...(guarantorSecurityImages[index] || []),
-                  ...files,
-                ];
-                const updatedImages = [...guarantorSecurityImages];
-                updatedImages[index] = newImages;
-                setGuarantorSecurityImages(updatedImages);
-              }}
-              className="hidden"
-            />
-          </label>
-        </div>
-
-        {/* Preview Grid */}
-        {guarantorSecurityImages[index] &&
-          guarantorSecurityImages[index].length > 0 && (
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
-              {guarantorSecurityImages[index].map((img, imgIdx) => (
-                <div key={imgIdx} className="relative">
-                  <img
-                    src={URL.createObjectURL(img)}
-                    alt={`Guarantor Security ${index + 1} - Image ${imgIdx + 1}`}
-                    className="w-full h-32 object-cover rounded-lg border border-green-200 shadow-sm"
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <FormField
+                    label="Prefix"
+                    name="prefix"
+                    value={formData.prefix}
+                    onChange={handleChange}
+                    options={["Mr", "Mrs", "Ms", "Dr"]}
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
                   />
+                  <FormField
+                    label="First Name"
+                    name="Firstname"
+                    value={formData.Firstname}
+                    onChange={handleChange}
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Middle Name"
+                    name="Middlename"
+                    value={formData.Middlename}
+                    onChange={handleChange}
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Surname"
+                    name="Surname"
+                    value={formData.Surname}
+                    onChange={handleChange}
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Mobile Number"
+                    name="mobile"
+                    value={formData.mobile}
+                    onChange={handleChange}
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Alternative Mobile"
+                    name="alternativeMobile"
+                    value={formData.alternativeMobile}
+                    onChange={handleChange}
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="ID Number"
+                    name="idNumber"
+                    value={formData.idNumber}
+                    onChange={handleChange}
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Date of Birth"
+                    name="dateOfBirth"
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={handleChange}
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Gender"
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleChange}
+                    options={["Male", "Female"]}
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Marital Status"
+                    name="maritalStatus"
+                    value={formData.maritalStatus}
+                    onChange={handleChange}
+                    options={["Single", "Married", "Separated/Divorced", "Other"]}
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Residence Status"
+                    name="residenceStatus"
+                    value={formData.residenceStatus}
+                    onChange={handleChange}
+                    options={["Own", "Rent", "Family", "Other"]}
+                      errors={errors}
+                  />
+                  <FormField
+                    label="Occupation"
+                    name="occupation"
+                    value={formData.occupation}
+                    onChange={handleChange}
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Postal Address"
+                    name="postalAddress"
+                    value={formData.postalAddress}
+                    onChange={handleChange}
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="Postal Code"
+                    name="code"
+                    type="number"
+                    value={formData.code}
+                    onChange={handleChange}
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="Town/City"
+                    name="town"
+                    value={formData.town}
+                    onChange={handleChange}
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="County"
+                    name="county"
+                    value={formData.county}
+                    onChange={handleChange}
+                     handleNestedChange={handleNestedChange}
+                  />
+                </div>
+
+                {/* Document Uploads */}
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                    Personal Documents
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[
+                      { key: "passport", label: "Passport Photo", handler: setPassportFile },
+                      { key: "idFront", label: "ID Front", handler: setIdFrontFile },
+                      { key: "idBack", label: "ID Back", handler: setIdBackFile },
+                      { key: "house", label: "House Image", handler: setHouseImageFile },
+                    ].map((file) => (
+                      <div
+                        key={file.key}
+                        className="flex flex-col items-start p-4 border border-indigo-200 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 shadow-sm hover:shadow-md transition"
+                      >
+                        <label className="block text-sm font-medium text-indigo-800 mb-3">
+                          {file.label}
+                        </label>
+
+                        <div className="flex flex-col sm:flex-row gap-3 w-full">
+                          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg shadow-sm cursor-pointer hover:bg-indigo-200 transition">
+                            <ArrowUpTrayIcon className="w-5 h-5" />
+                            <span className="text-sm font-medium">Upload</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                              className="hidden"
+                               handleNestedChange={handleNestedChange}
+                            />
+                          </label>
+
+                          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-indigo-700 transition">
+                            <CameraIcon className="w-5 h-5" />
+                            <span className="text-sm font-medium">Camera</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture={file.key === "passport" ? "user" : "environment"}
+                              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                              className="hidden"
+                               handleNestedChange={handleNestedChange}
+                            />
+                          </label>
+                        </div>
+
+                        {previews[file.key] && (
+                          <div className="mt-4 w-full relative">
+                            <img
+                              src={previews[file.key]}
+                              alt={`${file.label} preview`}
+                              className="w-full h-40 object-cover rounded-lg border border-indigo-200 shadow-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(file.key, file.handler)}
+                              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+                            >
+                              <XMarkIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Business Information */}
+            {activeSection === "business" && (
+              <div className="space-y-8">
+                <div className="border-b border-gray-200 pb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <BuildingOffice2Icon className="h-8 w-8 text-indigo-600 mr-3" />
+                    Business Information
+                  </h2>
+                  <p className="text-gray-600 mt-2">
+                    Enter business details and operations information
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <FormField
+                    label="Business Name"
+                    name="businessName"
+                    value={formData.businessName}
+                    onChange={handleChange}
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Business Type"
+                    name="businessType"
+                    value={formData.businessType}
+                    onChange={handleChange}
+                    placeholder="e.g. Retail, Wholesale"
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Year Established"
+                    name="yearEstablished"
+                    type="date"
+                    value={formData.yearEstablished}
+                    onChange={handleChange}
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Daily Sales (KES)"
+                    name="daily_Sales"
+                    type="number"
+                    value={formData.daily_Sales}
+                    onChange={handleChange}
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Business Location"
+                    name="businessLocation"
+                    value={formData.businessLocation}
+                    onChange={handleChange}
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Road"
+                    name="road"
+                    value={formData.road}
+                    onChange={handleChange}
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Landmark"
+                    name="landmark"
+                    value={formData.landmark}
+                    onChange={handleChange}
+                    placeholder="e.g. Near KCB Bank"
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Local Authority License"
+                    name="hasLocalAuthorityLicense"
+                    value={formData.hasLocalAuthorityLicense}
+                    onChange={handleChange}
+                    options={["Yes", "No"]}
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                </div>
+
+                {/* Business Images */}
+                <div className="mt-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Business Images
+                    </h3>
+                    <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition-colors">
+                      <PlusIcon className="h-4 w-4" />
+                      Add Images
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => handleMultipleFiles(e, setBusinessImages)}
+                        className="hidden"
+                         handleNestedChange={handleNestedChange}
+                      />
+                    </label>
+                  </div>
+
+                  {businessImages.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {businessImages.map((img, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={URL.createObjectURL(img)}
+                            alt={`Business ${index + 1}`}
+                            className="w-full h-48 object-cover rounded-lg border border-gray-200 shadow-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBusinessImage(index)}
+                            className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md opacity-90 group-hover:opacity-100"
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Borrower Security */}
+            {activeSection === "borrowerSecurity" && (
+              <div className="space-y-8">
+                <div className="border-b border-gray-200 pb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <ShieldCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
+                    Borrower Security Items
+                  </h2>
+                  <p className="text-gray-600 mt-2">
+                    Add security items and collateral details
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  {securityItems.map((item, index) => (
+                    <div
+                      key={index}
+                      className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-6 border border-gray-200"
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                          <ShieldCheckIcon className="h-5 w-5 text-indigo-600 mr-2" />
+                          Security Item {index + 1}
+                        </h3>
+                        {securityItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeSecurityItem(index)}
+                            className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          label="Item"
+                          name="item"
+                          value={item.item}
+                          onChange={(e) => handleSecurityChange(e, index)}
+                          required
+                           handleNestedChange={handleNestedChange}
+                             errors={errors}
+                        />
+                        <FormField
+                          label="Description"
+                          name="description"
+                          value={item.description}
+                          onChange={(e) => handleSecurityChange(e, index)}
+                          required
+                           handleNestedChange={handleNestedChange}
+                             errors={errors}
+                        />
+                        <FormField
+                          label="Identification"
+                          name="identification"
+                          value={item.identification}
+                          onChange={(e) => handleSecurityChange(e, index)}
+                          placeholder="e.g. Serial No."
+                          required
+                           handleNestedChange={handleNestedChange}
+                             errors={errors}
+                        />
+                        <FormField
+                          label="Est. Market Value (KES)"
+                          name="value"
+                          type="number"
+                          value={item.value}
+                          onChange={(e) => handleSecurityChange(e, index)}
+                          required
+                           handleNestedChange={handleNestedChange}
+                             errors={errors}
+                        />
+                      </div>
+
+                      {/* Security Item Images */}
+                      <div className="mt-6">
+                        <label className="block text-sm font-medium mb-2 text-gray-800">
+                          Item Images
+                        </label>
+                        <div className="flex gap-3 mb-3">
+                          <label className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg cursor-pointer hover:bg-indigo-200 transition">
+                            <ArrowUpTrayIcon className="w-5 h-5" />
+                            Upload
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files);
+                                const newImages = [...(securityItemImages[index] || []), ...files];
+                                const updated = [...securityItemImages];
+                                updated[index] = newImages;
+                                setSecurityItemImages(updated);
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+
+                          <label className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition">
+                            <CameraIcon className="w-5 h-5" />
+                            Camera
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              multiple
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files);
+                                const newImages = [...(securityItemImages[index] || []), ...files];
+                                const updated = [...securityItemImages];
+                                updated[index] = newImages;
+                                setSecurityItemImages(updated);
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+
+                        {securityItemImages[index] && securityItemImages[index].length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+                            {securityItemImages[index].map((img, imgIdx) => (
+                              <div key={imgIdx} className="relative">
+                                <img
+                                  src={URL.createObjectURL(img)}
+                                  alt={`Security ${index + 1} - Image ${imgIdx + 1}`}
+                                  className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...securityItemImages];
+                                    updated[index] = updated[index].filter((_, i) => i !== imgIdx);
+                                    setSecurityItemImages(updated);
+                                  }}
+                                  className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+                                >
+                                  <XMarkIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={addSecurityItem}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
+                  >
+                    <PlusIcon className="h-5 w-5" />
+                    Add Security Item
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Loan Details */}
+            {activeSection === "loan" && (
+              <div className="space-y-8">
+                <div className="border-b border-gray-200 pb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 mr-3" />
+                    Loan Information
+                  </h2>
+                  <p className="text-gray-600 mt-2">
+                    Set loan amount and terms
+                  </p>
+                </div>
+
+                <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-8 border border-emerald-200">
+                  <div className="max-w-md mx-auto">
+                    <FormField
+                      label="Pre-qualified Amount (KES)"
+                      name="prequalifiedAmount"
+                      type="number"
+                      value={formData.prequalifiedAmount}
+                      onChange={handleChange}
+                      className="text-center"
+                      required
+                       handleNestedChange={handleNestedChange}
+                         errors={errors}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Guarantor Details */}
+            {activeSection === "guarantor" && (
+              <div className="space-y-8">
+                <div className="border-b border-gray-200 pb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <UserGroupIcon className="h-8 w-8 text-indigo-600 mr-3" />
+                    Guarantor Information
+                  </h2>
+                  <p className="text-gray-600 mt-2">
+                    Enter guarantor personal details
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <FormField
+                    label="Prefix"
+                    name="prefix"
+                    value={formData.guarantor.prefix}
+                    section="guarantor"
+                    options={["Mr", "Mrs", "Ms", "Dr"]}
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="First Name"
+                    name="Firstname"
+                    value={formData.guarantor.Firstname}
+                    section="guarantor"
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Middle Name"
+                    name="Middlename"
+                    value={formData.guarantor.Middlename}
+                    section="guarantor"
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="Surname"
+                    name="Surname"
+                    value={formData.guarantor.Surname}
+                    section="guarantor"
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="ID Number"
+                    name="idNumber"
+                    value={formData.guarantor.idNumber}
+                    section="guarantor"
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Mobile Number"
+                    name="mobile"
+                    value={formData.guarantor.mobile}
+                    section="guarantor"
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Alternative Number"
+                    name="alternativeMobile"
+                    value={formData.guarantor.alternativeMobile}
+                    section="guarantor"
+                   
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Date of Birth"
+                    name="dateOfBirth"
+                    type="date"
+                    value={formData.guarantor.dateOfBirth}
+                    section="guarantor"
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Gender"
+                    name="gender"
+                    value={formData.guarantor.gender}
+                    section="guarantor"
+                    options={["Male", "Female"]}
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Marital Status"
+                    name="maritalStatus"
+                    value={formData.guarantor.maritalStatus}
+                    section="guarantor"
+                    options={["Single", "Married", "Separated/Divorced", "Other"]}
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Residence Status"
+                    name="residenceStatus"
+                    value={formData.guarantor.residenceStatus}
+                    section="guarantor"
+                    options={["Own", "Rent", "Family", "Other"]}
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Occupation"
+                    name="occupation"
+                    value={formData.guarantor.occupation}
+                    section="guarantor"
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Relationship"
+                    name="relationship"
+                    value={formData.guarantor.relationship}
+                    section="guarantor"
+                    placeholder="e.g. Spouse, Friend"
+                     handleNestedChange={handleNestedChange}
+                     required
+                  />
+                  <FormField
+                    label="Postal Address"
+                    name="postalAddress"
+                    value={formData.guarantor.postalAddress}
+                    section="guarantor"
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="Postal Code"
+                    name="code"
+                    type="number"
+                    value={formData.guarantor.code}
+                    section="guarantor"
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="County"
+                    name="county"
+                    value={formData.guarantor.county}
+                    section="guarantor"
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="City/Town"
+                    name="cityTown"
+                    value={formData.guarantor.cityTown}
+                    section="guarantor"
+                     handleNestedChange={handleNestedChange}
+                  />
+                </div>
+
+                {/* Guarantor Documents */}
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                    Guarantor Documents
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {[
+                      { key: "guarantorPassport", label: "Guarantor Passport", handler: setGuarantorPassportFile, icon: UserCircleIcon },
+                      { key: "guarantorIdFront", label: "Guarantor ID Front", handler: setGuarantorIdFrontFile, icon: IdentificationIcon },
+                      { key: "guarantorIdBack", label: "Guarantor ID Back", handler: setGuarantorIdBackFile, icon: IdentificationIcon },
+                    ].map((file) => (
+                      <div
+                        key={file.key}
+                        className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-6 border border-indigo-200 shadow-sm"
+                      >
+                        <div className="flex items-center gap-2 mb-4">
+                          <file.icon className="h-6 w-6 text-indigo-600" />
+                          <h4 className="text-md font-medium text-gray-900">{file.label}</h4>
+                        </div>
+
+                        <div className="flex gap-2 mb-3">
+                          <label className="flex items-center justify-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded cursor-pointer hover:bg-indigo-200">
+                            <ArrowUpTrayIcon className="w-4 h-4" />
+                            Upload
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                              className="hidden"
+                               handleNestedChange={handleNestedChange}
+                            />
+                          </label>
+
+                          <label className="flex items-center justify-center gap-1 px-3 py-1 bg-indigo-600 text-white rounded cursor-pointer hover:bg-indigo-700">
+                            <CameraIcon className="w-4 h-4" />
+                            Camera
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                              className="hidden"
+                               handleNestedChange={handleNestedChange}
+                            />
+                          </label>
+                        </div>
+
+                        {previews[file.key] && (
+                          <div className="relative">
+                            <img
+                              src={previews[file.key]}
+                              alt={file.label}
+                              className="w-full h-32 object-contain border rounded"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(file.key, file.handler)}
+                              className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow"
+                            >
+                              <XMarkIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Guarantor Security */}
+            {activeSection === "guarantorSecurity" && (
+              <div className="space-y-8">
+                <div className="border-b border-gray-200 pb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <ShieldCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
+                    Guarantor Security Items
+                  </h2>
+                  <p className="text-gray-600 mt-2">
+                    Add guarantor security and collateral details
+                  </p>
+                </div>
+
+                <div className="space-y-6">
+                  {guarantorSecurityItems.map((item, index) => (
+                    <div
+                      key={index}
+                      className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-200"
+                    >
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                          <ShieldCheckIcon className="h-5 w-5 text-purple-600 mr-2" />
+                          Guarantor Security Item {index + 1}
+                        </h3>
+                        {guarantorSecurityItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGuarantorSecurityItems((prev) => prev.filter((_, i) => i !== index));
+                              setGuarantorSecurityImages((prev) => prev.filter((_, i) => i !== index));
+                            }}
+                            className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          label="Item"
+                          name="item"
+                          value={item.item}
+                          onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                          required
+                           handleNestedChange={handleNestedChange}
+                             errors={errors}
+                        />
+                        <FormField
+                          label="Description"
+                          name="description"
+                          value={item.description}
+                          onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                          required
+                           handleNestedChange={handleNestedChange}
+                             errors={errors}
+                        />
+                        <FormField
+                          label="Identification"
+                          name="identification"
+                          value={item.identification}
+                          onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                          placeholder="e.g. Serial No."
+                          required
+                           handleNestedChange={handleNestedChange}
+                             errors={errors}
+                        />
+                        <FormField
+                          label="Est. Market Value (KES)"
+                          name="value"
+                          type="number"
+                          value={item.value}
+                          onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                          required
+                           handleNestedChange={handleNestedChange}
+                             errors={errors}
+                        />
+                      </div>
+
+                      {/* Guarantor Security Item Images */}
+                      <div className="mt-6">
+                        <label className="block text-sm font-medium mb-2 text-gray-800">
+                          Item Images
+                        </label>
+                        <div className="flex gap-3 mb-3">
+                          <label className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg cursor-pointer hover:bg-purple-200 transition">
+                            <ArrowUpTrayIcon className="w-5 h-5" />
+                            Upload
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files);
+                                const newImages = [...(guarantorSecurityImages[index] || []), ...files];
+                                const updated = [...guarantorSecurityImages];
+                                updated[index] = newImages;
+                                setGuarantorSecurityImages(updated);
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+
+                          <label className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg cursor-pointer hover:bg-purple-700 transition">
+                            <CameraIcon className="w-5 h-5" />
+                            Camera
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              multiple
+                              onChange={(e) => {
+                                const files = Array.from(e.target.files);
+                                const newImages = [...(guarantorSecurityImages[index] || []), ...files];
+                                const updated = [...guarantorSecurityImages];
+                                updated[index] = newImages;
+                                setGuarantorSecurityImages(updated);
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+
+                        {guarantorSecurityImages[index] && guarantorSecurityImages[index].length > 0 && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+                            {guarantorSecurityImages[index].map((img, imgIdx) => (
+                              <div key={imgIdx} className="relative">
+                                <img
+                                  src={URL.createObjectURL(img)}
+                                  alt={`Guarantor Security ${index + 1} - Image ${imgIdx + 1}`}
+                                  className="w-full h-32 object-cover rounded-lg border border-purple-200 shadow-sm"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...guarantorSecurityImages];
+                                    updated[index] = updated[index].filter((_, i) => i !== imgIdx);
+                                    setGuarantorSecurityImages(updated);
+                                  }}
+                                  className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+                                >
+                                  <XMarkIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={addGuarantorSecurityItem}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                  >
+                    <PlusIcon className="h-5 w-5" />
+                    Add Guarantor Security Item
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Next of Kin */}
+            {activeSection === "nextOfKin" && (
+              <div className="space-y-8">
+                <div className="border-b border-gray-200 pb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <UserGroupIcon className="h-8 w-8 text-indigo-600 mr-3" />
+                    Next of Kin Information
+                  </h2>
+                  <p className="text-gray-600 mt-2">
+                    Enter next of kin details
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <FormField
+                    label="First Name"
+                    name="Firstname"
+                    value={formData.nextOfKin.Firstname}
+                    section="nextOfKin"
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Middle Name"
+                    name="Middlename"
+                    value={formData.nextOfKin.Middlename}
+                    section="nextOfKin"
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="Surname"
+                    name="Surname"
+                    value={formData.nextOfKin.Surname}
+                    section="nextOfKin"
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="ID Number"
+                    name="idNumber"
+                    value={formData.nextOfKin.idNumber}
+                    section="nextOfKin"
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Relationship"
+                    name="relationship"
+                    value={formData.nextOfKin.relationship}
+                    section="nextOfKin"
+                    placeholder="e.g. Brother, Sister"
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="Mobile Number"
+                    name="mobile"
+                    value={formData.nextOfKin.mobile}
+                    section="nextOfKin"
+                    required
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Alternative Number"
+                    name="alternativeNumber"
+                    value={formData.nextOfKin.alternativeNumber}
+                    section="nextOfKin"
+                     handleNestedChange={handleNestedChange}
+                       errors={errors}
+                  />
+                  <FormField
+                    label="Employment Status"
+                    name="employmentStatus"
+                    value={formData.nextOfKin.employmentStatus}
+                    section="nextOfKin"
+                    options={["Employed", "Self Employed", "Unemployed", "Student", "Retired"]}
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="County"
+                    name="county"
+                    value={formData.nextOfKin.county}
+                    section="nextOfKin"
+                     handleNestedChange={handleNestedChange}
+                  />
+                  <FormField
+                    label="City/Town"
+                    name="cityTown"
+                    value={formData.nextOfKin.cityTown}
+                    section="nextOfKin"
+                     handleNestedChange={handleNestedChange}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Documents Verification */}
+            {activeSection === "documents" && (
+              <div className="space-y-8">
+                <div className="border-b border-gray-200 pb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <DocumentTextIcon className="h-8 w-8 text-indigo-600 mr-3" />
+                    Document Verification
+                  </h2>
+                  <p className="text-gray-600 mt-2">
+                    Upload verification and officer images
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[
+                    { key: "officerClient1", label: "First Officer & Client", handler: setOfficerClientImage1 },
+                    { key: "officerClient2", label: "Second Officer & Client", handler: setOfficerClientImage2 },
+                    { key: "bothOfficers", label: "Both Officers", handler: setBothOfficersImage },
+                  ].map((file) => (
+                    <div
+                      key={file.key}
+                      className="flex flex-col items-start p-4 border border-indigo-200 rounded-xl bg-gradient-to-br from-indigo-50 to-blue-50 shadow-sm hover:shadow-md transition"
+                    >
+                      <label className="block text-sm font-medium text-indigo-800 mb-3">
+                        {file.label}
+                      </label>
+
+                      <div className="flex flex-col sm:flex-row gap-3 w-full">
+                        <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg shadow-sm cursor-pointer hover:bg-indigo-200 transition">
+                          <ArrowUpTrayIcon className="w-5 h-5" />
+                          <span className="text-sm font-medium">Upload</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                            className="hidden"
+                          />
+                        </label>
+
+                        <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-indigo-700 transition">
+                          <CameraIcon className="w-5 h-5" />
+                          <span className="text-sm font-medium">Camera</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+
+                      {previews[file.key] && (
+                        <div className="mt-4 relative w-full">
+                          <img
+                            src={previews[file.key]}
+                            alt={file.label}
+                            className="w-full h-40 object-cover rounded-lg border border-indigo-200 shadow-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(file.key, file.handler)}
+                            className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
+              <div className="flex gap-4">
+                {activeSection !== sections[0].id && (
                   <button
                     type="button"
                     onClick={() => {
-                      const updated = [...guarantorSecurityImages];
-                      updated[index] = updated[index].filter(
-                        (_, i) => i !== imgIdx
-                      );
-                      setGuarantorSecurityImages(updated);
+                      const currentIndex = sections.findIndex(s => s.id === activeSection);
+                      setActiveSection(sections[currentIndex - 1].id);
                     }}
-                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    disabled={isSubmitting}
                   >
-                    <XIcon className="w-4 h-4" />
+                    <ChevronLeftIcon className="h-4 w-4" />
+                    Previous
                   </button>
-                </div>
-              ))}
+                )}
+                
+                {activeSection !== sections[sections.length - 1].id && (
+                  <button
+                    type="button"
+                    onClick={handleNext}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                    disabled={isSubmitting}
+                  >
+                    Next
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                
+                {activeSection === sections[sections.length - 1].id && (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        Submitting Application...
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <CheckCircleIcon className="h-5 w-5" />
+                        Submit Application
+                      </div>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
-          )}
+          </form>
+        </div>
       </div>
     </div>
-  ))}
-
-  {/* Add Security Item Button */}
-  <button
-    type="button"
-    onClick={addGuarantorSecurityItem}
-    className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 text-sm font-semibold shadow-sm transition"
-    disabled={isSubmitting}
-  >
-    + Add Guarantor Security Item
-  </button>
-</section>
-
-
-
-
-      )}
-
-      {/* NEXT OF KIN */}
-      {activeSection === "nextOfKin" && (
-       <section className="bg-green-50 p-6 rounded-xl">
- <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
-    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
-    Next of Kin Details
-  </h3>
-
-  <div className="p-6 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition">
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      
-      {/* First Name */}
-      <div>
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          First Name
-        </label>
-        <input
-          type="text"
-          name="Firstname"
-          placeholder="First Name"
-          value={formData.nextOfKin.Firstname}
-          onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className="border border-gray-300 p-3 rounded-lg w-full 
-                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-        />
-      </div>
-
-      {/* Middle Name */}
-      <div>
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Middle Name
-        </label>
-        <input
-          type="text"
-          name="Middlename"
-          placeholder="Middle Name"
-          value={formData.nextOfKin.Middlename}
-          onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className="border border-gray-300 p-3 rounded-lg w-full 
-                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-        />
-      </div>
-
-      {/* Surname */}
-      <div>
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Surname
-        </label>
-        <input
-          type="text"
-          name="Surname"
-          placeholder="Surname"
-          value={formData.nextOfKin.Surname}
-          onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className="border border-gray-300 p-3 rounded-lg w-full 
-                     focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-        />
-      </div>
-
-      {/* ID Number */}
-      <div>
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          ID Number
-        </label>
-        <input
-          type="text"
-          name="idNumber"
-          placeholder="ID Number"
-          value={formData.nextOfKin.idNumber}
-          onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className={`border p-3 rounded-lg w-full focus:outline-none focus:ring-2
-                     focus:ring-green-500 focus:border-green-500 ${
-                       errors.nextOfKinIdNumber ? "border-red-500" : "border-gray-300"
-                     }`}
-        />
-        {errors.nextOfKinIdNumber && (
-          <p className="text-red-500 text-xs mt-1">{errors.nextOfKinIdNumber}</p>
-        )}
-      </div>
-
-      {/* Relationship */}
-      <div>
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Relationship
-        </label>
-        <input
-          type="text"
-          name="relationship"
-          placeholder="Relationship"
-          value={formData.nextOfKin.relationship}
-          onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className="border border-gray-300 p-3 rounded-lg w-full 
-                   focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-        />
-      </div>
-
-      {/* Mobile Number */}
-      <div>
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Mobile Number
-        </label>
-        <input
-          type="text"
-          name="mobile"
-          placeholder="Mobile Number"
-          value={formData.nextOfKin.mobile}
-          onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className={`border p-3 rounded-lg w-full focus:outline-none focus:ring-2
-                     focus:ring-green-500 focus:border-green-500 ${
-                       errors.nextOfKinMobile ? "border-red-500" : "border-gray-300"
-                     }`}
-        />
-        {errors.nextOfKinMobile && (
-          <p className="text-red-500 text-xs mt-1">{errors.nextOfKinMobile}</p>
-        )}
-      </div>
-
-      {/* Alternative Number */}
-      <div>
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Alternative Number
-        </label>
-        <input
-          type="text"
-          name="alternativeNumber"
-          placeholder="Alternative Number"
-          value={formData.nextOfKin.alternativeNumber}
-          onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className="border border-gray-300 p-3 rounded-lg w-full 
-                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-        />
-      </div>
-
-      {/* Employment Status */}
-      <div>
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          Employment Status
-        </label>
-        <select
-          name="employmentStatus"
-          value={formData.nextOfKin.employmentStatus}
-          onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className="border border-gray-300 p-3 rounded-lg w-full 
-                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-        >
-          <option value="">Select Employment Status</option>
-          <option>Employed</option>
-          <option>Self-Employed</option>
-          <option>Unemployed</option>
-          <option>Student</option>
-          <option>Retired</option>
-        </select>
-      </div>
-
-      {/* County */}
-      <div>
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          County
-        </label>
-        <input
-          type="text"
-          name="county"
-          placeholder="County"
-          value={formData.nextOfKin.county}
-          onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className="border border-gray-300 p-3 rounded-lg w-full 
-                    focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-        />
-      </div>
-
-      {/* City/Town */}
-      <div>
-        <label className="block text-sm font-medium text-green-800 mb-2">
-          City/Town
-        </label>
-        <input
-          type="text"
-          name="cityTown"
-          placeholder="City/Town"
-          value={formData.nextOfKin.cityTown}
-          onChange={(e) => handleNestedChange(e, "nextOfKin")}
-          className="border border-gray-300 p-3 rounded-lg w-full 
-                     focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-        />
-      </div>
-    </div>
-  </div>
-</section>
-
-      )}
-
-      {/* DOCUMENTS */}
-      {activeSection === "documents" && (
-  <section className="bg-green-50 p-6 rounded-xl">
-  <h3 className="text-xl font-semibold mb-6 text-green-900 flex items-center gap-2 border-b border-green-200 pb-3">
-    <span className="w-1 h-5 bg-green-600 rounded-full"></span>
-    Document Verification
-  </h3>
-
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {[
-      { label: "First Officer and Client Image", handler: setOfficerClientImage1, state: officerClientImage1 },
-      { label: "Second Officer and Client Image", handler: setOfficerClientImage2, state: officerClientImage2 },
-      { label: "Both Officers Image", handler: setBothOfficersImage, state: bothOfficersImage },
-    ].map((file, idx) => (
-      <div
-        key={idx}
-        className="flex flex-col items-start p-4 border border-green-200 rounded-xl bg-white shadow-sm hover:shadow-md transition"
-      >
-        <label className="block text-sm font-medium text-green-800 mb-3">
-          {file.label}
-        </label>
-
-        {/* Upload / Camera Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full lg:flex-row lg:justify-between">
-          {/* Upload */}
-          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg shadow-sm cursor-pointer hover:bg-green-200 transition">
-            <Upload className="w-5 h-5" />
-            <span className="text-sm font-medium">Upload</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => file.handler(e.target.files[0])}
-              className="hidden"
-            />
-          </label>
-
-          {/* Camera */}
-          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-green-700 transition">
-            <Camera className="w-5 h-5" />
-            <span className="text-sm font-medium">Camera</span>
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(e) => file.handler(e.target.files[0])}
-              className="hidden"
-            />
-          </label>
-        </div>
-
-        {/* Preview */}
-        {file.state && (
-          <div className="mt-4 relative w-full">
-            <img
-              src={URL.createObjectURL(file.state)}
-              alt={`${file.label} Preview`}
-              className="w-full h-40 object-cover rounded-lg border border-green-200 shadow-sm"
-            />
-            <button
-              type="button"
-              onClick={() => file.handler(null)}
-              className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
-            >
-              <XIcon className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </div>
-    ))}
-  </div>
-</section>
-
-
-      )}
-
-     {/* Navigation buttons */}
-<div className="flex justify-between mt-8">
-  <button
-    type="button"
-    onClick={() => {
-      const currentIndex = navItems.findIndex(item => item.id === activeSection);
-      if (currentIndex > 0) {
-        setActiveSection(navItems[currentIndex - 1].id);
-      }
-    }}
-    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-    disabled={activeSection === "personal"}
-  >
-    Previous
-  </button>
-
-  <button
-    type="button"
-    onClick={handleNext}
-    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-  >
-    Next
-  </button>
-</div>
-
-
-      {/* SUBMIT BUTTON */}
-      {activeSection === "documents" && (
-        <div className="flex justify-end mt-8">
-          <button
-          type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 font-medium transition-colors"
-          >
-            {isSubmitting ? "Submitting..." : "Submit Application"}
-          </button>
-        </div>
-      )}
-    </form>
-  </div>
-</div>
   );
 };
 
