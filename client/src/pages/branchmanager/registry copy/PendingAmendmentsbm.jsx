@@ -25,17 +25,17 @@ const PendingAmendmentsbm = () => {
 const [isModalOpen, setIsModalOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
- // ✅ Fetch only BM branch amended customers
+ //  Fetch only BM branch amended customers
 const fetchAmendmentCustomers = async () => {
   setLoading(true);
   try {
-    // 1️⃣ Get logged in user
+    //  Get logged in user
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // 2️⃣ Get BM profile → branch_id
+    // Get BM profile → branch_id
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("branch_id")
@@ -43,24 +43,24 @@ const fetchAmendmentCustomers = async () => {
       .single();
 
     if (profileError) {
-      console.error("❌ Error fetching profile:", profileError.message);
+      console.error("Error fetching profile:", profileError.message);
       return;
     }
 
     const bmBranchId = profile?.branch_id;
     if (!bmBranchId) return;
 
-    // 3️⃣ Fetch customers ONLY from that branch
+    //  Fetch customers ONLY from that branch
     const { data, error } = await supabase
       .from("customers")
       .select("*")
-      .eq("branch_id", bmBranchId) // ✅ Filter by branch
+      .eq("branch_id", bmBranchId) 
       .order("edited_at", { ascending: false });
 
     if (error) {
-      console.error("❌ Error fetching amendment customers:", error.message);
+      console.error(" Error fetching amendment customers:", error.message);
     } else {
-      // 4️⃣ Keep only amended customers
+      // Keep only amended customers
       const amendedCustomers = (data || []).filter((customer) => {
         if (!customer.edited_at || !customer.created_at) return false;
         const updatedTime = new Date(customer.edited_at).getTime();
@@ -72,14 +72,14 @@ const fetchAmendmentCustomers = async () => {
       setFilteredCustomers(amendedCustomers);
     }
   } catch (err) {
-    console.error("❌ Error:", err);
+    console.error(" Error:", err);
   } finally {
     setLoading(false);
   }
 };
 
 
-  console.log("📝 Customers with amendments:", customers);
+  console.log("Customers with amendments:", customers);
 
   useEffect(() => {
     fetchAmendmentCustomers();
@@ -91,7 +91,7 @@ const fetchAmendmentCustomers = async () => {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "customers" },
         (payload) => {
-          console.log("🔄 Customer updated:", payload);
+          console.log("Customer updated:", payload);
           fetchAmendmentCustomers(); // refresh list whenever an update happens
         }
       )

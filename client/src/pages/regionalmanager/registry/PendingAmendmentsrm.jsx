@@ -35,7 +35,7 @@ const [isModalOpen, setIsModalOpen] = useState(false);
         .order("edited_at", { ascending: false });
 
       if (error) {
-        console.error("❌ Error fetching amendment customers:", error.message);
+        console.error("Error fetching amendment customers:", error.message);
       } else {
         const amendedCustomers = (data || []).filter((customer) => {
           if (!customer.edited_at || !customer.created_at) return false;
@@ -48,13 +48,13 @@ const [isModalOpen, setIsModalOpen] = useState(false);
         setFilteredCustomers(amendedCustomers);
       }
     } catch (err) {
-      console.error("❌ Error:", err);
+      console.error("Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  console.log("📝 Customers with amendments:", customers);
+  console.log("Customers with amendments:", customers);
 
   useEffect(() => {
     fetchAmendmentCustomers();

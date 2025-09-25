@@ -170,7 +170,21 @@ const Dashboardrm = () => {
 
       const { regionId, branchId } = profile;
       console.log('Fetching data for region:', regionId, 'branch:', branchId);
+// Fetch region name
+const { data: regionData, error: regionError } = await supabase
+  .from("regions")
+  .select("name")
+  .eq("id", regionId)
+  .single();
 
+if (regionError) {
+  console.error("Error fetching region name:", regionError);
+} else {
+  setUserRegion(regionData?.name || "Unknown");
+
+}
+ console.log("region name", regionData.name)
+ console.log("region name 2", userRegion)
       // Fetch branches in the region
       const { data: branchesData, error: branchesError } = await supabase
         .from("branches")
@@ -361,6 +375,9 @@ const Dashboardrm = () => {
       setLoading(false);
     }
   };
+useEffect(() => {
+  console.log("Updated region:", userRegion);
+}, [userRegion]);
 
   useEffect(() => {
     fetchDashboardData();

@@ -85,26 +85,23 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
     try {
       setLoading(true);
 
-  const { data: customerData, error: customerError } = await supabase
-      .from("customers")
-      .select("*")
-      .eq("id", customerId)
-      .single();
+      const { data: customerData, error: customerError } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("id", customerId)
+        .single();
 
-    if (customerError) throw customerError;
-    setCustomer(customerData);
+      if (customerError) throw customerError;
+      setCustomer(customerData);
 
-   
-    setVerificationData((prev) => ({
-      ...prev,
-      loan: {
-        ...prev.loan,
-        prequalifiedAmount: customerData.prequalifedAmount || 0,
-        
-      },
-      
-    }));
-   console.log("Updated Verification Data:", verificationData);
+      setVerificationData((prev) => ({
+        ...prev,
+        loan: {
+          ...prev.loan,
+          prequalifiedAmount: customerData.prequalifedAmount || 0,
+        },
+      }));
+      console.log("Updated Verification Data:", verificationData);
 
       // 2. Fetch business images
       const { data: businessData, error: businessError } = await supabase
@@ -128,9 +125,7 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
           loan: {
             ...prev.loan,
             scoredAmount: loanData.scored_amount || 0, // scored amount comes from loans table
-            
           },
-          
         }));
       }
 
@@ -152,15 +147,15 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
         }));
       }
 
-       const { data: nokData, error: nokError } = await supabase
-      .from("next_of_kin")
-      .select("*")
-      .eq("customer_id", customerId);
+      const { data: nokData, error: nokError } = await supabase
+        .from("next_of_kin")
+        .select("*")
+        .eq("customer_id", customerId);
 
-    if (!nokError) {
-      setNextOfKinInfo(nokData || []); // save in state to display in UI
-      console.log(" Next of Kin:", nokData);
-    }
+      if (!nokError) {
+        setNextOfKinInfo(nokData || []); // save in state to display in UI
+        console.log(" Next of Kin:", nokData);
+      }
 
       // 5. Fetch borrower security items and images
       const { data: securityItemsData, error: securityItemsError } =
@@ -169,7 +164,6 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
           .select("*")
           .eq("customer_id", customerId);
 
-    
       // 5. Fetch borrower (customer) security + images
       if (!securityItemsError && securityItemsData) {
         const { data: securityImagesData, error: securityImagesError } =
@@ -180,7 +174,6 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
               "security_item_id",
               securityItemsData.map((s) => s.id)
             );
-
 
         if (!securityImagesError) {
           const securityWithImages = securityItemsData.map((item) => {
@@ -218,7 +211,6 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
           .select("*")
           .in("guarantor_id", guarantorIds);
 
-
         if (!gSecurityError && gSecurityData) {
           const { data: gSecurityImagesData, error: gSecurityImagesError } =
             await supabase
@@ -229,51 +221,45 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
                 gSecurityData.map((gs) => gs.id)
               );
 
-         
-
           if (!gSecurityImagesError) {
-           const gSecurityWithImages = gSecurityData.map((item) => {
-  const images = (gSecurityImagesData || [])
-    .filter((img) => img.guarantor_security_id === item.id)
-    .map((img) => img.image_url) 
-    .filter(Boolean); 
+            const gSecurityWithImages = gSecurityData.map((item) => {
+              const images = (gSecurityImagesData || [])
+                .filter((img) => img.guarantor_security_id === item.id)
+                .map((img) => img.image_url)
+                .filter(Boolean);
 
-  return { ...item, images };
-});
+              return { ...item, images };
+            });
 
-setGuarantorSecurityItems(gSecurityWithImages);
-
+            setGuarantorSecurityItems(gSecurityWithImages);
 
             console.log("✅ gSecurityWithImages (final):", gSecurityWithImages);
             setGuarantorSecurityItems(gSecurityWithImages);
           }
         }
       }
-// 7. Fetch customer documents
-const { data: documentsData, error: documentsError } = await supabase
-  .from("documents")
-  .select("*")
-  .eq("customer_id", customerId);
+      // 7. Fetch customer documents
+      const { data: documentsData, error: documentsError } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("customer_id", customerId);
 
-if (!documentsError && documentsData) {
-  const docsWithUrls = documentsData.map((doc) => {
-    if (doc.document_url) {
-      const { data } = supabase.storage
-        .from("customers")
-        .getPublicUrl(doc.document_url);
-      return {
-        ...doc,
-        image_url: data.publicUrl, // this will be used in your UI
-      };
-    }
-    return doc;
-  });
-  setDocumentImages(docsWithUrls);
-  console.log("📄 Customer Documents:", docsWithUrls);
-}
-
-
-      
+      if (!documentsError && documentsData) {
+        const docsWithUrls = documentsData.map((doc) => {
+          if (doc.document_url) {
+            const { data } = supabase.storage
+              .from("customers")
+              .getPublicUrl(doc.document_url);
+            return {
+              ...doc,
+              image_url: data.publicUrl, // this will be used in your UI
+            };
+          }
+          return doc;
+        });
+        setDocumentImages(docsWithUrls);
+        console.log("📄 Customer Documents:", docsWithUrls);
+      }
     } catch (error) {
       console.error(" Error fetching customer details:", error);
       toast.error("Error loading customer details");
@@ -343,19 +329,19 @@ if (!documentsError && documentsData) {
   const submitVerification = async () => {
     try {
       if (!validateCurrentStep()) {
-      return; // Stop submission if validation fails
-    }
+        return; // Stop submission if validation fails
+      }
 
-    // Additional final checks
-    if (!verificationData.finalDecision) {
-      toast.error("Please select a final decision");
-      return;
-    }
+      // Additional final checks
+      if (!verificationData.finalDecision) {
+        toast.error("Please select a final decision");
+        return;
+      }
 
-    if (!verificationData.overallComment.trim()) {
-      toast.error("Please provide overall comments");
-      return;
-    }
+      if (!verificationData.overallComment.trim()) {
+        toast.error("Please provide overall comments");
+        return;
+      }
       setLoading(true);
 
       // Insert verification record with the new structure
@@ -363,6 +349,7 @@ if (!documentsError && documentsData) {
         .from("customer_verifications")
         .insert({
           // customer verification
+          customer_id: Number(customerId),
           bm_customer_id_verified: verificationData.customer.idVerified,
           bm_customer_phone_verified: verificationData.customer.phoneVerified,
           bm_customer_comment: verificationData.customer.comment,
@@ -413,10 +400,37 @@ if (!documentsError && documentsData) {
 
           // when verified
           bm_verified_at: new Date().toISOString(),
-        })
-        .eq("customer_id", Number(customerId));
+        });
 
       if (error) throw error;
+   let newStatus;
+if (
+  verificationData.finalDecision === "approved" || 
+  verificationData.finalDecision === "referred"
+) {
+  newStatus = "rm_review";
+} else if (
+  verificationData.finalDecision === "pending" || 
+  verificationData.finalDecision === "edit"
+) {
+  newStatus = "sent_back_by_bm";
+} else if (verificationData.finalDecision === "rejected") {
+  newStatus = "rejected"; 
+}
+
+
+
+      if (newStatus) {
+        const { error: statusError } = await supabase
+          .from("customers")
+          .update({ status: newStatus })
+          .eq("id", customerId);
+
+        if (statusError) throw statusError;
+      }
+      console.log("✅ Final Decision:", verificationData.finalDecision);
+console.log("✅ New Status to save:", newStatus);
+
 
       toast.success("Verification submitted successfully!");
       onClose();
@@ -544,82 +558,85 @@ if (!documentsError && documentsData) {
   );
 
   const validateCurrentStep = () => {
-  switch (step) {
-    case 1: // Customer Verification
-      if (!verificationData.customer.comment.trim()) {
-        toast.error("Please add comments for customer verification");
-        return false;
-      }
-      break;
-
-    case 2: // Business Verification
-      if (!verificationData.business.comment.trim()) {
-        toast.error("Please add business verification comments");
-        return false;
-      }
-      break;
-
-    case 3: // Guarantors Verification
-      for (let i = 0; i < verificationData.guarantors.length; i++) {
-        if (!verificationData.guarantors[i]?.comment.trim()) {
-          toast.error(`Please add comments for Guarantor ${i + 1}`);
+    switch (step) {
+      case 1: // Customer Verification
+        if (!verificationData.customer.comment.trim()) {
+          toast.error("Please add comments for customer verification");
           return false;
         }
-      }
-      break;
+        break;
 
-    case 4: // Security Verification
-      if (!verificationData.security.comment.trim()) {
-        toast.error("Please add customer security comments");
-        return false;
-      }
-      if (!verificationData.guarantorSecurity.comment.trim()) {
-        toast.error("Please add guarantor security comments");
-        return false;
-      }
-      break;
+      case 2: // Business Verification
+        if (!verificationData.business.comment.trim()) {
+          toast.error("Please add business verification comments");
+          return false;
+        }
+        break;
 
-    case 5: // Next of Kin Verification
-      if (!verificationData.nextOfKin.comment.trim()) {
-        toast.error("Please add next of kin verification comments");
-        return false;
-      }
-      break;
+      case 3: // Guarantors Verification
+        for (let i = 0; i < verificationData.guarantors.length; i++) {
+          if (!verificationData.guarantors[i]?.comment.trim()) {
+            toast.error(`Please add comments for Guarantor ${i + 1}`);
+            return false;
+          }
+        }
+        break;
 
-    case 6: // Document Verification
-      if (!verificationData.document.comment.trim()) {
-        toast.error("Please add document verification comments");
-        return false;
-      }
-      break;
+      case 4: // Security Verification
+        if (!verificationData.security.comment.trim()) {
+          toast.error("Please add customer security comments");
+          return false;
+        }
+        if (!verificationData.guarantorSecurity.comment.trim()) {
+          toast.error("Please add guarantor security comments");
+          return false;
+        }
+        break;
 
-    case 7: // Loan Assessment
-      if (!verificationData.loan.scoredAmount || verificationData.loan.scoredAmount <= 0) {
-        toast.error("Please enter a valid scored amount");
-        return false;
-      }
-      if (!verificationData.loan.comment.trim()) {
-        toast.error("Please add loan assessment comments");
-        return false;
-      }
-      break;
+      case 5: // Next of Kin Verification
+        if (!verificationData.nextOfKin.comment.trim()) {
+          toast.error("Please add next of kin verification comments");
+          return false;
+        }
+        break;
 
-    case 8: // Final Decision
-      if (!verificationData.finalDecision) {
-        toast.error("Please select a final decision");
-        return false;
-      }
-      if (!verificationData.overallComment.trim()) {
-        toast.error("Please add overall comments and recommendations");
-        return false;
-      }
-      break;
+      case 6: // Document Verification
+        if (!verificationData.document.comment.trim()) {
+          toast.error("Please add document verification comments");
+          return false;
+        }
+        break;
 
-    default:
-      break;
-  }
-  return true;
-};
+      case 7: // Loan Assessment
+        if (
+          !verificationData.loan.scoredAmount ||
+          verificationData.loan.scoredAmount <= 0
+        ) {
+          toast.error("Please enter a valid scored amount");
+          return false;
+        }
+        if (!verificationData.loan.comment.trim()) {
+          toast.error("Please add loan assessment comments");
+          return false;
+        }
+        break;
+
+      case 8: // Final Decision
+        if (!verificationData.finalDecision) {
+          toast.error("Please select a final decision");
+          return false;
+        }
+        if (!verificationData.overallComment.trim()) {
+          toast.error("Please add overall comments and recommendations");
+          return false;
+        }
+        break;
+
+      default:
+        break;
+    }
+    return true;
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1322,7 +1339,7 @@ if (!documentsError && documentsData) {
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-800 mb-3">
-                            Manager Comments 
+                            Manager Comments
                           </label>
                           <textarea
                             value={
@@ -1651,210 +1668,241 @@ if (!documentsError && documentsData) {
 
           {/* Step 5: Next of Kin */}
           {step === 5 && (
-          <div className="p-8">
-  <div className="border-b border-gray-200 pb-6 mb-8">
-    <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-      <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
-      Next of Kin Verification
-    </h2>
-    <p className="text-gray-600 mt-2">
-      Verify next of kin information and contacts
-    </p>
-  </div>
+            <div className="p-8">
+              <div className="border-b border-gray-200 pb-6 mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
+                  Next of Kin Verification
+                </h2>
+                <p className="text-gray-600 mt-2">
+                  Verify next of kin information and contacts
+                </p>
+              </div>
 
-  {!nextOfKinInfo || nextOfKinInfo.length === 0 ? (
-    <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
-      <UserCircleIcon className="mx-auto h-20 w-20 text-gray-400 mb-4" />
-      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-        No Next of Kin Information
-      </h3>
-      <p className="text-gray-600">
-        This customer has not provided next of kin details.
-      </p>
-    </div>
-  ) : (
-    nextOfKinInfo.map((nok, index) => (
-      <div key={index} className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm mb-6">
-        {/* Next of Kin Details */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 mb-8 border border-indigo-100">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-            <UserCircleIcon className="h-6 w-6 text-indigo-600 mr-3" />
-            Next of Kin Information
-          </h3>
+              {!nextOfKinInfo || nextOfKinInfo.length === 0 ? (
+                <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
+                  <UserCircleIcon className="mx-auto h-20 w-20 text-gray-400 mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    No Next of Kin Information
+                  </h3>
+                  <p className="text-gray-600">
+                    This customer has not provided next of kin details.
+                  </p>
+                </div>
+              ) : (
+                nextOfKinInfo.map((nok, index) => (
+                  <div
+                    key={index}
+                    className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm mb-6"
+                  >
+                    {/* Next of Kin Details */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 mb-8 border border-indigo-100">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                        <UserCircleIcon className="h-6 w-6 text-indigo-600 mr-3" />
+                        Next of Kin Information
+                      </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Left column */}
-            <div className="bg-white p-6 rounded-xl shadow-sm space-y-3">
-              <DetailRow
-                label="Full Name"
-                value={`${nok.Firstname || ""} ${nok.middlename || ""} ${nok.surname || ""}`}
-              />
-              <DetailRow label="ID Number" value={nok.id_number} />
-              <DetailRow label="Mobile" value={nok.mobile} />
-              <DetailRow label="Alternative Mobile" value={nok.alternative_mobile} />
-              <DetailRow label="Email" value={nok.email} />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Left column */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm space-y-3">
+                          <DetailRow
+                            label="Full Name"
+                            value={`${nok.Firstname || ""} ${
+                              nok.middlename || ""
+                            } ${nok.surname || ""}`}
+                          />
+                          <DetailRow label="ID Number" value={nok.id_number} />
+                          <DetailRow label="Mobile" value={nok.mobile} />
+                          <DetailRow
+                            label="Alternative Mobile"
+                            value={nok.alternative_mobile}
+                          />
+                          <DetailRow label="Email" value={nok.email} />
+                        </div>
+
+                        {/* Right column */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm space-y-3">
+                          <DetailRow
+                            label="Relationship"
+                            value={nok.relationship}
+                          />
+                          <DetailRow label="Gender" value={nok.gender} />
+                          <DetailRow
+                            label="Occupation"
+                            value={nok.occupation}
+                          />
+                          <DetailRow label="County" value={nok.county} />
+                          <DetailRow label="City/Town" value={nok.city_town} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Next of Kin Verification Controls */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-8 rounded-2xl border border-green-100">
+                      <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Next of Kin Verification Status
+                        </h3>
+                        <ToggleSwitch
+                          checked={verificationData.nextOfKin.verified}
+                          onChange={(e) =>
+                            handleVerificationChange(
+                              "verified",
+                              e.target.checked,
+                              "nextOfKin"
+                            )
+                          }
+                          label="Verify Next of Kin"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-800 mb-3">
+                          Next of Kin Verification Comments
+                        </label>
+                        <textarea
+                          value={verificationData.nextOfKin.comment || ""}
+                          onChange={(e) =>
+                            handleVerificationChange(
+                              "comment",
+                              e.target.value,
+                              "nextOfKin"
+                            )
+                          }
+                          placeholder="Add comments about next of kin verification, contact details accuracy, relationship confirmation, etc."
+                          className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+                          rows={4}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-
-            {/* Right column */}
-            <div className="bg-white p-6 rounded-xl shadow-sm space-y-3">
-              <DetailRow label="Relationship" value={nok.relationship} />
-              <DetailRow label="Gender" value={nok.gender} />
-              <DetailRow label="Occupation" value={nok.occupation} />
-              <DetailRow label="County" value={nok.county} />
-              <DetailRow label="City/Town" value={nok.city_town} />
-            </div>
-          </div>
-        </div>
-
-        {/* Next of Kin Verification Controls */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-8 rounded-2xl border border-green-100">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Next of Kin Verification Status
-            </h3>
-            <ToggleSwitch
-              checked={verificationData.nextOfKin.verified}
-              onChange={(e) =>
-                handleVerificationChange("verified", e.target.checked, "nextOfKin")
-              }
-              label="Verify Next of Kin"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 mb-3">
-              Next of Kin Verification Comments
-            </label>
-            <textarea
-              value={verificationData.nextOfKin.comment || ""}
-              onChange={(e) =>
-                handleVerificationChange("comment", e.target.value, "nextOfKin")
-              }
-              placeholder="Add comments about next of kin verification, contact details accuracy, relationship confirmation, etc."
-              className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
-              rows={4}
-              required
-            />
-          </div>
-        </div>
-      </div>
-    ))
-  )}
-</div>
-
           )}
 
           {/* Step 6: Documents */}
           {step === 6 && (
-         <div className="p-8">
-  <div className="border-b border-gray-200 pb-6 mb-8">
-    <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-      <DocumentTextIcon className="h-8 w-8 text-indigo-600 mr-3" />
-      Document Verification
-    </h2>
-    <p className="text-gray-600 mt-2">
-      Verify officer and client meeting documentation
-    </p>
-  </div>
+            <div className="p-8">
+              <div className="border-b border-gray-200 pb-6 mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <DocumentTextIcon className="h-8 w-8 text-indigo-600 mr-3" />
+                  Document Verification
+                </h2>
+                <p className="text-gray-600 mt-2">
+                  Verify officer and client meeting documentation
+                </p>
+              </div>
 
-  {documentImages.length === 0 ? (
-    <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
-      <DocumentTextIcon className="mx-auto h-20 w-20 text-gray-400 mb-4" />
-      <h3 className="text-xl font-semibold text-gray-900 mb-2">
-        No Document Images
-      </h3>
-      <p className="text-gray-600">
-        No meeting documentation images have been uploaded.
-      </p>
-    </div>
-  ) : (
-    <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-      <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-        <DocumentTextIcon className="h-6 w-6 text-indigo-600 mr-3" />
-        Meeting Documentation
-      </h3>
+              {documentImages.length === 0 ? (
+                <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
+                  <DocumentTextIcon className="mx-auto h-20 w-20 text-gray-400 mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    No Document Images
+                  </h3>
+                  <p className="text-gray-600">
+                    No meeting documentation images have been uploaded.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                    <DocumentTextIcon className="h-6 w-6 text-indigo-600 mr-3" />
+                    Meeting Documentation
+                  </h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {documentImages.map((doc, index) => (
-          <div
-            key={doc.id || index}
-            className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200"
-          >
-            <div className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b">
-              <h4 className="text-sm font-semibold text-gray-800 flex items-center">
-                <PhotoIcon className="h-4 w-4 text-indigo-600 mr-2" />
-                {doc.document_type || `Document ${index + 1}`}
-              </h4>
-            </div>
-            <div className="p-4">
-              <div
-                className="relative group cursor-pointer"
-                onClick={() =>
-                  setSelectedImage({
-                    url: doc.document_url, // use document_url here
-                    title: doc.document_type || `Document ${index + 1}`,
-                  })
-                }
-              >
-                <img
-                  src={doc.document_url} // use document_url
-                  alt={doc.document_type || `Document ${index + 1}`}
-                  className="w-full h-48 object-cover rounded-lg group-hover:scale-105 transition-transform duration-200"
-                />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {documentImages.map((doc, index) => (
+                      <div
+                        key={doc.id || index}
+                        className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200"
+                      >
+                        <div className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b">
+                          <h4 className="text-sm font-semibold text-gray-800 flex items-center">
+                            <PhotoIcon className="h-4 w-4 text-indigo-600 mr-2" />
+                            {doc.document_type || `Document ${index + 1}`}
+                          </h4>
+                        </div>
+                        <div className="p-4">
+                          <div
+                            className="relative group cursor-pointer"
+                            onClick={() =>
+                              setSelectedImage({
+                                url: doc.document_url, // use document_url here
+                                title:
+                                  doc.document_type || `Document ${index + 1}`,
+                              })
+                            }
+                          >
+                            <img
+                              src={doc.document_url} // use document_url
+                              alt={doc.document_type || `Document ${index + 1}`}
+                              className="w-full h-48 object-cover rounded-lg group-hover:scale-105 transition-transform duration-200"
+                            />
 
-                {/* Icon overlay */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <div className="bg-white bg-opacity-95 rounded-full p-3 shadow-lg border border-indigo-100">
-                      <DocumentMagnifyingGlassIcon className="h-6 w-6 text-indigo-600" />
+                            {/* Icon overlay */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <div className="bg-white bg-opacity-95 rounded-full p-3 shadow-lg border border-indigo-100">
+                                  <DocumentMagnifyingGlassIcon className="h-6 w-6 text-indigo-600" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {doc.description && (
+                            <p className="mt-3 text-sm text-gray-600">
+                              {doc.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Document Verification Controls */}
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-8 rounded-2xl border border-purple-100">
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Document Verification Status
+                      </h3>
+                      <ToggleSwitch
+                        checked={verificationData.document.verified}
+                        onChange={(e) =>
+                          handleVerificationChange(
+                            "verified",
+                            e.target.checked,
+                            "document"
+                          )
+                        }
+                        label="Verify Documents"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-800 mb-3">
+                        Document Verification Comments
+                      </label>
+                      <textarea
+                        value={verificationData.document.comment}
+                        onChange={(e) =>
+                          handleVerificationChange(
+                            "comment",
+                            e.target.value,
+                            "document"
+                          )
+                        }
+                        placeholder="Add comments about document quality, meeting evidence, officer presence confirmation, etc."
+                        className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
+                        rows={4}
+                        required
+                      />
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {doc.description && (
-                <p className="mt-3 text-sm text-gray-600">{doc.description}</p>
               )}
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Document Verification Controls */}
-      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-8 rounded-2xl border border-purple-100">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Document Verification Status
-          </h3>
-          <ToggleSwitch
-            checked={verificationData.document.verified}
-            onChange={(e) =>
-              handleVerificationChange("verified", e.target.checked, "document")
-            }
-            label="Verify Documents"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-3">
-            Document Verification Comments
-          </label>
-          <textarea
-            value={verificationData.document.comment}
-            onChange={(e) =>
-              handleVerificationChange("comment", e.target.value, "document")
-            }
-            placeholder="Add comments about document quality, meeting evidence, officer presence confirmation, etc."
-            className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
-            rows={4}
-            required
-          />
-        </div>
-      </div>
-    </div>
-  )}
-</div>
-
           )}
 
           {/* Step 7: Loan Information */}
@@ -1888,9 +1936,11 @@ if (!documentsError && documentsData) {
                         </span>
                       </div>
                     </div>
-<p className="text-3xl font-bold text-blue-700 mb-2">
-  KES {customer?.prequalifiedAmount?.toLocaleString("en-US") || "0"}
-</p>
+                    <p className="text-3xl font-bold text-blue-700 mb-2">
+                      KES{" "}
+                      {customer?.prequalifiedAmount?.toLocaleString("en-US") ||
+                        "0"}
+                    </p>
 
                     <p className="text-sm text-blue-600">
                       Initial assessment amount
@@ -2241,58 +2291,58 @@ if (!documentsError && documentsData) {
           )}
         </div>
 
-      {/* Navigation Buttons */}
-<div className="bg-white rounded-2xl shadow-lg p-6 flex justify-between border border-indigo-100">
-  <button
-    onClick={() => setStep(step - 1)}
-    disabled={step === 1}
-    className={`flex items-center px-6 py-3 rounded-xl font-medium transition-all ${
-      step === 1
-        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-        : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:shadow-md"
-    }`}
-  >
-    <ChevronLeftIcon className="h-5 w-5 mr-2" />
-    Previous
-  </button>
+        {/* Navigation Buttons */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 flex justify-between border border-indigo-100">
+          <button
+            onClick={() => setStep(step - 1)}
+            disabled={step === 1}
+            className={`flex items-center px-6 py-3 rounded-xl font-medium transition-all ${
+              step === 1
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:shadow-md"
+            }`}
+          >
+            <ChevronLeftIcon className="h-5 w-5 mr-2" />
+            Previous
+          </button>
 
-  {step < 8 ? (
-    <button
-      onClick={() => {
-        if (validateCurrentStep()) {
-          setStep(step + 1);
-        }
-      }}
-      className="flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
-    >
-      Next
-      <ChevronRightIcon className="h-5 w-5 ml-2" />
-    </button>
-  ) : (
-    <button
-      onClick={() => {
-        if (validateCurrentStep()) {
-          submitVerification();
-        }
-      }}
-      disabled={loading}
-      className={`px-6 py-3 rounded-xl font-medium transition-all ${
-        loading
-          ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-          : "bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700 shadow-md hover:shadow-lg"
-      }`}
-    >
-      {loading ? (
-        <div className="flex items-center">
-          <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-          Submitting...
+          {step < 8 ? (
+            <button
+              onClick={() => {
+                if (validateCurrentStep()) {
+                  setStep(step + 1);
+                }
+              }}
+              className="flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
+            >
+              Next
+              <ChevronRightIcon className="h-5 w-5 ml-2" />
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                if (validateCurrentStep()) {
+                  submitVerification();
+                }
+              }}
+              disabled={loading}
+              className={`px-6 py-3 rounded-xl font-medium transition-all ${
+                loading
+                  ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                  : "bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700 shadow-md hover:shadow-lg"
+              }`}
+            >
+              {loading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                  Submitting...
+                </div>
+              ) : (
+                "Submit Verification"
+              )}
+            </button>
+          )}
         </div>
-      ) : (
-        "Submit Verification"
-      )}
-    </button>
-  )}
-</div>
 
         {/* Image Modal */}
         {selectedImage && (

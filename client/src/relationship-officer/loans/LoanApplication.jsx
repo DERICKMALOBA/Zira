@@ -26,21 +26,26 @@ const fetchApprovedCustomers = async () => {
 
   setLoading(true);
   try {
-    const { data, error } = await supabase
-      .from("customer_verifications")
-      .select(`
-        *,
-        customers:customer_id (
-          id,
-          id_number,
-          Firstname,
-          Surname,
-          mobile,
-          created_by
-        )
-      `)
-      .eq("final_decision", "approved") // ✅ only approved
-      .eq("customers.created_by", profile.id); // ✅ only for this RO
+   const { data, error } = await supabase
+  .from("customers")
+  .select(`
+    id,
+    id_number,
+    Firstname,
+    Surname,
+    mobile,
+    prequalifiedAmount, 
+    status,
+    customer_verifications (
+      bm_loan_scored_amount,
+      rm_loan_scored_amount,
+      
+      created_at
+    )
+  `)
+  .eq("status", "approved")
+  .eq("created_by", profile.id);
+
 
     if (error) {
       console.error("Error fetching approved customers:", error.message);

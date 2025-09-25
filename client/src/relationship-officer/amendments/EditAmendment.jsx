@@ -180,6 +180,7 @@ const updatedFormData = {
   hasLocalAuthorityLicense: customer?.has_local_authority_license
     ? "Yes"
     : "No",
+    status: customer?.status || "pending", 
 
   guarantor: guarantor
     ? {
@@ -393,6 +394,7 @@ const updatedFormData = {
     landmark: "",
     hasLocalAuthorityLicense: "",
     prequalifiedAmount: "",
+     status: "pending",
 
     guarantor: {
       prefix: "",
@@ -555,6 +557,27 @@ const handleSubmit = async (e) => {
       return parseFloat(value);
     };
 
+
+const { data: currentCustomer, error: fetchError } = await supabase
+  .from("customers")
+  .select("status")
+  .eq("id", customerId)
+  .single();
+
+if (fetchError) throw fetchError;
+
+let newStatus = currentCustomer.status;
+
+// Transition rules
+if (currentCustomer.status === "sent_back_by_bm") {
+  newStatus = "bm_review";
+} else if (currentCustomer.status === "sent_back_by_rm") {
+  newStatus = "rm_review";
+} else if (currentCustomer.status === "sent_back_by_co") {
+  newStatus = "cs_review";
+}
+
+console.log("Current status from DB:", currentCustomer.status);
     // 1. Update customer details
     const { error: customerError } = await supabase
       .from('customers')
@@ -582,6 +605,7 @@ const handleSubmit = async (e) => {
         landmark: formData.landmark || null,
         has_local_authority_license: formData.hasLocalAuthorityLicense === "Yes",
             edited_at: new Date().toISOString(),
+              status: newStatus, 
       })
       .eq('id', customerId);
 

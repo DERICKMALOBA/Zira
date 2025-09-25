@@ -22,6 +22,7 @@ import {
   DocumentTextIcon,
   CameraIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "../../../hooks/userAuth";
 
 const ViewCustomerrm = ({ customer, onClose }) => {
   const [guarantors, setGuarantors] = useState([]);
@@ -33,8 +34,9 @@ const ViewCustomerrm = ({ customer, onClose }) => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [nextOfKin, setNextOfKin] = useState(null);
   const [documents, setDocuments] = useState([]);
-  const [existingImages, setExistingImages] = useState({}); // ✅ Added
-  const [formData, setFormData] = useState({ documents: [] }); // ✅ Added
+  const [existingImages, setExistingImages] = useState({}); 
+  const [formData, setFormData] = useState({ documents: [] });
+     const { profile } = useAuth();
 
   useEffect(() => {
     if (customer) {
@@ -43,15 +45,16 @@ const ViewCustomerrm = ({ customer, onClose }) => {
   }, [customer]);
 
   const fetchCustomerDetails = async (customerId) => {
-    console.log("🔍 Fetching full customer details for ID:", customerId);
+   
     try {
       setLoading(true);
 
-      // Fetch customer main record
+      
       const { data: customerData, error: customerError } = await supabase
-        .from("customers")
-        .select("*")
-        .eq("id", customerId)
+       .from("customers")
+      .select("*")
+      .eq("region_id", profile.region_id)  
+      .order("created_at", { ascending: false })
         .single();
 
       if (customerError) throw customerError;
@@ -76,7 +79,7 @@ const ViewCustomerrm = ({ customer, onClose }) => {
           .eq("customer_id", customerId),
       ]);
 
-      // ✅ Set states
+      //  Set states
       if (!nextOfKinError) setNextOfKin(nextOfKin || null);
       if (!documentsError) {
         setDocuments(documentsData || []);
@@ -90,19 +93,19 @@ const ViewCustomerrm = ({ customer, onClose }) => {
     const images = (item.security_item_images || []).map((img) =>
       img.image_url
         ? supabase.storage
-            .from("customers") // 👈 replace with your storage bucket name
+            .from("customers") 
             .getPublicUrl(img.image_url).data.publicUrl
         : null
     );
     return { ...item, images };
   });
   setSecurityItems(processedSecurityItems);
-  console.log("🔗 Security items with images:", processedSecurityItems);
+  
 
 }
 
 
-      // 🔐 Fetch guarantor security + images
+      //  Fetch guarantor security + images
       if (guarantorsData?.length > 0) {
         const guarantorIds = guarantorsData.map((g) => g.id);
 
@@ -119,7 +122,7 @@ const ViewCustomerrm = ({ customer, onClose }) => {
         setGuarantorSecurityItems(gSecurityWithImages);
       }
 
-      // 🖼️ Map existing images + documents
+      //  Map existing images + documents
       const imageData = {
         passport: customerData?.passport_url || null,
         idFront: customerData?.id_front_url || null,
@@ -145,28 +148,17 @@ const ViewCustomerrm = ({ customer, onClose }) => {
       };
 
       setExistingImages(imageData);
-      console.log("✅ Documents mapped:", documentsData);
-      console.log("🖼️ Existing images set:", imageData);
+      
 
       toast.success("Customer details loaded");
     } catch (error) {
-      console.error("❌ Error fetching customer details:", error);
+      console.error("Error fetching customer details:", error);
       toast.error("Error loading customer details");
     } finally {
       setLoading(false);
     }
   };
 
-//   // ✅ Memoize document map
-//   const existingDocuments = useMemo(() => {
-//     const docs = {};
-//     formData.documents?.forEach((doc) => {
-//       if (doc.document_type && doc.document_url) {
-//         docs[doc.document_type] = doc.document_url;
-//       }
-//     });
-//     return docs;
-//   }, [formData.documents]);
 
 
   const DocumentCard = ({ title, imageUrl, placeholder, icon: Icon }) => (

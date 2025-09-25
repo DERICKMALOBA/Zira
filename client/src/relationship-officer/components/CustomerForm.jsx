@@ -807,8 +807,8 @@ const validateForm = async () => {
         id_back_url: idBackUrl,
         house_image_url: houseImageUrl,
         prequalifiedAmount: formData.loan?.prequalifiedAmount ? parseFloat(formData.loan.prequalifiedAmount) : null,
-
-        // ✅ Metadata
+ status: "bm_review",
+        
         created_by: profile?.id,
         branch_id: profile?.branch_id,
         region_id: profile?.region_id,
@@ -1075,7 +1075,7 @@ const validateForm = async () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Customer Application
+                Customer Application 
               </h1>
               <p className="text-gray-600 mt-2">
                 Complete customer onboarding and loan application

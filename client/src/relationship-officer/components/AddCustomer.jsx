@@ -792,6 +792,7 @@ const validateForm = async () => {
         id_back_url: idBackUrl,
         house_image_url: houseImageUrl,
         prequalifiedAmount: formData.loan?.prequalifiedAmount ? parseFloat(formData.loan.prequalifiedAmount) : null,
+         status: "bm_review",
 
         // ✅ Metadata
         created_by: profile?.id,

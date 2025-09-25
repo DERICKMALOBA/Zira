@@ -12,6 +12,7 @@ import { supabase } from "../../../supabaseClient.js";
 import CustomerDetailsModal from "../../../relationship-officer/components/CustomerDetailsModal.jsx.jsx";
 import CustomerVerificationForm from "./CustomerVerificationrm.jsx";
 import ViewCustomer from "./ViewCustomerrm.jsx";
+import { useAuth } from "../../../hooks/userAuth";
 
 const Customersrm = () => {
   const [customers, setCustomers] = useState([]);
@@ -20,44 +21,58 @@ const Customersrm = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showForm, setShowForm] = useState(false);
+   const { profile } = useAuth();
 
-  // Fetch customers from Supabase
-  const fetchCustomers = async () => {
-    try {
-      setLoading(true);
 
-      const { data, error } = await supabase
-        .from("customers")
-        .select()
-        .order("created_at", { ascending: false });
+// Fetch customers for Region Manager
+const fetchCustomers = async () => {
+  try {
+    setLoading(true);
 
-      if (error) {
-        console.error("Error fetching customers:", error);
-        return;
-      }
-
-      setCustomers(data || []);
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setLoading(false);
+    if (!profile?.region_id) {
+      console.error("No region_id found for this RM profile");
+      return;
     }
-  };
 
-  useEffect(() => {
+    const { data, error } = await supabase
+      .from("customers")
+       .select(`
+        *,
+        branches (
+          name
+        )
+      `)
+      .eq("region_id", profile.region_id)  // 🔹 filter customers by RM's region
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(" Error fetching customers:", error);
+      return;
+    }
+
+    setCustomers(data || []);
+  } catch (error) {
+    console.error(" Error:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  fetchCustomers();
+}, [profile?.region_id]); 
+console.log ("region in the customers table", profile.region_id)
+
+ 
+ useEffect(() => {
     fetchCustomers();
   }, []);
-
 
   const handleViewCustomer = (customer) => {
   setSelectedCustomer(customer);
   setShowForm(true);
 };
 
-  // const verifyCustomer = (customer) => {
-  //   setSelectedCustomer(customer);
-  //   setShowForm(true);
-  // };
 
   
 
@@ -130,9 +145,7 @@ const Customersrm = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Surname
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Middle Name
-                  </th>
+                 
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Contact
                   </th>
@@ -146,6 +159,9 @@ const Customersrm = () => {
                     status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Branch
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Actions
                   </th>
                 </tr>
@@ -155,9 +171,7 @@ const Customersrm = () => {
                   <tr key={customer.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">{customer.Firstname || "N/A"}</td>
                     <td className="px-6 py-4">{customer.Surname || "N/A"}</td>
-                    <td className="px-6 py-4">
-                      {customer.Middlename || "N/A"}
-                    </td>
+                    
                     <td className="px-6 py-4">{customer.mobile || "N/A"}</td>
                     <td className="px-6 py-4">{customer.id_number || "N/A"}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">
@@ -172,6 +186,7 @@ const Customersrm = () => {
                     <td className="px-6 py-4">
                       {customer.verification_status || "N/A"}
                     </td>
+                     <td className="px-6 py-4">{customer.branches?.name || "N/A"}</td>
 
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-2">

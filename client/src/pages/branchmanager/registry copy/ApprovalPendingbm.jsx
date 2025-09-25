@@ -51,12 +51,12 @@ const fetchPendingCustomers = async () => {
     const { data, error } = await supabase
       .from("customers")
       .select("*")
-      .eq("verification_status", "pending")
+      .eq("status", "bm_review")
       .eq("branch_id", bmBranchId) // ✅ Restrict to branch
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("❌ Error fetching pending customers:", error.message);
+      console.error("Error fetching pending customers:", error.message);
     } else {
       setCustomers(data || []);
       setFilteredCustomers(data || []);

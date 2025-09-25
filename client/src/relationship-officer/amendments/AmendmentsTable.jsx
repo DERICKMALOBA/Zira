@@ -40,7 +40,7 @@ function AmendmentsTable({ amendments, loading, onEdit, onView, onRefresh }) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">{amendment.customers?.id_number}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{amendment.customers?.mobile}</td>
-                <td className="px-6 py-4 whitespace-nowrap">ksh {amendment.loan_scored_amount ? Number(amendment.loan_scored_amount).toLocaleString() : "N/A"}</td>
+                <td className="px-6 py-4 whitespace-nowrap">ksh {amendment.bm_loan_scored_amount? Number(amendment.bm_loan_scored_amount).toLocaleString() : "N/A"}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                     ${amendment.final_decision === 'approved' ? 'bg-green-100 text-green-800' : 
