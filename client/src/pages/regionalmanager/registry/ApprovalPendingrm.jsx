@@ -3,12 +3,11 @@ import {
   MagnifyingGlassIcon, 
   EyeIcon,
   CheckIcon,
-  XMarkIcon,
+  
   ClockIcon,
   UserIcon,
   PhoneIcon,
-  BuildingOfficeIcon,
-  CalendarIcon
+ 
 } from '@heroicons/react/24/outline';
 import { supabase } from "../../../supabaseClient";
 import CustomerVerificationForm from './CustomerVerificationrm';
@@ -23,20 +22,32 @@ const ApprovalPendingrm = () => {
    const [showForm, setShowForm] = useState(false);
    const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Fetch customers with pending status
-  const fetchPendingCustomers = async () => {
+    const fetchPendingCustomers = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from("customers")
-        .select("*")
-        .eq("verification_status", "pending");
-      
+        .select(
+          `
+          *,
+          customer_verifications(*)
+        `
+        )
+        .eq("status", "rm_review");
+
       if (error) {
         console.error("Error fetching pending customers:", error.message);
       } else {
-        setCustomers(data || []);
-        setFilteredCustomers(data || []);
+        const enriched = (data || []).map((c) => {
+          const bmVerification =
+            c.customer_verifications?.find((v) => v.role === "bm") || null;
+          return {
+            ...c,
+            bm_verification: bmVerification,
+          };
+        });
+        setCustomers(enriched);
+        setFilteredCustomers(enriched);
       }
     } catch (err) {
       console.error("Error:", err);
@@ -48,6 +59,7 @@ const ApprovalPendingrm = () => {
   useEffect(() => {
     fetchPendingCustomers();
   }, []);
+
 
   // Search functionality
   useEffect(() => {

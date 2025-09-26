@@ -39,10 +39,30 @@ export default function Login() {
       const userId = authData.user.id;
       console.log("Authenticated user ID:", userId);
 
-      // First, check if profile exists without joins
+      // Get user data from users table (name, role, email, etc.)
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id, full_name, email, role")
+        .eq("id", userId)
+        .single();
+
+      if (userError) {
+        console.error("User data error:", userError);
+        setError(`User data error: ${userError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      if (!userData) {
+        setError("No user data found");
+        setLoading(false);
+        return;
+      }
+
+      // Get profile data (branch_id and region_id) from profiles table
       const { data: basicProfile, error: basicError } = await supabase
         .from("profiles")
-        .select("id, name, email, role, branch_id, region_id")
+        .select("branch_id, region_id")
         .eq("id", userId)
         .single();
 
@@ -59,11 +79,11 @@ export default function Login() {
         return;
       }
 
-      // Then fetch related data separately if needed
+      // Fetch related data separately if needed
       let branchName = "N/A";
       let regionName = "N/A";
 
-      if (basicProfile.branch_id) {
+      if (basicProfile?.branch_id) {
         const { data: branchData } = await supabase
           .from("branches")
           .select("name")
@@ -72,7 +92,7 @@ export default function Login() {
         branchName = branchData?.name || "N/A";
       }
 
-      if (basicProfile.region_id) {
+      if (basicProfile?.region_id) {
         const { data: regionData } = await supabase
           .from("regions")
           .select("name")
@@ -82,7 +102,12 @@ export default function Login() {
       }
 
       const profileData = {
-        ...basicProfile,
+        id: userData.id,
+        name: userData.full_name,
+        email: userData.email,
+        role: userData.role,
+        branch_id: basicProfile?.branch_id || null,
+        region_id: basicProfile?.region_id || null,
         branch: branchName,
         region: regionName,
       };
@@ -92,18 +117,24 @@ export default function Login() {
       setProfile(profileData);
 
       // Redirect based on role
-      switch (profileData.role) {
+      switch (userData.role) {
         case "relationship_officer":
           navigate("/officer");
           break;
         case "branch_manager":
+          navigate("/dashboard/bm");
+          break;
         case "regional_manager":
-        case "credit_analyst":
+          navigate("/dashboard/rm");
+          break;
+        case "credit_analyst_officer":
+          navigate("/dashboard/ca");
+          break;
         case "customer_service_officer":
-          navigate("/dashboard");
+          navigate("/dashboard/cs");
           break;
         default:
-          setError(`Unauthorized role: ${profileData.role}`);
+          setError(`Unauthorized role: ${userData.role}`);
       }
     } catch (err) {
       console.error("Login error:", err);

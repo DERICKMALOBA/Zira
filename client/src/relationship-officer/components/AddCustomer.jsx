@@ -716,7 +716,7 @@ const validateForm = async () => {
 
  const handleSubmit = async (e) => {
   e.preventDefault();
-  console.log("🚀 Submit button clicked");
+  console.log(" Submit button clicked");
 
   const isValid = await validateForm();
   if (!isValid) {
@@ -727,14 +727,14 @@ const validateForm = async () => {
   setIsSubmitting(true);
 
   const logError = (section, error) => {
-    console.group(`❌ Error in ${section} section`);
+    console.group(` Error in ${section} section`);
     console.error(error.message, error);
     console.groupEnd();
     toast.error(`Error in ${section}: ${error.message}`);
   };
 
   try {
-    console.log("📁 Starting file uploads...");
+    console.log("Starting file uploads...");
 
     // ========= 1. Upload customer personal images =========
     let passportUrl = null, idFrontUrl = null, idBackUrl = null, houseImageUrl = null;

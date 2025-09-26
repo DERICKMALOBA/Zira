@@ -269,7 +269,7 @@ if (!documentsError && documentsData) {
     return doc;
   });
   setDocumentImages(docsWithUrls);
-  console.log("📄 Customer Documents:", docsWithUrls);
+  console.log(" Customer Documents:", docsWithUrls);
 }
 
 
@@ -363,65 +363,93 @@ if (!documentsError && documentsData) {
         .from("customer_verifications")
         .insert({
           // customer verification
-          bm_customer_id_verified: verificationData.customer.idVerified,
-          bm_customer_phone_verified: verificationData.customer.phoneVerified,
-          bm_customer_comment: verificationData.customer.comment,
+          rm_customer_id_verified: verificationData.customer.idVerified,
+          rm_customer_phone_verified: verificationData.customer.phoneVerified,
+          rm_customer_comment: verificationData.customer.comment,
 
           // guarantor verification - handle multiple guarantors
-          bm_guarantor_id_verified: verificationData.guarantors.every(
+          rm_guarantor_id_verified: verificationData.guarantors.every(
             (g) => g.idVerified
           ),
-          bm_guarantor_phone_verified: verificationData.guarantors.every(
+          rm_guarantor_phone_verified: verificationData.guarantors.every(
             (g) => g.phoneVerified
           ),
-          bm_guarantor_comment: verificationData.guarantors
+          rm_guarantor_comment: verificationData.guarantors
             .map((g) => g.comment)
             .join("; "),
 
           // business verification
-          bm_business_verified: verificationData.business.verified,
-          bm_business_comment: verificationData.business.comment,
+          rm_business_verified: verificationData.business.verified,
+          rm_business_comment: verificationData.business.comment,
 
           // next of kin verification
-          bm_next_of_kin_verified: verificationData.nextOfKin.verified,
-          bm_next_of_kin_comment: verificationData.nextOfKin.comment,
+          rm_next_of_kin_verified: verificationData.nextOfKin.verified,
+          rm_next_of_kin_comment: verificationData.nextOfKin.comment,
 
           // document verification
-          bm_document_verified: verificationData.document.verified,
-          bm_document_comment: verificationData.document.comment,
+          rm_document_verified: verificationData.document.verified,
+          rm_document_comment: verificationData.document.comment,
 
           // borrower security verification
-          bm_borrower_security_verified: verificationData.security.verified,
-          bm_borrower_security_comment: verificationData.security.comment,
+          rm_borrower_security_verified: verificationData.security.verified,
+          rm_borrower_security_comment: verificationData.security.comment,
 
           // guarantor security verification
-          bm_guarantor_security_verified:
+          rm_guarantor_security_verified:
             verificationData.guarantorSecurity.verified,
-          bm_guarantor_security_comment:
+          rm_guarantor_security_comment:
             verificationData.guarantorSecurity.comment,
 
           // loan
-          bm_loan_scored_amount: verificationData.loan.scoredAmount,
-          bm_loan_comment: verificationData.loan.comment,
+          rm_loan_scored_amount: verificationData.loan.scoredAmount,
+          rm_loan_comment: verificationData.loan.comment,
 
           // decision
-          bm_final_decision: verificationData.finalDecision,
-          bm_overall_comment: verificationData.overallComment,
+          rm_final_decision: verificationData.finalDecision,
+          rm_overall_comment: verificationData.overallComment,
 
           // who verified (BM officer profile id)
-          bm_verified_by: profile?.id || null,
+          rm_verified_by: profile?.id || null,
 
           // when verified
-          bm_verified_at: new Date().toISOString(),
+          rm_verified_at: new Date().toISOString(),
         })
         .eq("customer_id", Number(customerId));
 
       if (error) throw error;
+       if (error) throw error;
+   let newStatus;
+if (
+  verificationData.finalDecision === "approved" || 
+  verificationData.finalDecision === "referred"
+) {
+  newStatus = "";
+} else if (
+  verificationData.finalDecision === "pending" || 
+  verificationData.finalDecision === "edit"
+) {
+  newStatus = "sent_back_by_rm";
+} else if (verificationData.finalDecision === "rejected") {
+  newStatus = "rejected"; 
+}
+
+
+
+      if (newStatus) {
+        const { error: statusError } = await supabase
+          .from("customers")
+          .update({ status: newStatus })
+          .eq("id", customerId);
+
+        if (statusError) throw statusError;
+      }
+      console.log("✅ Final Decision:", verificationData.finalDecision);
+console.log("✅ New Status to save:", newStatus);
 
       toast.success("Verification submitted successfully!");
       onClose();
     } catch (error) {
-      console.error("❌ Error submitting verification:", error);
+      console.error(" Error submitting verification:", error);
       toast.error("Error submitting verification");
     } finally {
       setLoading(false);

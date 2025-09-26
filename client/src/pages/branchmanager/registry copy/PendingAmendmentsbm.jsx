@@ -24,18 +24,17 @@ const PendingAmendmentsbm = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 const [isModalOpen, setIsModalOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
-
- //  Fetch only BM branch amended customers
+//  Fetch only BM branch customers where status = bm_review AND edited_at > created_at
 const fetchAmendmentCustomers = async () => {
   setLoading(true);
   try {
-    //  Get logged in user
+    // 1. Get logged in user
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Get BM profile → branch_id
+    // 2. Get BM profile → branch_id
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("branch_id")
@@ -50,33 +49,35 @@ const fetchAmendmentCustomers = async () => {
     const bmBranchId = profile?.branch_id;
     if (!bmBranchId) return;
 
-    //  Fetch customers ONLY from that branch
+    // 3. Fetch customers only from that branch & with status bm_review
     const { data, error } = await supabase
       .from("customers")
       .select("*")
-      .eq("branch_id", bmBranchId) 
+      .eq("branch_id", bmBranchId)
+      .eq("status", "bm_review_amend")
       .order("edited_at", { ascending: false });
 
     if (error) {
-      console.error(" Error fetching amendment customers:", error.message);
+      console.error("Error fetching amendment customers:", error.message);
     } else {
-      // Keep only amended customers
+      //  Keep only amended customers (edited_at > created_at)
       const amendedCustomers = (data || []).filter((customer) => {
         if (!customer.edited_at || !customer.created_at) return false;
-        const updatedTime = new Date(customer.edited_at).getTime();
-        const createdTime = new Date(customer.created_at).getTime();
-        return updatedTime > createdTime; // ✅ Only amended
+        return new Date(customer.edited_at) > new Date(customer.created_at);
       });
 
       setCustomers(amendedCustomers);
       setFilteredCustomers(amendedCustomers);
     }
   } catch (err) {
-    console.error(" Error:", err);
+    console.error("Error:", err);
   } finally {
     setLoading(false);
   }
 };
+
+
+
 
 
   console.log("Customers with amendments:", customers);

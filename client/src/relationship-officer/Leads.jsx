@@ -233,7 +233,7 @@ const Leads = () => {
 
   const sortedLeads = getSortedLeads(filteredLeads);
 
-  // ✅ Status helpers
+  //  Status helpers
   const getStatusIcon = (status) => {
     switch (status) {
       case "Hot":
@@ -260,7 +260,7 @@ const Leads = () => {
     }
   };
 
-  // ✅ Sort button
+  // Sort button
   const SortButton = ({ column, label, icon: Icon }) => (
     <button
       onClick={() => handleSort(column)}

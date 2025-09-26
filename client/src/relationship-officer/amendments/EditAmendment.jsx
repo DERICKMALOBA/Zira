@@ -546,7 +546,7 @@ const handleSubmit = async (e) => {
   setIsSubmitting(true);
 
   try {
-    // Helper function to safely parse numbers
+   
     const safeParseInt = (value) => {
       if (!value || value === "" || isNaN(parseInt(value))) return null;
       return parseInt(value);
@@ -568,16 +568,24 @@ if (fetchError) throw fetchError;
 
 let newStatus = currentCustomer.status;
 
-// Transition rules
+// Transition rules for RO amendment
 if (currentCustomer.status === "sent_back_by_bm") {
-  newStatus = "bm_review";
+  newStatus = "bm_review_amend"; // goes to BM amendment
 } else if (currentCustomer.status === "sent_back_by_rm") {
-  newStatus = "rm_review";
+  newStatus = "rm_review_amend"; // goes to RM amendment
 } else if (currentCustomer.status === "sent_back_by_co") {
-  newStatus = "cs_review";
+  newStatus = "co_review_amend"; // goes to CO amendment
 }
 
-console.log("Current status from DB:", currentCustomer.status);
+// Update customer status
+const { error: updateError } = await supabase
+  .from("customers")
+  .update({ status: newStatus })
+  .eq("id", customerId);
+
+if (updateError) throw updateError;
+
+
     // 1. Update customer details
     const { error: customerError } = await supabase
       .from('customers')

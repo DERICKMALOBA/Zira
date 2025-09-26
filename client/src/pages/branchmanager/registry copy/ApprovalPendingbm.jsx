@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { 
   MagnifyingGlassIcon, 
   EyeIcon,
   CheckIcon,
-  XMarkIcon,
+
   ClockIcon,
   UserIcon,
   PhoneIcon,
-  BuildingOfficeIcon,
-  CalendarIcon
+
 } from '@heroicons/react/24/outline';
 import { supabase } from "../../../supabaseClient";
 import CustomerVerificationForm from './CustomerVerificationbm';
@@ -22,17 +21,17 @@ const ApprovalPendingbm = () => {
     const [selectedCustomer, setSelectedCustomer] = useState(null);
    const [showForm, setShowForm] = useState(false);
    const [isModalOpen, setIsModalOpen] = useState(false);
-// ✅ Fetch pending customers for BM's branch only
+// Fetch pending customers for BM's branch only
 const fetchPendingCustomers = async () => {
   setLoading(true);
   try {
-    // 1️⃣ Get logged-in BM user
+    // 1Get logged-in BM user
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // 2️⃣ Fetch BM's branch_id from profiles
+    //  Fetch BM's branch_id from profiles
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("branch_id")
@@ -40,19 +39,19 @@ const fetchPendingCustomers = async () => {
       .single();
 
     if (profileError) {
-      console.error("❌ Error fetching profile:", profileError.message);
+      console.error(" Error fetching profile:", profileError.message);
       return;
     }
 
     const bmBranchId = profile?.branch_id;
     if (!bmBranchId) return;
 
-    // 3️⃣ Fetch customers with "pending" status from BM's branch only
+    //  Fetch customers with "pending" status from BM's branch only
     const { data, error } = await supabase
       .from("customers")
       .select("*")
       .eq("status", "bm_review")
-      .eq("branch_id", bmBranchId) // ✅ Restrict to branch
+      .eq("branch_id", bmBranchId) //  Restrict to branch
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -62,7 +61,7 @@ const fetchPendingCustomers = async () => {
       setFilteredCustomers(data || []);
     }
   } catch (err) {
-    console.error("❌ Error:", err);
+    console.error(" Error:", err);
   } finally {
     setLoading(false);
   }

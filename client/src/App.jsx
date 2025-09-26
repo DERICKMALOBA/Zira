@@ -102,56 +102,55 @@ function App() {
 
   const role = profile?.role;
 
-  const renderSidebar = () => {
-    switch (role) {
-      case "relationship_officer":
-        return <OfficerSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-      case "branch_manager":
-        return <Sidebarbm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-      case "regional_manager":
-        return <Sidebarrm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-      case "credit_analyst":
-        return <Sidebarca sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-      case "customer_service":
-        return <Sidebarcs sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-      default:
-        return null;
-    }
-  };
+ const renderSidebar = () => {
+  switch (role) {
+    case "relationship_officer":
+      return <OfficerSidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    case "branch_manager":
+      return <Sidebarbm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    case "regional_manager":
+      return <Sidebarrm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    case "credit_analyst_officer":        // ← Change this
+      return <Sidebarca sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    case "customer_service_officer":      // ← Change this
+      return <Sidebarcs sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    default:
+      return null;
+  }
+};
 
-  const renderHeader = () => {
-    switch (role) {
-      case "relationship_officer":
-        return <OfficerHeader sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-      case "branch_manager":
-        return <Headerbm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-      case "regional_manager":
-        return <Headerrm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-      case "credit_analyst":
-        return <Headerca sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-      case "customer_service":
-        return <Headercs sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-      default:
-        return null;
-    }
-  };
-
-  const getDefaultRoute = () => {
-    switch (role) {
-      case "relationship_officer":
-        return "/officer";
-      case "branch_manager":
-        return "/dashboard/bm";
-      case "regional_manager":
-        return "/dashboard/rm";
-      case "credit_analyst":
-        return "/dashboard/ca";
-      case "customer_service":
-        return "/dashboard/cs";
-      default:
-        return "/dashboard";
-    }
-  };
+const renderHeader = () => {
+  switch (role) {
+    case "relationship_officer":
+      return <OfficerHeader sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    case "branch_manager":
+      return <Headerbm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    case "regional_manager":
+      return <Headerrm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    case "credit_analyst_officer":        // ← Change this
+      return <Headerca sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    case "customer_service_officer":      // ← Change this
+      return <Headercs sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    default:
+      return null;
+  }
+};
+const getDefaultRoute = () => {
+  switch (role) {
+    case "relationship_officer":
+      return "/officer";
+    case "branch_manager":
+      return "/dashboard/bm";
+    case "regional_manager":
+      return "/dashboard/rm";
+    case "credit_analyst_officer":        // ← Change this
+      return "/dashboard/ca";
+    case "customer_service_officer":      // ← Change this
+      return "/dashboard/cs";
+    default:
+      return "/dashboard";
+  }
+};
 
   return (
     <Router>
@@ -576,7 +575,7 @@ function App() {
               )}
 
               {/* Credit Analyst Routes */}
-              {role === "credit_analyst" && (
+              {role === "credit_analyst_officer" && (
                 <>
                   <Route
                     path="/dashboard/ca"
@@ -654,7 +653,7 @@ function App() {
               )}
 
               {/* Customer Service Routes */}
-              {role === "customer_service" && (
+              {role === "customer_service_officer" && (
                 <>
                   <Route
                     path="/dashboard/cs"

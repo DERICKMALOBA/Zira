@@ -317,7 +317,7 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
           },
         };
       } else {
-        // Handle other top-level fields like overallComment
+        
         return {
           ...prev,
           [field]: value,

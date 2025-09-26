@@ -251,9 +251,9 @@ const ViewCustomer = ({ customer, onClose }) => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Customer Details
+                Customer Details 
               </h1>
-              <p className="text-gray-600 mt-2">Complete customer information and documents</p>
+              <p className="text-gray-600 mt-2">Complete customer information and documents </p>
             </div>
             <button
               onClick={onClose}

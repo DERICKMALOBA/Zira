@@ -689,7 +689,7 @@ const validateForm = async () => {
     documentsValid;
 
   if (!isValid) {
-    console.warn("❌ Validation failed: ", {
+    console.warn("Validation failed: ", {
       personalValid,
       businessValid,
       borrowerSecurityValid,
@@ -731,7 +731,7 @@ const validateForm = async () => {
 
  const handleSubmit = async (e) => {
   e.preventDefault();
-  console.log("🚀 Submit button clicked");
+  console.log(" Submit button clicked");
 
   const isValid = await validateForm();
   if (!isValid) {
@@ -742,14 +742,14 @@ const validateForm = async () => {
   setIsSubmitting(true);
 
   const logError = (section, error) => {
-    console.group(`❌ Error in ${section} section`);
+    console.group(` Error in ${section} section`);
     console.error(error.message, error);
     console.groupEnd();
     toast.error(`Error in ${section}: ${error.message}`);
   };
 
   try {
-    console.log("📁 Starting file uploads...");
+    console.log(" Starting file uploads...");
 
     // ========= 1. Upload customer personal images =========
     let passportUrl = null, idFrontUrl = null, idBackUrl = null, houseImageUrl = null;
@@ -1052,6 +1052,19 @@ const validateForm = async () => {
     }
 
     // ========= ✅ Success =========
+     if (leadData?.id) {
+    const { error: leadDeleteError } = await supabase
+      .from("leads")
+      .delete()
+      .eq("id", leadData.id);
+
+    if (leadDeleteError) {
+      console.error("Failed to delete lead:", leadDeleteError);
+      toast.error("Customer saved, but lead not deleted. Please check manually.");
+    } else {
+      console.log(" Lead deleted successfully");
+    }
+  }
     toast.success("Customer & all related details saved successfully!", {
       position: "top-right",
       autoClose: 4000,
@@ -1060,7 +1073,7 @@ const validateForm = async () => {
     onClose();
 
   } catch (error) {
-    console.error("❌ Unexpected error:", error);
+    console.error("Unexpected error:", error);
     toast.error(error.message || "Unexpected error occurred. Please try again.");
   } finally {
     setIsSubmitting(false);

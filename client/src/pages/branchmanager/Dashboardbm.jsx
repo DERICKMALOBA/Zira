@@ -67,7 +67,7 @@ const Dashboarbm = () => {
         .from("customers")
         .select("*", { count: "exact" })
         .eq("branch_id", branchId)
-        .eq("verification_status", "pending");
+        .eq("status", "bm_review");
 
       // Portfolio value for this branch
       const { data: loansData } = await supabase
@@ -107,7 +107,7 @@ const Dashboarbm = () => {
         .order("created_at", { ascending: false })
         .limit(5);
 
-      // ✅ Update stats
+      // Update stats
       setStats([
         {
           title: "Total Loans",
