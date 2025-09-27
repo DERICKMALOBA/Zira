@@ -14,7 +14,7 @@ import {
 } from "@heroicons/react/24/outline";
 import ViewLoan from "./ViewLoancs";
 
-const AllLoans = () => {
+const AllLoanscs = () => {
   const [loans, setLoans] = useState([]);
   const [filteredLoans, setFilteredLoans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -305,4 +305,4 @@ const AllLoans = () => {
   );
 };
 
-export default AllLoans;
+export default AllLoanscs;

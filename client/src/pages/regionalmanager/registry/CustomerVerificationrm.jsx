@@ -418,6 +418,8 @@ if (!documentsError && documentsData) {
 
       if (error) throw error;
        if (error) throw error;
+
+       
    let newStatus;
 if (
   verificationData.finalDecision === "approved" || 

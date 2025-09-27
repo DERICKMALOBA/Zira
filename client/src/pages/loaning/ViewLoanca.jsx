@@ -18,7 +18,7 @@ import {
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 
-const ViewLoan = ({ loan, onClose }) => {
+const ViewLoancs = ({ loan, onClose }) => {
   const [loanDetails, setLoanDetails] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [bookedByUser, setBookedByUser] = useState(null);
@@ -494,4 +494,4 @@ const ViewLoan = ({ loan, onClose }) => {
   );
 };
 
-export default ViewLoan;
+export default ViewLoancs;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect} from "react";
 import { supabase } from "../../../supabaseClient";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -22,6 +22,7 @@ import {
   DocumentTextIcon,
   CameraIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "../../../hooks/userAuth";
 
 const ViewCustomercs = ({ customer, onClose }) => {
   const [guarantors, setGuarantors] = useState([]);
@@ -33,28 +34,82 @@ const ViewCustomercs = ({ customer, onClose }) => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [nextOfKin, setNextOfKin] = useState(null);
   const [documents, setDocuments] = useState([]);
-  const [existingImages, setExistingImages] = useState({}); // ✅ Added
-  const [formData, setFormData] = useState({ documents: [] }); // ✅ Added
+  const [existingImages, setExistingImages] = useState({}); 
+  const [formData, setFormData] = useState({ documents: [] });
+  const { profile } = useAuth();
+ const [ setCustomer] = useState();
+
 
   useEffect(() => {
-    if (customer) {
+    // Only fetch customer details when both customer and profile are available
+    if (customer && profile?.region_id) {
       fetchCustomerDetails(customer.id);
     }
-  }, [customer]);
+  }, [customer, profile?.region_id]);
 
   const fetchCustomerDetails = async (customerId) => {
-    console.log("🔍 Fetching full customer details for ID:", customerId);
     try {
       setLoading(true);
 
-      // Fetch customer main record
+      // Check if profile and region_id exist before making the API call
+      if (!profile?.region_id) {
+        console.error("No region_id found for this RM profile");
+        toast.error("Profile not loaded. Please try again.");
+        setLoading(false);
+        return;
+      }
+
       const { data: customerData, error: customerError } = await supabase
         .from("customers")
-        .select("*")
+        .select(`
+          *,
+          customer_verifications!inner (
+            bm_scored_loan_amount
+          )
+        `)
         .eq("id", customerId)
+        .eq("region_id", profile.region_id)
         .single();
 
-      if (customerError) throw customerError;
+      if (customerError) {
+        console.error("Error fetching customer:", customerError);
+        toast.error("Error loading customer details");
+        setLoading(false);
+        return;
+      }
+
+      console.log("Customer data:", customerData);
+      console.log("Prequalified amount:", customerData.prequalified_amount);
+      console.log("BM scored amount:", customerData.customer_verifications?.[0]?.bm_scored_loan_amount);
+
+      setCustomer(customerData);
+
+      // Set loan details with proper field names
+      setLoanDetails({
+        prequalified_amount: customerData.prequalified_amount,
+        bm_scored_amount: customerData.customer_verifications?.[0]?.bm_scored_loan_amount || null,
+      });
+
+      // Log the amounts for review
+      console.log("Loan amounts for review:", {
+        prequalified_amount: customerData.prequalified_amount,
+        bm_scored_amount: customerData.customer_verifications?.[0]?.bm_scored_loan_amount
+      })
+
+if (customerError) {
+  console.error("Error fetching customer:", customerError);
+  toast.error("Error loading customer details");
+  setLoading(false);
+  return;
+}
+
+setCustomer(customerData);
+
+setLoanDetails({
+  prequalified_amount: customerData.prequalified_amount,
+  bm_scored_amount: customerData.customer_verifications?.[0]?.bm_loan_scored_amount || null,
+});
+
 
       // Fetch related data in parallel
       const [
@@ -76,7 +131,7 @@ const ViewCustomercs = ({ customer, onClose }) => {
           .eq("customer_id", customerId),
       ]);
 
-      // ✅ Set states
+      // Set states
       if (!nextOfKinError) setNextOfKin(nextOfKin || null);
       if (!documentsError) {
         setDocuments(documentsData || []);
@@ -85,24 +140,22 @@ const ViewCustomercs = ({ customer, onClose }) => {
       if (!businessError) setBusinessImages(businessImagesData || []);
       if (!loanError) setLoanDetails(loanData || null);
       if (!guarantorsError) setGuarantors(guarantorsData || []);
-     if (!securityError) {
-  const processedSecurityItems = (securityItemsData || []).map((item) => {
-    const images = (item.security_item_images || []).map((img) =>
-      img.image_url
-        ? supabase.storage
-            .from("customers") // 👈 replace with your storage bucket name
-            .getPublicUrl(img.image_url).data.publicUrl
-        : null
-    );
-    return { ...item, images };
-  });
-  setSecurityItems(processedSecurityItems);
-  console.log("🔗 Security items with images:", processedSecurityItems);
+      
+      if (!securityError) {
+        const processedSecurityItems = (securityItemsData || []).map((item) => {
+          const images = (item.security_item_images || []).map((img) =>
+            img.image_url
+              ? supabase.storage
+                  .from("customers") 
+                  .getPublicUrl(img.image_url).data.publicUrl
+              : null
+          );
+          return { ...item, images };
+        });
+        setSecurityItems(processedSecurityItems);
+      }
 
-}
-
-
-      // 🔐 Fetch guarantor security + images
+      // Fetch guarantor security + images
       if (guarantorsData?.length > 0) {
         const guarantorIds = guarantorsData.map((g) => g.id);
 
@@ -119,7 +172,7 @@ const ViewCustomercs = ({ customer, onClose }) => {
         setGuarantorSecurityItems(gSecurityWithImages);
       }
 
-      // 🖼️ Map existing images + documents
+      // Map existing images + documents
       const imageData = {
         passport: customerData?.passport_url || null,
         idFront: customerData?.id_front_url || null,
@@ -145,28 +198,14 @@ const ViewCustomercs = ({ customer, onClose }) => {
       };
 
       setExistingImages(imageData);
-      console.log("✅ Documents mapped:", documentsData);
-      console.log("🖼️ Existing images set:", imageData);
-
       toast.success("Customer details loaded");
     } catch (error) {
-      console.error("❌ Error fetching customer details:", error);
+      console.error("Error fetching customer details:", error);
       toast.error("Error loading customer details");
     } finally {
       setLoading(false);
     }
   };
-
-//   // ✅ Memoize document map
-//   const existingDocuments = useMemo(() => {
-//     const docs = {};
-//     formData.documents?.forEach((doc) => {
-//       if (doc.document_type && doc.document_url) {
-//         docs[doc.document_type] = doc.document_url;
-//       }
-//     });
-//     return docs;
-//   }, [formData.documents]);
 
 
   const DocumentCard = ({ title, imageUrl, placeholder, icon: Icon }) => (
@@ -251,9 +290,9 @@ const ViewCustomercs = ({ customer, onClose }) => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Customer Details
+                Customer Details 
               </h1>
-              <p className="text-gray-600 mt-2">Complete customer information and documents</p>
+              <p className="text-gray-600 mt-2">Complete customer information and documents </p>
             </div>
             <button
               onClick={onClose}
@@ -902,8 +941,8 @@ const ViewCustomercs = ({ customer, onClose }) => {
           </div>
         )}
 
-        {/* Loan Information */}
-        {loanDetails && (
+        {/* Loan Information Section */}
+        {(loanDetails?.prequalified_amount || loanDetails?.bm_scored_amount) && (
           <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
@@ -911,71 +950,39 @@ const ViewCustomercs = ({ customer, onClose }) => {
                   <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Loan Information
                 </h2>
+                <p className="text-gray-600 mt-2">Prequalified and scored loan amounts</p>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                  <CurrencyDollarIcon className="h-6 w-6 text-indigo-600 mr-3" />
-                  Loan Details
-                </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Prequalified Amount */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-semibold text-blue-900">Prequalified Amount</h4>
+                    <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center">
+                      <CurrencyDollarIcon className="h-6 w-6 text-blue-700" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold text-blue-700 mb-2">
+                    KES {loanDetails.prequalified_amount?.toLocaleString() || "0"}
+                  </p>
+                  <p className="text-sm text-blue-600">Amount from RO prequalification</p>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
+                {/* BM Scored Amount */}
+                {loanDetails.bm_scored_amount && (
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
                     <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-semibold text-blue-900">Prequalified Amount</h4>
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-bold text-lg">₹</span>
+                      <h4 className="font-semibold text-purple-900">BM Scored Amount</h4>
+                      <div className="w-10 h-10 bg-purple-200 rounded-full flex items-center justify-center">
+                        <CurrencyDollarIcon className="h-6 w-6 text-purple-700" />
                       </div>
                     </div>
-                    <p className="text-3xl font-bold text-blue-700 mb-2">
-                      KES {customer.prequalified_amount?.toLocaleString() || '0'}
+                    <p className="text-3xl font-bold text-purple-700 mb-2">
+                      KES {loanDetails.bm_scored_amount.toLocaleString()}
                     </p>
-                    <p className="text-sm text-blue-600">Initial assessment amount</p>
+                    <p className="text-sm text-purple-600">BM assessment amount</p>
                   </div>
-
-                  {loanDetails.scored_amount && (
-                    <div className="bg-gradient-to-br from-emerald-50 to-green-50 p-6 rounded-xl border border-emerald-100">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="font-semibold text-emerald-900">Final Scored Amount</h4>
-                        <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                          <CurrencyDollarIcon className="h-6 w-6 text-emerald-600" />
-                        </div>
-                      </div>
-                      <p className="text-3xl font-bold text-emerald-700 mb-2">
-                        KES {loanDetails.scored_amount.toLocaleString()}
-                      </p>
-                      <p className="text-sm text-emerald-600">Post-verification amount</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-200">
-                  <h4 className="font-semibold text-amber-900 mb-4">Loan Application Details</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-amber-700">Application Date</p>
-                      <p className="text-lg font-semibold text-amber-900">
-                        {new Date(loanDetails.application_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-amber-700">Status</p>
-                      <p className="text-lg font-semibold text-amber-900 capitalize">{loanDetails.status}</p>
-                    </div>
-                    {loanDetails.interest_rate && (
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-amber-700">Interest Rate</p>
-                        <p className="text-lg font-semibold text-amber-900">{loanDetails.interest_rate}%</p>
-                      </div>
-                    )}
-                    {loanDetails.term && (
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-amber-700">Term</p>
-                        <p className="text-lg font-semibold text-amber-900">{loanDetails.term} months</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

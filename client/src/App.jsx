@@ -84,6 +84,21 @@ import CustomerCategoriesbm from "./pages/branchmanager/registry copy/CustomerCa
 import CustomerEditsbm from "./pages/branchmanager/registry copy/CustomerEditsbm";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import AllLoanscs from "./pages/customerserviceofficer/loaning/AllLoanscs";
+import LoanPendingRmcs from "./pages/customerserviceofficer/loaning/LoanPendingRmcs";
+import Customerscs from "./pages/customerserviceofficer/registry/Customerscs";
+import PendingAmendmentscs from "./pages/customerserviceofficer/registry/PendingAmendmentscs";
+import ApprovalPendingcs from "./pages/customerserviceofficer/registry/ApprovalPendingcs";
+import CustomerTransfercs from "./pages/customerserviceofficer/registry/CustomerTransfercs";
+import CustomerCategoriescs from "./pages/customerserviceofficer/registry/CustomerCategoriescs";
+import CustomerEditscs from "./pages/customerserviceofficer/registry/CustomerEditscs";
+import LoanPendingRmca from "./pages/creditanalyst/loaning/LoanPendingRmca"
+import Customersca from "./pages/creditanalyst/registry/Customersca";
+import PendingAmendmentsca from "./pages/creditanalyst/registry/PendingAmendmentsca";
+import ApprovalPendingca from "./pages/creditanalyst/registry/ApprovalPendingca";
+import CustomerTransferca from "./pages/creditanalyst/registry/CustomerTransferca";
+import CustomerCategoriesca from "./pages/creditanalyst/registry/CustomerCategoriesca";
+import CustomerEditsca from "./pages/creditanalyst/registry/CustomerEditsca";
 
 
 
@@ -574,159 +589,49 @@ const getDefaultRoute = () => {
                 </>
               )}
 
-              {/* Credit Analyst Routes */}
+               {/* Credit Analyst Routes */}
               {role === "credit_analyst_officer" && (
                 <>
-                  <Route
-                    path="/dashboard/ca"
-                    element={
-                      <ProtectedRoute>
-                        <Dashboarca />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/accounting/ca"
-                    element={
-                      <ProtectedRoute>
-                        <Accountingca/>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/registry/ca"
-                    element={
-                      <ProtectedRoute>
-                        <Registryca/>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/reports/ca"
-                    element={
-                      <ProtectedRoute>
-                        <Reportsca/>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/loaning/all/ca"
-                    element={
-                      <ProtectedRoute>
-                        <AllLoansca/>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/loaning/pending-disbursement/ca"
-                    element={
-                      <ProtectedRoute>
-                        <LoanPendingDisbursementca />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/loaning/disbursement-loans/ca"
-                    element={
-                      <ProtectedRoute>
-                        <DisbursementLoansca />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/loaning/loan-approval/ca"
-                    element={
-                      <ProtectedRoute>
-                        <ApproveLoanca />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/loaning/rejected-loans/ca"
-                    element={
-                      <ProtectedRoute>
-                        <RejectedLoansca/>
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/dashboard/ca" element={<ProtectedRoute><Dashboarca /></ProtectedRoute>} />
+                  <Route path="/accounting/ca" element={<ProtectedRoute><Accountingca/></ProtectedRoute>} />
+                  <Route path="/registry/ca" element={<ProtectedRoute><Registryca/></ProtectedRoute>} />
+                  <Route path="/reports/ca" element={<ProtectedRoute><Reportsca/></ProtectedRoute>} />
+                  <Route path="/loaning/all/ca" element={<ProtectedRoute><AllLoansca/></ProtectedRoute>} />
+                  <Route path="/loaning/pending-regional-manager/ca" element={<ProtectedRoute><LoanPendingRmca /></ProtectedRoute>} />
+                  <Route path="/loaning/pending-branch-manager/ca" element={<ProtectedRoute><LoanPendingDisbursementca /></ProtectedRoute>} />
+                  <Route path="/loaning/pending-disbursement/ca" element={<ProtectedRoute><LoanPendingDisbursementca /></ProtectedRoute>} />
+                  <Route path="/loaning/disbursement-loans/ca" element={<ProtectedRoute><DisbursementLoansca /></ProtectedRoute>} />
+                  <Route path="/loaning/loan-approval/ca" element={<ProtectedRoute><ApproveLoanca /></ProtectedRoute>} />
+                  <Route path="/loaning/rejected-loans/ca" element={<ProtectedRoute><RejectedLoansca/></ProtectedRoute>} />
+                  <Route path="/registry/customers/ca" element={<ProtectedRoute><Customersca/></ProtectedRoute>} />
+                  <Route path="/registry/pending-amendments/ca" element={<ProtectedRoute><PendingAmendmentsca /></ProtectedRoute>} />
+                  <Route path="/registry/approvals-pending/ca" element={<ProtectedRoute><ApprovalPendingca/></ProtectedRoute>} />
+                  <Route path="/registry/customer-transfer/ca" element={<ProtectedRoute><CustomerTransferca /></ProtectedRoute>} />
+                  <Route path="/registry/customer-categories/ca" element={<ProtectedRoute><CustomerCategoriesca/></ProtectedRoute>} />
+                  <Route path="/registry/customer-edits/ca" element={<ProtectedRoute><CustomerEditsca /></ProtectedRoute>} />
                 </>
               )}
 
               {/* Customer Service Routes */}
               {role === "customer_service_officer" && (
                 <>
-                  <Route
-                    path="/dashboard/cs"
-                    element={
-                      <ProtectedRoute>
-                        <Dashboardcs/>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/accounting/cs"
-                    element={
-                      <ProtectedRoute>
-                        <Accountingcs/>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/registry/cs"
-                    element={
-                      <ProtectedRoute>
-                        <Registrycs/>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/reports/cs"
-                    element={
-                      <ProtectedRoute>
-                        <Reportscs />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/loaning/all/cs"
-                    element={
-                      <ProtectedRoute>
-                        <AllLoans />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/loaning/pending-disbursement/cs"
-                    element={
-                      <ProtectedRoute>
-                        <LoanPendingDisbursementcs />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/loaning/disbursement-loans/cs"
-                    element={
-                      <ProtectedRoute>
-                        <DisbursementLoanscs/>
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/loaning/loan-approval/cs"
-                    element={
-                      <ProtectedRoute>
-                        <ApproveLoancs />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/loaning/rejected-loans/cs"
-                    element={
-                      <ProtectedRoute>
-                        <RejectedLoanscs />
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/dashboard/cs" element={<ProtectedRoute><Dashboardcs/></ProtectedRoute>} />
+                  <Route path="/accounting/cs" element={<ProtectedRoute><Accountingcs/></ProtectedRoute>} />
+                  <Route path="/registry/cs" element={<ProtectedRoute><Registrycs/></ProtectedRoute>} />
+                  <Route path="/reports/cs" element={<ProtectedRoute><Reportscs /></ProtectedRoute>} />
+                  <Route path="/loaning/all/cs" element={<ProtectedRoute><AllLoanscs/></ProtectedRoute>} />
+                  <Route path="/loaning/pending-regional-manager/cs" element={<ProtectedRoute><LoanPendingRmcs/></ProtectedRoute>} />
+                  <Route path="/loaning/pending-branch-manager/cs" element={<ProtectedRoute><LoanPendingRmcs /></ProtectedRoute>} />
+                  <Route path="/loaning/pending-disbursement/cs" element={<ProtectedRoute><LoanPendingDisbursementcs /></ProtectedRoute>} />
+                  <Route path="/loaning/disbursement-loans/cs" element={<ProtectedRoute><DisbursementLoanscs/></ProtectedRoute>} />
+                  <Route path="/loaning/loan-approval/cs" element={<ProtectedRoute><ApproveLoancs /></ProtectedRoute>} />
+                  <Route path="/loaning/rejected-loans/cs" element={<ProtectedRoute><RejectedLoanscs /></ProtectedRoute>} />
+                  <Route path="/registry/customers/cs" element={<ProtectedRoute><Customerscs /></ProtectedRoute>} />
+                  <Route path="/registry/pending-amendments/cs" element={<ProtectedRoute><PendingAmendmentscs /></ProtectedRoute>} />
+                  <Route path="/registry/approvals-pending/cs" element={<ProtectedRoute><ApprovalPendingcs/></ProtectedRoute>} />
+                  <Route path="/registry/customer-transfer/cs" element={<ProtectedRoute><CustomerTransfercs /></ProtectedRoute>} />
+                  <Route path="/registry/customer-categories/cs" element={<ProtectedRoute><CustomerCategoriescs/></ProtectedRoute>} />
+                  <Route path="/registry/customer-edits/cs" element={<ProtectedRoute><CustomerEditscs /></ProtectedRoute>} />
                 </>
               )}
             </Routes>

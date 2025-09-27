@@ -1,6 +1,6 @@
 import React from 'react'
 
-function CustomerEdits() {
+function CustomerEditsca() {
   return (
     <div>
       <h1>CustomerEdits</h1>
@@ -8,4 +8,4 @@ function CustomerEdits() {
   )
 }
 
-export default CustomerEdits
+export default CustomerEditsca

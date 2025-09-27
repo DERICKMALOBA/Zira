@@ -29,32 +29,55 @@ const [isModalOpen, setIsModalOpen] = useState(false);
   const fetchAmendmentCustomers = async () => {
     setLoading(true);
     try {
+      // 1. Get logged in user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+  
+      // 2. Get rM profile → branch_id
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("region_id")
+        .eq("id", user.id)
+        .single();
+  
+      if (profileError) {
+        console.error("Error fetching profile:", profileError.message);
+        return;
+      }
+  
+      const rmregionId = profile?.region_id;
+      if (!rmregionId) return;
+  
+      // 3. Fetch customers only from that branch & with status bm_review
       const { data, error } = await supabase
         .from("customers")
         .select("*")
+        .eq("region_id", rmregionId)
+        .eq("status", "co_review_amend")
         .order("edited_at", { ascending: false });
-
+  
       if (error) {
-        console.error("❌ Error fetching amendment customers:", error.message);
+        console.error("Error fetching amendment customers:", error.message);
       } else {
+        //  Keep only amended customers (edited_at > created_at)
         const amendedCustomers = (data || []).filter((customer) => {
           if (!customer.edited_at || !customer.created_at) return false;
-          const updatedTime = new Date(customer.edited_at).getTime();
-          const createdTime = new Date(customer.created_at).getTime();
-          return updatedTime > createdTime; // ✅ Only amended
+          return new Date(customer.edited_at) > new Date(customer.created_at);
         });
-
+  
         setCustomers(amendedCustomers);
         setFilteredCustomers(amendedCustomers);
       }
     } catch (err) {
-      console.error("❌ Error:", err);
+      console.error("Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  console.log("📝 Customers with amendments:", customers);
+  console.log(" Customers with amendments:", customers);
 
   useEffect(() => {
     fetchAmendmentCustomers();

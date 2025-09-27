@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import LoanBookingForm from './LoanBooking';
 import { useAuth } from "../../hooks/userAuth";
-
 
 function LoanApplication() {
   const [customers, setCustomers] = useState([]);
@@ -10,69 +9,100 @@ function LoanApplication() {
   const [loading, setLoading] = useState(true);
   const [bookLoan, setBookLoan] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-     const { profile } = useAuth();
-  
+  const { profile } = useAuth();
+  const [lastFetchTime, setLastFetchTime] = useState(0);
 
+  // Memoize the fetch function with useCallback
+  const fetchApprovedCustomers = useCallback(async () => {
+    // Prevent fetching if data was recently fetched (5 minute cache)
+    const now = Date.now();
+    if (now - lastFetchTime < 300000 && customers.length > 0) { // 5 minutes
+      return;
+    }
 
-
- // ✅ Fetch approved customers for logged-in Relationship Officer
-const fetchApprovedCustomers = async () => {
-  if (!profile?.id || profile.role !== "relationship_officer") {
-    setCustomers([]);
-    setFilteredCustomers([]);
-    setLoading(false);
-    return;
-  }
-
-  setLoading(true);
-  try {
-   const { data, error } = await supabase
-  .from("customers")
-  .select(`
-    id,
-    id_number,
-    Firstname,
-    Surname,
-    mobile,
-    prequalifiedAmount, 
-    status,
-    customer_verifications (
-      bm_loan_scored_amount,
-      rm_loan_scored_amount,
-      
-      created_at
-    )
-  `)
-  .eq("status", "approved")
-  .eq("created_by", profile.id);
-
-
-    if (error) {
-      console.error("Error fetching approved customers:", error.message);
+    if (!profile?.id || profile.role !== "relationship_officer") {
       setCustomers([]);
       setFilteredCustomers([]);
-    } else {
-      setCustomers(data);
-      setFilteredCustomers(data);
+      setLoading(false);
+      return;
     }
-  } catch (err) {
-    console.error("Unexpected error:", err);
-    setCustomers([]);
-    setFilteredCustomers([]);
-  }
-  setLoading(false);
-};
 
+    setLoading(true);
+    try {
+      const { data: customersData, error } = await supabase
+        .from("customers")
+        .select(`
+          id,
+          id_number,
+          Firstname,
+          Surname,
+          mobile,
+          prequalifiedAmount, 
+          status
+        `)
+        .eq("status", "approved")
+        .eq("created_by", profile.id);
 
-// Fetch approved customers when profile is loaded
-useEffect(() => {
-  if (profile) {
-    fetchApprovedCustomers();
-  }
-}, [profile]); // ✅ re-run when profile is available
+      if (error) throw error;
 
+      // Fetch last loan status for each customer
+      const customersWithLoanStatus = await Promise.all(
+        (customersData || []).map(async (cust) => {
+          const { data: lastLoan } = await supabase
+            .from("loans")
+            .select("status")
+            .eq("customer_id", cust.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-  // Handle search
+          const { data: bmRow } = await supabase
+            .from("customer_verifications")
+            .select("bm_loan_scored_amount")
+            .eq("customer_id", cust.id)
+            .not("bm_loan_scored_amount", "is", null)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const { data: rmRow } = await supabase
+            .from("customer_verifications")
+            .select("rm_loan_scored_amount")
+            .eq("customer_id", cust.id)
+            .not("rm_loan_scored_amount", "is", null)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          return {
+            ...cust,
+            lastLoanStatus: lastLoan?.status || null,
+            bmScoredAmount: bmRow?.bm_loan_scored_amount || 0,
+            rmScoredAmount: rmRow?.rm_loan_scored_amount || 0,
+          };
+        })
+      );
+
+      setCustomers(customersWithLoanStatus);
+      setFilteredCustomers(customersWithLoanStatus);
+      setLastFetchTime(Date.now()); // Update last fetch time
+    } catch (err) {
+      console.error("Unexpected error fetching approved customers:", err);
+      setCustomers([]);
+      setFilteredCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [profile, lastFetchTime, customers.length]);
+
+  // Fetch only when profile is available and hasn't been fetched recently
+  useEffect(() => {
+    if (profile && profile.id && profile.role === "relationship_officer") {
+      fetchApprovedCustomers();
+    }
+  }, [profile, fetchApprovedCustomers]);
+
+  // Handle search - separate from main data
   useEffect(() => {
     if (!searchTerm) {
       setFilteredCustomers(customers);
@@ -81,9 +111,9 @@ useEffect(() => {
 
     const term = searchTerm.toLowerCase();
     const filtered = customers.filter(customer => 
-      customer.customers?.id_number?.toLowerCase().includes(term) ||
-      customer.customers?.mobile?.toLowerCase().includes(term) ||
-      `${customer.customers?.Firstname} ${customer.customers?.Surname}`.toLowerCase().includes(term)
+      customer.id_number?.toLowerCase().includes(term) ||
+      customer.mobile?.toLowerCase().includes(term) ||
+      `${customer.Firstname} ${customer.Surname}`.toLowerCase().includes(term)
     );
     
     setFilteredCustomers(filtered);
@@ -147,46 +177,92 @@ useEffect(() => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredCustomers.map((application) => (
                 <tr key={application.id} className="hover:bg-gray-50">
+                  {/* Customer Name */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
                         <span className="font-medium text-green-800">
-                          {application.customers?.Firstname?.charAt(0)}{application.customers?.Surname?.charAt(0)}
+                          {application.Firstname?.charAt(0)}
+                          {application.Surname?.charAt(0)}
                         </span>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {application.customers?.Firstname} {application.customers?.Surname}
+                          {application.Firstname} {application.Surname}
                         </div>
                       </div>
                     </div>
                   </td>
+
+                  {/* ID */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{application.customers?.id_number}</div>
+                    <div className="text-sm text-gray-900">{application.id_number}</div>
                   </td>
+
+                  {/* Phone */}
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{application.customers?.mobile}</div>
+                    <div className="text-sm text-gray-900">{application.mobile}</div>
                   </td>
+
+                  {/* Loan Amount */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      Ksh {application.loan_scored_amount ? Number(application.loan_scored_amount).toLocaleString() : "N/A"}
+                      Ksh{" "}
+                      {application.rmScoredAmount
+                        ? Number(application.rmScoredAmount).toLocaleString()
+                        : application.bmScoredAmount
+                        ? Number(application.bmScoredAmount).toLocaleString()
+                        : "N/A"}
                     </div>
                   </td>
+
+                  {/* Status */}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                       Approved
                     </span>
                   </td>
+
+                  {/* Actions */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button 
-                      onClick={() => setBookLoan(application)} 
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      Book Loan
-                    </button>
+                    {application.lastLoanStatus === "bm_review" ||
+                     application.lastLoanStatus === "rm_review" ||
+                     application.lastLoanStatus === "ca_review" ? (
+                      <button
+                        disabled
+                        className="bg-gray-400 text-white px-4 py-2 rounded-md cursor-not-allowed"
+                      >
+                        Booked
+                      </button>
+                    ) : application.lastLoanStatus === "rejected" ? (
+                      <button
+                        disabled
+                        className="bg-red-600 text-white px-4 py-2 rounded-md cursor-not-allowed"
+                      >
+                        Rejected
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setBookLoan(application)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          ></path>
+                        </svg>
+                        Book Loan
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -210,6 +286,7 @@ useEffect(() => {
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <LoanBookingForm
             amendment={bookLoan}
+            customerData={bookLoan}
             onComplete={() => {
               setBookLoan(null);
               fetchApprovedCustomers();

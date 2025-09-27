@@ -13,111 +13,157 @@ import {
   PencilIcon,
 } from "@heroicons/react/24/outline";
 
-const LoanBookingForm = ({ amendment, onComplete }) => {
-  const [loan, setLoan] = useState(null);
-  const [customer, setCustomer] = useState(null);
+const LoanBookingForm = ({ customerData, onComplete }) => {
   const [duration, setDuration] = useState(4);
   const [principalAmount, setPrincipalAmount] = useState(0);
   const [calculated, setCalculated] = useState({});
   const [repaymentSchedule, setRepaymentSchedule] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isNewCustomer, setIsNewCustomer] = useState(false);
-  const [customerType, setCustomerType] = useState("Unknown"); // track type
-    const { profile } = useAuth(); 
+  const [customerType, setCustomerType] = useState("Unknown");
+  const [selectedProductType, setSelectedProductType] = useState("");
+  const { profile } = useAuth();
+
+  //  destructure customer info + latest BM/RM values from parent
+  const {
+    id,
+    id_number,
+    Firstname,
+    Surname,
+    mobile,
+    bmScoredAmount,
+    rmScoredAmount,
+  } = customerData || {};
+
+  //  RM takes precedence → use RM if available, else BM
+  const approved_amount = rmScoredAmount ?? bmScoredAmount ?? 0;
 
   const handleClose = () => onComplete();
 
-  useEffect(() => {
-    if (amendment?.customer_id) {
-      fetchVerificationAndCustomer();
-    }
-  }, [amendment]);
+  // Product types configuration
+  const productTypes = {
+    Inuka: [
+      { weeks: 4, name: "Inuka 4 Weeks" },
+      { weeks: 5, name: "Inuka 5 Weeks" },
+      { weeks: 6, name: "Inuka 6 Weeks" },
+    ],
+    Kuza: [
+      { weeks: 4, name: "Kuza 4 Weeks" },
+      { weeks: 5, name: "Kuza 5 Weeks" },
+      { weeks: 6, name: "Kuza 6 Weeks" },
+      { weeks: 7, name: "Kuza 7 Weeks" },
+    ],
+    Fadhili: [
+      { weeks: 4, name: "Fadhili 4 Weeks" },
+      { weeks: 5, name: "Fadhili 5 Weeks" },
+      { weeks: 6, name: "Fadhili 6 Weeks" },
+      { weeks: 7, name: "Fadhili 7 Weeks" },
+      { weeks: 8, name: "Fadhili 8 Weeks" },
+    ]
+  };
 
   useEffect(() => {
-    if (loan && principalAmount > 0) {
+    if (id) {
+      checkCustomerType(id);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (principalAmount > 0) {
       calculateLoan();
+      autoSelectProductType();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loan, duration, isNewCustomer, principalAmount]);
+    // eslint-disable-next-line
+  }, [duration, isNewCustomer, principalAmount]);
 
-  // 🔄 Helper function: check if customer is new or returning
-  const getCustomerType = async (customerId) => {
+  useEffect(() => {
+    // Update duration when product type is selected
+    if (selectedProductType) {
+      const productType = getAvailableProductTypes().find(
+        type => type.name === selectedProductType
+      );
+      if (productType) {
+        setDuration(productType.weeks);
+      }
+    }
+  }, [selectedProductType]);
+
+  //  determine if customer is new or returning
+  const checkCustomerType = async (customerId) => {
     const { data: loans, error } = await supabase
       .from("loans")
       .select("status")
       .eq("customer_id", customerId)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching loans:", error.message);
-      return "Unknown";
-    }
+    if (error) return;
 
-    if (!loans || loans.length === 0) return "New Customer";
-
-    // Look for any past loan with a valid status
-    const hasApprovedLoan = loans.some(
-      (ln) =>
-        ln.status === "disbursed" || ln.status === "pending_disbursement"
-    );
-
-    return hasApprovedLoan ? "Returning Customer" : "New Customer";
-  };
-
-  const fetchVerificationAndCustomer = async () => {
-    try {
-      // Decide if customer is new/returning
-      const type = await getCustomerType(amendment.customer_id);
-      setCustomerType(type);
-      setIsNewCustomer(type === "New Customer");
-
-      // Fetch verification
-      const { data, error } = await supabase
-        .from("customer_verifications")
-        .select("loan_scored_amount, customer_id, customers(*)")
-        .eq("customer_id", amendment.customer_id)
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        setLoan({ approved_amount: data.loan_scored_amount });
-        setPrincipalAmount(data.loan_scored_amount || 0);
-        setCustomer(data.customers || null);
-      }
-    } catch (error) {
-      console.error("Error fetching verification/customer:", error.message);
+    if (!loans || loans.length === 0) {
+      setCustomerType("New Customer");
+      setIsNewCustomer(true);
+    } else {
+      const hasApprovedLoan = loans.some(
+        (ln) => ln.status === "disbursed" || ln.status === "pending_disbursement"
+      );
+      setCustomerType(hasApprovedLoan ? "Repeat" : "New Loan");
+      setIsNewCustomer(!hasApprovedLoan);
     }
   };
 
+  //  loan products by amount
   const getProductInfo = (amount) => {
     if (amount >= 1000 && amount <= 5000) {
-      return {
-        product: "Inuka",
-        productName: "Inuka (1K-5K)",
+      return { 
+        product: "Inuka", 
+        productName: "Inuka (1K-5K)", 
         range: "KES 1,000 - 5,000",
+        baseName: "Inuka"
       };
     } else if (amount >= 6000 && amount <= 10000) {
-      return {
-        product: "Kuza",
-        productName: "Kuza (6K-10K)",
+      return { 
+        product: "Kuza", 
+        productName: "Kuza (6K-10K)", 
         range: "KES 6,000 - 10,000",
+        baseName: "Kuza"
       };
     } else if (amount > 10000) {
-      return {
-        product: "Fadhili",
-        productName: "Fadhili (10K+)",
+      return { 
+        product: "Fadhili", 
+        productName: "Fadhili (10K+)", 
         range: "KES 10,000 and above",
+        baseName: "Fadhili"
       };
     } else {
-      return {
-        product: "",
-        productName: "Invalid Amount",
+      return { 
+        product: "", 
+        productName: "Invalid Amount", 
         range: "Amount must be KES 1,000 or more",
+        baseName: ""
       };
     }
   };
 
+  // Get available product types based on current product
+  const getAvailableProductTypes = () => {
+    const productInfo = getProductInfo(principalAmount);
+    return productTypes[productInfo.baseName] || [];
+  };
+
+  // Auto-select product type when amount changes
+  const autoSelectProductType = () => {
+    const productInfo = getProductInfo(principalAmount);
+    const availableTypes = productTypes[productInfo.baseName];
+    
+    if (availableTypes && availableTypes.length > 0) {
+      // Find the type that matches current duration or default to first option
+      const matchingType = availableTypes.find(type => type.weeks === duration) || availableTypes[0];
+      setSelectedProductType(matchingType.name);
+    } else {
+      setSelectedProductType("");
+    }
+  };
+
+  // recalc repayment schedule
   const calculateLoan = () => {
     const principal = Number(principalAmount) || 0;
     const processingFee = principal <= 10000 ? 500 : principal * 0.05;
@@ -127,8 +173,7 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
     const interestRate = weeklyRate * duration;
     const totalInterest = (principal * interestRate) / 100;
 
-    const totalPayable =
-      principal + totalInterest + processingFee + registrationFee;
+    const totalPayable = principal + totalInterest + processingFee + registrationFee;
     const weeklyPayment = totalPayable / duration;
 
     const productInfo = getProductInfo(principal);
@@ -144,16 +189,17 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
       product: productInfo.product,
       productName: productInfo.productName,
       productRange: productInfo.range,
+      baseName: productInfo.baseName,
+      productType: selectedProductType,
     });
 
-    // Repayment schedule
+    // repayment schedule
     const schedule = [];
     const today = new Date();
 
     for (let week = 1; week <= duration; week++) {
       const dueDate = new Date(today);
       dueDate.setDate(today.getDate() + week * 7);
-
       schedule.push({
         week,
         due_date: dueDate.toISOString().split("T")[0],
@@ -164,104 +210,113 @@ const LoanBookingForm = ({ amendment, onComplete }) => {
         total: weeklyPayment,
       });
     }
-
     setRepaymentSchedule(schedule);
   };
 
+  //  enforce principal <= approved_amount
   const handlePrincipalChange = (e) => {
     const value = parseFloat(e.target.value) || 0;
-    const maxAmount = loan?.approved_amount || 0;
-
-    if (value <= maxAmount) {
+    if (value <= approved_amount) {
       setPrincipalAmount(value);
     } else {
-      setPrincipalAmount(maxAmount);
+      setPrincipalAmount(approved_amount);
     }
+  };
+
+  // Handle product type selection
+  const handleProductTypeChange = (e) => {
+    setSelectedProductType(e.target.value);
   };
 
   const isValidAmount = () => {
-    const maxAmount = loan?.approved_amount || 0;
     return (
       principalAmount >= 1000 &&
-      principalAmount <= maxAmount &&
-      calculated.product !== ""
+      principalAmount <= approved_amount &&
+      calculated.product !== "" &&
+      selectedProductType !== ""
     );
   };
 
-  const handleBookLoan = async () => {
-    if (!isValidAmount()) {
-      alert(
-        `Please enter a valid loan amount (KES 1,000 - ${loan?.approved_amount?.toLocaleString() || 0})`
-      );
-      return;
-    }
+  // Book loan
+const handleBookLoan = async () => {
+  if (!isValidAmount()) {
+    alert(
+      `Please enter a valid loan amount (KES 1,000 - ${
+        approved_amount?.toLocaleString() || 0
+      }) and select a product type`
+    );
+    return;
+  }
 
-    setLoading(true);
-    try {
-      // Step 1: Check if customer already has disbursed loans
-      const { data: previousLoans, error: prevError } = await supabase
-        .from("loans")
-        .select("id")
-        .eq("customer_id", amendment.customer_id)
-        .eq("status", "disbursed");
+  setLoading(true);
+  try {
+    // Check if customer has ever had a successfully disbursed loan
+    const { data: previousLoans, error: prevError } = await supabase
+      .from("loans")
+      .select("id, status")
+      .eq("customer_id", id)
+      .eq("status", "disbursed");
 
-      if (prevError) throw prevError;
+    if (prevError) throw prevError;
 
-      const isFirstLoan = !previousLoans || previousLoans.length === 0;
+    const isFirstLoan = !previousLoans || previousLoans.length === 0;
 
-      // Step 2: Decide initial status
-      const initialStatus = "pending_branch_manager"; // future: differentiate logic
+   
+    const initialStatus = "bm_review";
 
-      // Step 3: Insert loan
-      const { error } = await supabase.from("loans").insert([
-        {
-          customer_id: amendment.customer_id,
-          product: calculated.product,
-          product_name: calculated.productName,
-          prequalified_amount: amendment.loan_prequalified_amount || 0,
-          scored_amount: calculated.principal,
-          duration_weeks: duration,
-          processing_fee: calculated.processingFee,
-          registration_fee: calculated.registrationFee,
-          interest_rate: calculated.interestRate,
-          total_interest: calculated.totalInterest,
-          total_payable: calculated.totalPayable,
-          weekly_payment: calculated.weeklyPayment,
-          status: initialStatus,
-          booked_at: new Date().toISOString(),
-          is_new_customer: isFirstLoan,
-          booked_by: profile?.id || null,
-        },
-      ]);
+    const { error } = await supabase.from("loans").insert([
+      {
+        customer_id: id,
+        product: calculated.product,
+        product_name: calculated.productName,
+        product_type: selectedProductType,
+        prequalified_amount: approved_amount,
+        scored_amount: calculated.principal,
+        duration_weeks: duration,
+        processing_fee: calculated.processingFee,
+        registration_fee: calculated.registrationFee,
+        interest_rate: calculated.interestRate,
+        total_interest: calculated.totalInterest,
+        total_payable: calculated.totalPayable,
+        weekly_payment: calculated.weeklyPayment,
+        status: initialStatus,
+        booked_at: new Date().toISOString(),
+        is_new_loan: isFirstLoan,
+        booked_by: profile?.id || null,
+        branch_id:profile?.branch_id,
+        region_id:profile?.region_id,
+      },
+    ]);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      console.log("Loan successfully booked for:", customer?.firstname || "Customer");
-      alert("Loan successfully booked!");
-      onComplete();
-    } catch (error) {
-      console.error("Error booking loan:", error.message);
-      alert("Error booking loan. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-console.log("profile id",profile?.id)
+    alert("Loan successfully booked!");
+    onComplete();
+  } catch (error) {
+    console.error(" Error booking loan:", error.message);
+    alert("Error booking loan. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
-  if (!loan || !customer) {
+
+  if (!customerData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600 mb-4 mx-auto"></div>
-          <p className="text-gray-600 font-medium">Loading loan details...</p>
+          <p className="text-gray-600 font-medium">Loading customer details...</p>
         </div>
       </div>
     );
   }
 
+  const availableProductTypes = getAvailableProductTypes();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
-       <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-4 right-4 z-50">
         <button
           onClick={handleClose}
           className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
@@ -272,6 +327,7 @@ console.log("profile id",profile?.id)
           </svg>
         </button>
       </div>
+      
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
@@ -291,7 +347,7 @@ console.log("profile id",profile?.id)
             }`}>
               <CheckCircleIcon className={`h-5 w-5 ${isValidAmount() ? 'text-emerald-600' : 'text-amber-600'}`} />
               <span className={`font-medium ${isValidAmount() ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {isValidAmount() ? 'Ready to Book' : 'Check Amount'}
+                {isValidAmount() ? 'Ready to Book' : 'Check Amount & Product'}
               </span>
             </div>
           </div>
@@ -312,25 +368,31 @@ console.log("profile id",profile?.id)
                   <div className="flex justify-between">
                     <span className="text-gray-600 font-medium">Name:</span>
                     <span className="text-gray-900 font-semibold">
-                      {customer.Firstname} {customer.Surname}
+                      {Firstname} {Surname}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 font-medium">Customer ID:</span>
                     <span className="text-indigo-600 font-mono font-semibold">
-                      {customer.id_number || 'N/A'}
+                      {id_number || 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 font-medium">Mobile:</span>
                     <span className="text-gray-900 font-semibold">
-                      {customer.mobile}
+                      {mobile || 'N/A'}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 font-medium">Customer Type:</span>
                     <span className={`font-semibold ${isNewCustomer ? 'text-green-600' : 'text-blue-600'}`}>
-                      {isNewCustomer ? 'New Customer' : 'Returning Customer'}
+                      {customerType}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 font-medium">Approved Amount:</span>
+                    <span className="text-emerald-600 font-bold">
+                      KES {approved_amount?.toLocaleString() || '0'}
                     </span>
                   </div>
                 </div>
@@ -342,7 +404,7 @@ console.log("profile id",profile?.id)
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-600 mr-3" />
                   Loan Summary
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex justify-between">
                     <span className="text-gray-600 font-medium">Product:</span>
                     <span className={`font-semibold ${
@@ -351,6 +413,30 @@ console.log("profile id",profile?.id)
                       {calculated.productName || 'Select Valid Amount'}
                     </span>
                   </div>
+
+                  {/* Product Type Selection */}
+                  {calculated.baseName && (
+                    <div className="space-y-2">
+                      <label className="text-gray-600 font-medium">Product Type:</label>
+                      <select
+                        value={selectedProductType}
+                        onChange={handleProductTypeChange}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white"
+                      >
+                        <option value="">Select product type</option>
+                        {availableProductTypes.map((type) => (
+                          <option key={type.name} value={type.name}>
+                            {type.name} - {type.description}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedProductType && (
+                        <p className="text-xs text-green-600">
+                          Selected: {selectedProductType} ({duration} weeks)
+                        </p>
+                      )}
+                    </div>
+                  )}
                   
                   {/* Editable Principal Amount */}
                   <div className="space-y-2">
@@ -362,7 +448,7 @@ console.log("profile id",profile?.id)
                           value={principalAmount}
                           onChange={handlePrincipalChange}
                           min="1000"
-                          max={loan.approved_amount}
+                          max={approved_amount}
                           step="100"
                           className={`w-full p-3 pr-12 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors font-bold text-lg ${
                             isValidAmount() 
@@ -375,22 +461,22 @@ console.log("profile id",profile?.id)
                       </div>
                     </div>
                     <p className="text-xs text-gray-500">
-                      Maximum allowed: KES {loan.approved_amount?.toLocaleString()} (Prequalified amount)
+                      Maximum allowed: KES {approved_amount?.toLocaleString()} (Approved amount)
                     </p>
                     {!isValidAmount() && principalAmount > 0 && (
                       <p className="text-xs text-red-600">
                         {principalAmount < 1000 
                           ? "Minimum amount is KES 1,000" 
-                          : principalAmount > loan.approved_amount 
-                          ? "Amount exceeds prequalified limit" 
-                          : "Invalid amount"}
+                          : principalAmount > approved_amount 
+                          ? "Amount exceeds approved limit" 
+                          : "Please select product type"}
                       </p>
                     )}
                   </div>
 
                   <div className="flex justify-between">
                     <span className="text-gray-600 font-medium">Duration:</span>
-                    <span className="text-gray-900 font-semibold"> ({duration} weeks)</span>
+                    <span className="text-gray-900 font-semibold">{duration} weeks</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 font-medium">Processing Fee:</span>
@@ -424,21 +510,35 @@ console.log("profile id",profile?.id)
                 <ClockIcon className="h-6 w-6 text-blue-600 mr-3" />
                 Repayment Configuration
               </h3>
-              <div className="max-w-md">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Loan Duration (weeks)
-                </label>
-                <select
-                  value={duration}
-                  onChange={(e) => setDuration(parseInt(e.target.value))}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white"
-                >
-                  {[4, 5, 6, 7, 8].map(weeks => (
-                    <option key={weeks} value={weeks}>
-                      {weeks}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Loan Duration (weeks)
+                  </label>
+                  <select
+                    value={duration}
+                    onChange={(e) => setDuration(parseInt(e.target.value))}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white"
+                  >
+                    {[4, 5, 6, 7, 8].map(weeks => (
+                      <option key={weeks} value={weeks}>
+                        {weeks} weeks
+                      </option>
+                    ))}
+                  </select>
+                </div> */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Selected Product Type
+                  </label>
+                  <div className="p-3 bg-white border border-gray-300 rounded-lg">
+                    <span className={`font-semibold ${
+                      selectedProductType ? 'text-indigo-600' : 'text-gray-400'
+                    }`}>
+                      {selectedProductType || 'No product type selected'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -447,83 +547,82 @@ console.log("profile id",profile?.id)
               <div className="mb-8">
                 <h3 className="text-xl font-bold text-gray-900 flex items-center mb-6">
                   <DocumentTextIcon className="h-6 w-6 text-purple-600 mr-3" />
-                  Repayment Schedule
+                  Repayment Schedule - {selectedProductType}
                 </h3>
                 
-               <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200 overflow-hidden">
-  <div className="overflow-x-auto">
-    <table className="min-w-full">
-      <thead>
-        <tr className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
-          <th className="px-6 py-4 text-left font-semibold">Week</th>
-          <th className="px-6 py-4 text-left font-semibold">Due Date</th>
-          <th className="px-6 py-4 text-right font-semibold">Principal</th>
-          <th className="px-6 py-4 text-right font-semibold">Fees</th>
-          <th className="px-6 py-4 text-right font-semibold">Installments</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200">
-        {repaymentSchedule.map((payment, index) => (
-          <tr
-            key={index}
-            className={`${
-              index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-            } hover:bg-indigo-50 transition-colors`}
-          >
-            <td className="px-6 py-4">
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                  <span className="text-indigo-600 font-semibold text-sm">
-                    {payment.week}
-                  </span>
+                <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                      <thead>
+                        <tr className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
+                          <th className="px-6 py-4 text-left font-semibold">Week</th>
+                          <th className="px-6 py-4 text-left font-semibold">Due Date</th>
+                          <th className="px-6 py-4 text-right font-semibold">Principal</th>
+                          <th className="px-6 py-4 text-right font-semibold">Fees</th>
+                          <th className="px-6 py-4 text-right font-semibold">Installments</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {repaymentSchedule.map((payment, index) => (
+                          <tr
+                            key={index}
+                            className={`${
+                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                            } hover:bg-indigo-50 transition-colors`}
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                  <span className="text-indigo-600 font-semibold text-sm">
+                                    {payment.week}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center text-gray-900">
+                                <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
+                                {new Date(payment.due_date).toLocaleDateString('en-GB')}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                              KES {payment.principal.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4 text-right font-semibold text-amber-600">
+                              KES {(payment.processing_fee + payment.registration_fee).toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4 text-right font-bold text-indigo-600">
+                              KES {payment.total.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+
+                        {/* Totals Row */}
+                        <tr className="bg-gradient-to-r from-indigo-100 to-blue-100 border-t-2 border-indigo-200">
+                          <td className="px-6 py-4 font-bold text-gray-900" colSpan="2">
+                            TOTAL
+                          </td>
+                          <td className="px-6 py-4 text-right font-bold text-gray-900">
+                            KES {principalAmount?.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 text-right font-bold text-amber-600">
+                            KES {(
+                              repaymentSchedule.reduce(
+                                (sum, payment) => sum + payment.processing_fee + payment.registration_fee,
+                                0
+                              )
+                            ).toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 text-right font-bold text-indigo-600 text-lg">
+                            KES {(
+                              repaymentSchedule.reduce((sum, payment) => sum + payment.total, 0)
+                            ).toLocaleString()}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            </td>
-            <td className="px-6 py-4">
-              <div className="flex items-center text-gray-900">
-                <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
-                {new Date(payment.due_date).toLocaleDateString('en-GB')}
-              </div>
-            </td>
-            <td className="px-6 py-4 text-right font-semibold text-gray-900">
-              KES {payment.principal.toLocaleString()}
-            </td>
-            <td className="px-6 py-4 text-right font-semibold text-amber-600">
-              KES {(payment.processing_fee + payment.registration_fee).toLocaleString()}
-            </td>
-            <td className="px-6 py-4 text-right font-bold text-indigo-600">
-              KES {payment.total.toLocaleString()}
-            </td>
-          </tr>
-        ))}
-
-        {/* Totals Row */}
-        <tr className="bg-gradient-to-r from-indigo-100 to-blue-100 border-t-2 border-indigo-200">
-          <td className="px-6 py-4 font-bold text-gray-900" colSpan="2">
-            TOTAL
-          </td>
-          <td className="px-6 py-4 text-right font-bold text-gray-900">
-            KES {principalAmount?.toLocaleString()}
-          </td>
-          <td className="px-6 py-4 text-right font-bold text-amber-600">
-            KES {(
-              repaymentSchedule.reduce(
-                (sum, payment) => sum + payment.processing_fee + payment.registration_fee,
-                0
-              )
-            ).toLocaleString()}
-          </td>
-          <td className="px-6 py-4 text-right font-bold text-indigo-600 text-lg">
-            KES {(
-              repaymentSchedule.reduce((sum, payment) => sum + payment.total, 0)
-            ).toLocaleString()}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
               </div>
             )}
 
@@ -539,14 +638,16 @@ console.log("profile id",profile?.id)
                 }`}>
                   <h4 className="font-semibold text-purple-700 mb-2">Inuka</h4>
                   <p className="text-sm text-gray-600">KES 1,000 - 5,000</p>
-                  <p className="text-xs text-gray-500 mt-2">4-8 weeks duration</p>
+                  <p className="text-xs text-gray-500 mt-2">4-6 weeks duration</p>
+                 
                 </div>
                 <div className={`bg-white p-4 rounded-lg border ${
                   calculated.product === 'Kuza' ? 'border-blue-300 ring-2 ring-blue-200' : 'border-blue-100'
                 }`}>
                   <h4 className="font-semibold text-blue-700 mb-2">Kuza</h4>
                   <p className="text-sm text-gray-600">KES 6,000 - 10,000</p>
-                  <p className="text-xs text-gray-500 mt-2">4-8 weeks duration</p>
+                  <p className="text-xs text-gray-500 mt-2">4-7 weeks duration</p>
+                 
                 </div>
                 <div className={`bg-white p-4 rounded-lg border ${
                   calculated.product === 'Fadhili' ? 'border-green-300 ring-2 ring-green-200' : 'border-green-100'
@@ -554,12 +655,13 @@ console.log("profile id",profile?.id)
                   <h4 className="font-semibold text-green-700 mb-2">Fadhili</h4>
                   <p className="text-sm text-gray-600">KES 10,000 and above</p>
                   <p className="text-xs text-gray-500 mt-2">4-8 weeks duration</p>
+                  
                 </div>
               </div>
               <div className="mt-4 text-sm text-gray-600">
                 <p><span className="font-semibold">Processing Fee:</span> KES 500 for loans up to 10K, 5% of principal for loans above 10K</p>
                 <p><span className="font-semibold">Registration Fee:</span> KES 300 (one-time payment for new customers only)</p>
-                <p><span className="font-semibold">Interest Rate:</span> 25% over 4 weeks (6.25% per week)</p>
+                {/* <p><span className="font-semibold">Interest Rate:</span> 25% over 4 weeks (6.25% per week)</p> */}
               </div>
             </div>
 
@@ -582,7 +684,7 @@ console.log("profile id",profile?.id)
                 ) : (
                   <>
                     <CheckCircleIcon className="h-6 w-6" />
-                    {isValidAmount() ? 'Confirm Loan Booking' : 'Enter Valid Amount'}
+                    {isValidAmount() ? `Book ${selectedProductType}` : 'Enter Valid Amount & Product'}
                   </>
                 )}
               </button>

@@ -12,7 +12,7 @@ import {
   EyeIcon,
   FunnelIcon,
 } from "@heroicons/react/24/outline";
-import ViewLoan from "./ViewLoan";
+import ViewLoan from "./ViewLoanca";
 
 const AllLoans = () => {
   const [loans, setLoans] = useState([]);

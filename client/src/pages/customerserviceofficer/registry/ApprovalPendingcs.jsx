@@ -10,8 +10,8 @@ import {
  
 } from '@heroicons/react/24/outline';
 import { supabase } from "../../../supabaseClient";
-import CustomerVerificationForm from './CustomerVerificationrm';
-import ViewCustomer from './ViewCustomerrm';
+import CustomerVerificationForm from './CustomerVerificationcs';
+import ViewCustomer from './ViewCustomercs';
 
 const ApprovalPendingcs = () => {
   const [customers, setCustomers] = useState([]);
