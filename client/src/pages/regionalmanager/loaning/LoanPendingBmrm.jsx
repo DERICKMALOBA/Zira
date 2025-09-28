@@ -32,7 +32,7 @@ const LoanPendingBmrm = () => {
             id_number
           )
         `)
-        .eq('status', 'pending_branch_manager')
+        .eq('status', 'bm_review')
         .order('created_at', { ascending: true });
 
       if (error) throw error;

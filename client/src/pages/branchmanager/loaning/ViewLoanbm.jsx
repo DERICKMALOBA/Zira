@@ -239,9 +239,9 @@ const ViewLoanbm = ({ loan, onClose }) => {
                 </div>
               
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">Customer Type:</span>
-                  <span className={`font-semibold ${loanDetails.is_new_customer ? 'text-green-600' : 'text-blue-600'}`}>
-                    {loanDetails.is_new_customer ? 'New Customer' : 'Returning Customer'}
+                  <span className="text-gray-600 font-medium">Loan Type:</span>
+                  <span className={`font-semibold ${loanDetails.is_new_loan ? 'text-green-600' : 'text-blue-600'}`}>
+                    {loanDetails.is_new_loan ? 'New Loan' : 'Repeat Loan'}
                   </span>
                 </div>
               </div>

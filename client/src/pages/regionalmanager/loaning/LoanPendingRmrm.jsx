@@ -31,7 +31,7 @@ const LoanPendingRmrm = () => {
             id_number
           )
         `)
-        .eq('status', 'pending_regional_manager')
+        .eq('status', 'rn_review')
         .order('approved_by_bm_at', { ascending: true });
 
       if (error) throw error;

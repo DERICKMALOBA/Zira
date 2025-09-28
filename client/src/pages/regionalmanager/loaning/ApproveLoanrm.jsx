@@ -1,80 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from "../../../supabaseClient";
+import { supabase } from "../.../../../../supabaseClient";
 import {
   CheckCircleIcon,
   XCircleIcon,
   UserIcon,
   CurrencyDollarIcon,
   ChatBubbleLeftRightIcon,
+  CalendarIcon,
+  DocumentTextIcon,
+  ClockIcon,
+  BanknotesIcon,
+  XMarkIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  IdentificationIcon,
 } from "@heroicons/react/24/outline";
+import { toast } from "react-toastify";
 import { useAuth } from "../../../hooks/userAuth"; // ✅ corrected import
 
-// helper function for approvals
-const ApproveLoan = async (loanId, approved, comment, profile) => {
-  let updateData = {};
-
-  console.log("🔍 DEBUG - approveLoan called with:", {
-    loanId,
-    approved,
-    comment,
-    profile
-  });
-
-  if (profile.role === "branch_manager") {
-    updateData = approved
-      ? {
-          approved_by_bm: profile?.id,
-          approved_by_bm_at: new Date().toISOString(),
-          bm_comment: comment,
-          status: "pending_regional_manager",
-        }
-      : {
-          rejected_by_bm: profile?.id,
-          bm_rejected_at: new Date().toISOString(),
-          bm_comment: comment,
-          status: "rejected",
-        };
-  } else if (profile.role === "regional_manager") {
-    updateData = approved
-      ? {
-          approved_by_rm: profile?.id,
-          approved_by_rm_at: new Date().toISOString(),
-          rm_comment: comment,
-          status: "approved",
-        }
-      : {
-          rejected_by_rm: profile?.id,
-          rm_rejected_at: new Date().toISOString(),
-          rm_comment: comment,
-          status: "rejected",
-        };
-  } else {
-    console.error("❌ Unknown role:", profile.role);
-    throw new Error(`Unknown role: ${profile.role}`);
-  }
-
-  console.log("📝 DEBUG - Update data:", updateData);
-
-  const { data, error } = await supabase
-    .from("loans")
-    .update(updateData)
-    .eq("id", loanId);
-
-  if (error) {
-    console.error("❌ Approval error:", error);
-    throw error;
-  }
-
-  console.log("✅ Loan updated successfully");
-  return data;
-};
-
 const ApproveLoanrm = ({ loan, onComplete }) => {
-  const { role, profile, user } = useAuth(); // ✅ hook used correctly
+  const { profile } = useAuth(); // hook used correctly
   const [loanDetails, setLoanDetails] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [comment, setComment] = useState('');
   const [loading, setLoading] = useState(false);
+  const [bookedByUser, setBookedByUser] = useState(null);
+  const [repaymentSchedule, setRepaymentSchedule] = useState([]);
 
   useEffect(() => {
     if (loan) fetchLoanDetails();
@@ -93,46 +44,129 @@ const ApproveLoanrm = ({ loan, onComplete }) => {
 
       if (error) throw error;
 
+      // Fetch the user who created the loan
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("*")
+        .eq('id', data.booked_by)
+        .single();
+
+      if (userError) {
+        console.warn("Error fetching user details:", userError);
+      }
+
       setLoanDetails(data);
       setCustomer(data.customers);
-      console.log("📋 DEBUG - Current loan status:", data.status);
+      setBookedByUser(userData || null);
+      
+      if (data) {
+        generateRepaymentSchedule(data);
+      }
+      
+      console.log("DEBUG - Current loan status:", data.status);
     } catch (error) {
       console.error("Error fetching loan details:", error);
     }
   };
+const approveLoan = async (loanId, approved, comment, profile, isNewLoan) => {
+  
+  let newStatus = "rejected"; 
 
-  const handleApprovalDecision = async (approved) => {
-    if (!comment.trim()) {
-      alert('Please provide a comment for your decision');
-      return;
+  if (approved) {
+    if (isNewLoan) {
+      newStatus = "ca_review";  
+    } else {
+      newStatus = "rejected";
     }
+  }
 
-    if (!profile?.id) {
-      alert('Error: User profile ID not found. Please check your authentication.');
-      return;
+  const { error } = await supabase
+    .from("loans")
+    .update({
+      status: newStatus,
+      rm_comment: comment,
+      rm_id: profile?.id || null,
+      rm_reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", loanId);
+
+  if (error) {
+    console.error(" Supabase error while approving loan:", {
+      loanId,
+      attemptedStatus: newStatus,
+      errorMessage: error.message,
+      errorDetails: error.details,
+      errorHint: error.hint,
+      errorCode: error.code,
+    });
+    throw error; 
+  }
+
+ 
+};
+
+
+// ===================
+const handleApprovalDecision = async (approved) => {
+  if (!comment.trim()) {
+    toast.error("Please provide a comment for your decision");
+    return;
+  }
+
+  if (!profile?.id) {
+    toast.error("User profile ID not found. Please log in again.");
+    return;
+  }
+
+  
+
+  setLoading(true);
+  try {
+    await approveLoan(loan.id, approved, comment, profile, loan.is_new_loan);
+
+    toast.success(
+      ` Loan ${approved ? "approved & forwarded" : "rejected"} successfully!`
+    );
+
+    onComplete?.(); // safely call refresh/close
+  } catch (error) {
+    console.error("Error updating loan in handler:", error);
+    toast.error("Error processing loan decision. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  const generateRepaymentSchedule = (loan) => {
+    const schedule = [];
+    const startDate = new Date(loan.created_at);
+    const weeklyPayment = loan.weekly_payment || 0;
+    const totalInterest = loan.total_interest || 0;
+    const processingFee = loan.processing_fee || 0;
+    const registrationFee = loan.registration_fee || 0;
+    const principal = loan.scored_amount || 0;
+    const duration = loan.duration_weeks || 0;
+
+    for (let week = 1; week <= duration; week++) {
+      const dueDate = new Date(startDate);
+      dueDate.setDate(startDate.getDate() + (week * 7));
+      
+      schedule.push({
+        week,
+        due_date: dueDate.toISOString().split('T')[0],
+        principal: week === duration ? principal : 0,
+        interest: totalInterest / duration,
+        processing_fee: week === 1 ? processingFee : 0,
+        registration_fee: week === 1 ? registrationFee : 0,
+        total: weeklyPayment
+      });
     }
-
-    console.log("🔄 DEBUG - Starting approval process...");
-
-    setLoading(true);
-    try {
-      await approveLoan(loan.id, approved, comment, profile);
-      alert(`Loan ${approved ? "approved" : "rejected"} successfully!`);
-      onComplete();
-    } catch (error) {
-      console.error("❌ Error updating loan:", error);
-      alert("Error processing loan decision. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    
+    setRepaymentSchedule(schedule);
   };
-
-  const getCurrentUserRole = () => {
-    if (role) return role;
-    return profile?.role || user?.user_metadata?.role || "unknown";
-  };
-
-  const currentRole = getCurrentUserRole();
+  
+  
 
   if (!loanDetails || !customer) {
     return (
@@ -148,24 +182,12 @@ const ApproveLoanrm = ({ loan, onComplete }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
       <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Debug Info - Remove in production */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-          <div className="text-sm text-yellow-800">
-            <strong>Debug Info:</strong> Role: {currentRole || 'Not detected'}, 
-            Profile ID: {profile?.id || 'Not found'}, 
-            User ID: {user?.id || 'Not found'}
-          </div>
-        </div>
-
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Loan Approval Review
-                <span className="block text-sm font-normal text-gray-600 mt-1">
-                  ({currentRole ? `Logged in as ${currentRole.replace('_', ' ')}` : 'Role not detected'})
-                </span>
+                Loan Approval Review 
               </h1>
               <p className="text-gray-600 mt-2">
                 Review loan application details and make approval decision
@@ -211,16 +233,11 @@ const ApproveLoanrm = ({ loan, onComplete }) => {
                   {customer.mobile}
                 </span>
               </div>
+             
               <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">Email:</span>
-                <span className="text-gray-900 font-semibold">
-                  {customer.email || 'N/A'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">Customer Type:</span>
-                <span className={`font-semibold ${loanDetails.is_new_customer ? 'text-green-600' : 'text-blue-600'}`}>
-                  {loanDetails.is_new_customer ? 'New Customer' : 'Returning Customer'}
+                <span className="text-gray-600 font-medium">Loan Type:</span>
+                <span className={`font-semibold ${loanDetails.is_new_loan ? 'text-green-600' : 'text-blue-600'}`}>
+                  {loanDetails.is_new_loan ? 'New Loan' : 'Repeat'}
                 </span>
               </div>
             </div>
@@ -265,6 +282,7 @@ const ApproveLoanrm = ({ loan, onComplete }) => {
                   </span>
                 </div>
               )}
+              
               <div className="flex justify-between pt-4 border-t border-gray-200">
                 <span className="text-gray-600 font-medium">Total Repayment:</span>
                 <span className="text-indigo-600 font-bold text-xl">
@@ -275,6 +293,95 @@ const ApproveLoanrm = ({ loan, onComplete }) => {
           </div>
         </div>
 
+        {/* Booked By Information */}
+        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200 mt-8">
+          <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
+            <IdentificationIcon className="h-6 w-6 text-purple-600 mr-3" />
+            Booked By
+          </h3>
+          {bookedByUser ? (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 font-medium">Name:</span>
+                <span className="text-gray-900 font-semibold">
+                  {bookedByUser.full_name}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 font-medium">Email:</span>
+                <span className="text-gray-900 font-semibold text-right text-sm">
+                  {bookedByUser.email}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600 font-medium">Role:</span>
+                <span className="text-purple-600 font-semibold">
+                  {bookedByUser.role || 'Staff'}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <UserIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+              <p className="text-gray-500">User information not available</p>
+            </div>
+          )}
+        </div>
+
+                  {/* Repayment Schedule */}
+                  {repaymentSchedule.length > 0 && (
+                    <div className="   bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-4">
+                        <h3 className="text-xl font-bold flex items-center">
+                          <DocumentTextIcon className="h-6 w-6 mr-3" />
+                          Repayment Schedule
+                        </h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Week</th>
+                              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Due Date</th>
+                              <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Principal</th>
+                              <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Interest</th>
+                              <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Fees</th>
+                              <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Installments</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+
+                            {repaymentSchedule.map((payment, index) => (
+                              <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                <td className="px-6 py-4 text-sm">
+                                  <div className="flex items-center">
+                                    <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                      <span className="text-indigo-600 font-semibold text-sm">{payment.week}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-sm text-gray-900">
+                                  {new Date(payment.due_date).toLocaleDateString('en-GB')}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">
+                                  KES {payment.principal.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right font-semibold text-blue-600">
+                                  KES {payment.interest.toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right font-semibold text-amber-600">
+                                  KES {(payment.processing_fee + payment.registration_fee).toLocaleString()}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-right font-bold text-indigo-600">
+                                  KES {payment.total.toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
         {/* Manager Decision Section */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mt-8 border border-indigo-100">
           <h3 className="text-xl font-bold text-gray-900 flex items-center mb-6">
@@ -326,9 +433,13 @@ const ApproveLoanrm = ({ loan, onComplete }) => {
             </div>
           </div>
         </div>
+
+        
       </div>
     </div>
   );
 };
+
+
 
 export default ApproveLoanrm;

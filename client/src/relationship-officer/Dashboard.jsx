@@ -157,7 +157,7 @@ useEffect(() => {
           </a>
           
           <a
-            href="/officer/loans"
+            href="officer/loans/applications"
             className="p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors"
           >
             <h3 className="font-semibold text-purple-600">Book Loan</h3>
