@@ -1,9 +1,7 @@
 // src/pages/registry/Customers.jsx
 import { useState, useEffect } from "react";
 import {
-  
   MagnifyingGlassIcon,
- 
   FunnelIcon,
   ArrowDownTrayIcon,
 } from "@heroicons/react/24/outline";
@@ -12,17 +10,21 @@ import CustomerDetailsModal from "../../../relationship-officer/components/Custo
 import CustomerVerificationForm from "./CustomerVerificationbm.jsx";
 import ViewCustomer from "./ViewCustomerbm.jsx";
 
-
 const Customersbm = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-   const [branchId, setBranchId] = useState(null);
+  const [branchId, setBranchId] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  
+  // Filter states
+  const [selectedStatus, setSelectedStatus] = useState("");
+  const [statuses, setStatuses] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
 
-   const fetchProfile = async () => {
+  const fetchProfile = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -42,16 +44,16 @@ const Customersbm = () => {
     setBranchId(profile?.branch_id);
   };
 
-  // ✅ Fetch customers for BM’s branch
+  // Fetch customers for BM's branch
   const fetchCustomers = async (bmBranchId) => {
     try {
       setLoading(true);
 
       const { data, error } = await supabase
-  .from("customers")
-  .select("*") // fetch all columns
-  .eq("branch_id", bmBranchId)
-  .order("created_at", { ascending: false });
+        .from("customers")
+        .select("*")
+        .eq("branch_id", bmBranchId)
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Error fetching customers:", error);
@@ -59,6 +61,10 @@ const Customersbm = () => {
       }
 
       setCustomers(data || []);
+      
+      // Extract unique statuses for filter
+      const uniqueStatuses = [...new Set(data.map(c => c.status).filter(Boolean))];
+      setStatuses(uniqueStatuses);
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -76,28 +82,79 @@ const Customersbm = () => {
     }
   }, [branchId]);
 
-const handleViewCustomer = (customer) => {
-  setSelectedCustomer(customer);
-  setShowForm(true);
-};
+  const handleViewCustomer = (customer) => {
+    setSelectedCustomer(customer);
+    setShowForm(true);
+  };
 
+  // Export to CSV function
+  const handleExport = () => {
+    if (filteredCustomers.length === 0) {
+      alert("No customers to export");
+      return;
+    }
 
-  // const verifyCustomer = (customer) => {
-  //   setSelectedCustomer(customer);
-  //   setShowForm(true);
-  // };
+    // Define CSV headers
+    const headers = [
+      "First Name",
+      "Surname",
+      "Middle Name",
+      "Contact",
+      "ID Number",
+      "Prequalified Amount",
+      "Status",
+      "Created At"
+    ];
 
-  
+    // Convert customers data to CSV rows
+    const csvRows = filteredCustomers.map(customer => [
+      customer.Firstname || "",
+      customer.Surname || "",
+      customer.Middlename || "",
+      customer.mobile || "",
+      customer.id_number || "",
+      customer.prequalifiedAmount || "",
+      customer.status || "",
+      customer.created_at ? new Date(customer.created_at).toLocaleDateString() : ""
+    ]);
 
-  // 🔍 Filter customers by name, phone, or id
-  const filteredCustomers = customers.filter(
-    (c) =>
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(","),
+      ...csvRows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `branch_customers_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Filter customers by name, phone, id, and status
+  const filteredCustomers = customers.filter((c) => {
+    const matchesSearch =
       (c.Firstname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.Surname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.Middlename || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.mobile || "").toString().includes(searchTerm) ||
-      (c.id_number || "").toString().includes(searchTerm)
-  );
+      (c.id_number || "").toString().includes(searchTerm);
+
+    const matchesStatus = !selectedStatus || c.status === selectedStatus;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    setSelectedStatus("");
+    setSearchTerm("");
+  };
 
   return (
     <div className="p-6">
@@ -125,17 +182,86 @@ const handleViewCustomer = (customer) => {
 
           {/* Action Buttons */}
           <div className="flex items-end space-x-2">
-            <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+            >
               <FunnelIcon className="h-5 w-5 mr-2" />
-              More Filters
+              Filter by Status
+              {selectedStatus && (
+                <span className="ml-2 bg-indigo-600 text-white text-xs rounded-full px-2 py-0.5">
+                  1
+                </span>
+              )}
             </button>
-            <button className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={handleExport}
+              className="flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+            >
               <ArrowDownTrayIcon className="h-5 w-5 mr-2" />
               Export
             </button>
           </div>
         </div>
+
+        {/* Expandable Status Filter */}
+        {showFilters && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Status Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Filter by Status
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">All Statuses</option>
+                  {statuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Clear Filters Button */}
+              <div className="flex items-end">
+                <button
+                  onClick={handleClearFilters}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+
+            {/* Active Filter Display */}
+            {selectedStatus && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-indigo-100 text-indigo-800">
+                  Status: {selectedStatus}
+                  <button
+                    onClick={() => setSelectedStatus("")}
+                    className="ml-2 text-indigo-600 hover:text-indigo-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Results Count */}
+      {!loading && (
+        <div className="mb-4 text-sm text-gray-600">
+          Showing {filteredCustomers.length} of {customers.length} customers
+        </div>
+      )}
 
       {/* Loading State */}
       {loading && (
@@ -171,7 +297,7 @@ const handleViewCustomer = (customer) => {
                     Prequalified Amount
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    status
+                    Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Actions
@@ -196,17 +322,23 @@ const handleViewCustomer = (customer) => {
                           })
                         : "N/A"}
                     </td>
-
                     <td className="px-6 py-4">
-                      {customer.verification_status || "N/A"}
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        customer.status === "Active" 
+                          ? "bg-green-100 text-green-800"
+                          : customer.status === "Pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}>
+                        {customer.status || "N/A"}
+                      </span>
                     </td>
-
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
                           onClick={() => handleViewCustomer(customer)}
                           className="text-green-600 hover:text-green-900 px-2 py-1 border border-green-600 rounded"
-                          title="Verify Loan"
+                          title="View Customer"
                         >
                           View
                         </button>
@@ -220,8 +352,8 @@ const handleViewCustomer = (customer) => {
 
           {filteredCustomers.length === 0 && !loading && (
             <div className="text-center py-12 text-gray-400">
-              {searchTerm
-                ? "No customers found matching your search."
+              {searchTerm || selectedStatus
+                ? "No customers found matching your filters."
                 : "No customers found."}
             </div>
           )}

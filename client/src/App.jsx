@@ -99,6 +99,7 @@ import ApprovalPendingca from "./pages/creditanalyst/registry/ApprovalPendingca"
 import CustomerTransferca from "./pages/creditanalyst/registry/CustomerTransferca";
 import CustomerCategoriesca from "./pages/creditanalyst/registry/CustomerCategoriesca";
 import CustomerEditsca from "./pages/creditanalyst/registry/CustomerEditsca";
+import OperationsManagement from "./pages/operations/Operations";
 
 
 
@@ -634,10 +635,15 @@ const getDefaultRoute = () => {
                   <Route path="/registry/customer-edits/cs" element={<ProtectedRoute><CustomerEditscs /></ProtectedRoute>} />
                 </>
               )}
+
+               <Route path="/operations" element={<OperationsManagement/>} />
             </Routes>
           </div>
         </div>
       </div>
+
+                       
+
     </Router>
   );
 }
