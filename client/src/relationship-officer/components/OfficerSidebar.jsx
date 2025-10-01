@@ -58,11 +58,11 @@ const OfficerSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       icon: FileText 
     },
     
-    { 
-      name: 'Loans', 
-      href: '/officer/loans',   // 👈 new route for viewing all loans
-      icon: FileText 
-    },
+    // { 
+    //   name: 'Loans', 
+    //   href: '/officer/loans',  
+    //   icon: FileText 
+    // },
   ],
 }
 ,

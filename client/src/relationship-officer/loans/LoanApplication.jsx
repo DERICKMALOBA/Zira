@@ -102,8 +102,7 @@ function LoanApplication() {
     }
   }, [profile, fetchApprovedCustomers]);
 
-  // Handle search - separate from main data
-  useEffect(() => {
+ useEffect(() => {
     if (!searchTerm) {
       setFilteredCustomers(customers);
       return;
@@ -111,8 +110,8 @@ function LoanApplication() {
 
     const term = searchTerm.toLowerCase();
     const filtered = customers.filter(customer => 
-      customer.id_number?.toLowerCase().includes(term) ||
-      customer.mobile?.toLowerCase().includes(term) ||
+      customer.id_number?.toString().toLowerCase().includes(term) ||
+      customer.mobile?.toString().toLowerCase().includes(term) ||
       `${customer.Firstname} ${customer.Surname}`.toLowerCase().includes(term)
     );
     

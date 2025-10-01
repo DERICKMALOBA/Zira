@@ -806,8 +806,10 @@ const validateForm = async () => {
         id_front_url: idFrontUrl,
         id_back_url: idBackUrl,
         house_image_url: houseImageUrl,
-        prequalifiedAmount: formData.loan?.prequalifiedAmount ? parseFloat(formData.loan.prequalifiedAmount) : null,
- status: "bm_review",
+    prequalifiedAmount: formData.prequalifiedAmount
+              ? parseFloat(formData.prequalifiedAmount)
+              : null,
+               status: "bm_review",
         
         created_by: profile?.id,
         branch_id: profile?.branch_id,

@@ -272,12 +272,12 @@ const ViewLoanbm = ({ loan, onClose }) => {
                     {loanDetails.duration_weeks} weeks
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                {/* <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Interest Rate:</span>
                   <span className="text-gray-900 font-semibold">
                     {loanDetails.interest_rate}%
                   </span>
-                </div>
+                </div> */}
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Processing Fee:</span>
                   <span className="text-gray-900 font-semibold">
@@ -451,9 +451,9 @@ const ViewLoanbm = ({ loan, onClose }) => {
                       <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Week</th>
                       <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Due Date</th>
                       <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Principal</th>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Interest</th>
+                      {/* <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Interest</th> */}
                       <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Fees</th>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Total</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900"> Weekly Installments </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -472,9 +472,9 @@ const ViewLoanbm = ({ loan, onClose }) => {
                         <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">
                           KES {payment.principal.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 text-sm text-right font-semibold text-blue-600">
+                        {/* <td className="px-6 py-4 text-sm text-right font-semibold text-blue-600">
                           KES {payment.interest.toLocaleString()}
-                        </td>
+                        </td> */}
                         <td className="px-6 py-4 text-sm text-right font-semibold text-amber-600">
                           KES {(payment.processing_fee + payment.registration_fee).toLocaleString()}
                         </td>

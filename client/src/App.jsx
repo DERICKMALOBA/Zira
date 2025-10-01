@@ -100,6 +100,9 @@ import CustomerTransferca from "./pages/creditanalyst/registry/CustomerTransferc
 import CustomerCategoriesca from "./pages/creditanalyst/registry/CustomerCategoriesca";
 import CustomerEditsca from "./pages/creditanalyst/registry/CustomerEditsca";
 import OperationsManagement from "./pages/operations/Operations";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import SidebarAdmin from "./pages/admin/components/SidebarAdmin";
+import HeaderAdmin from "./pages/admin/components/HeaderAdmin";
 
 
 
@@ -126,9 +129,11 @@ function App() {
       return <Sidebarbm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
     case "regional_manager":
       return <Sidebarrm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-    case "credit_analyst_officer":        // ← Change this
+    case "credit_analyst_officer":        
       return <Sidebarca sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-    case "customer_service_officer":      // ← Change this
+        case "admin":        
+      return <SidebarAdmin sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    case "customer_service_officer":      
       return <Sidebarcs sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
     default:
       return null;
@@ -143,9 +148,12 @@ const renderHeader = () => {
       return <Headerbm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
     case "regional_manager":
       return <Headerrm sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-    case "credit_analyst_officer":        // ← Change this
+    case "credit_analyst_officer":        
       return <Headerca sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
-    case "customer_service_officer":      // ← Change this
+       case "admin":        
+      return <HeaderAdmin sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
+    case "customer_service_officer":      
+
       return <Headercs sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />;
     default:
       return null;
@@ -637,6 +645,20 @@ const getDefaultRoute = () => {
               )}
 
                <Route path="/operations" element={<OperationsManagement/>} />
+               
+
+
+
+ {role === "admin" && (
+                <>
+                    <Route path="/dashboard/admin" element={<AdminDashboard/>} />
+                </>
+              )}
+
+
+
+
+
             </Routes>
           </div>
         </div>

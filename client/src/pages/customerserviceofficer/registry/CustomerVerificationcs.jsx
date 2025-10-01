@@ -87,14 +87,12 @@ const CustomerVerificationFormcs = ({ customerId, onClose }) => {
 
       if (!businessError) setBusinessImages(businessData || []);
 
-
-
 // Fetch latest BM score
 const { data: bmRow, error: bmError } = await supabase
   .from("customer_verifications")
   .select("bm_loan_scored_amount")
   .eq("customer_id", Number(customerId))
-  .not("bm_loan_scored_amount", "is", null) // only rows with BM values
+  .not("bm_loan_scored_amount", "is", null)
   .order("created_at", { ascending: false })
   .limit(1)
   .maybeSingle();
@@ -106,26 +104,23 @@ const { data: rmRow, error: rmError } = await supabase
   .from("customer_verifications")
   .select("rm_loan_scored_amount")
   .eq("customer_id", Number(customerId))
-  .not("rm_loan_scored_amount", "is", null) // only rows with RM values
+  .not("rm_loan_scored_amount", "is", null)
   .order("created_at", { ascending: false })
   .limit(1)
   .maybeSingle();
 
 if (rmError) console.error("❌ RM fetch error:", rmError);
 
-// Update state
+console.log("🔍 RM query result:", { rmRow, rmError, customerId: Number(customerId) });
+
+// Update state with better null handling
 setVerificationData((prev) => ({
   ...prev,
-  bmScoredAmount: bmRow?.bm_loan_scored_amount || 0,
-  rmScoredAmount: rmRow?.rm_loan_scored_amount || 0,
+  bmScoredAmount: bmRow?.bm_loan_scored_amount ?? 0,
+  rmScoredAmount: rmRow?.rm_loan_scored_amount ?? 0,
 }));
 
-console.log("✅ Latest BM:", bmRow?.bm_loan_scored_amount, "Latest RM:", rmRow?.rm_loan_scored_amount);
-
-
-
-
-
+console.log("✅ Latest BM:", bmRow?.bm_loan_scored_amount ?? 0, "Latest RM:", rmRow?.rm_loan_scored_amount ?? 0);
   
 
       // 3. Fetch loan details (only for scored amount and loan-specific info)

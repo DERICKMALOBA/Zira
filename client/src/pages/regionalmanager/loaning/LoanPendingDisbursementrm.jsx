@@ -184,26 +184,8 @@ const LoanPendingDisbursementrm = () => {
     setRepaymentSchedule(schedule);
   };
 
-  // const handleDisbursement = async (loanId) => {
-  //   try {
-  //     const { error } = await supabase
-  //       .from("loans")
-  //       .update({
-  //         status: 'disbursed',
-  //         disbursed_at: new Date().toISOString()
-  //       })
-  //       .eq("id", loanId);
 
-  //     if (error) throw error;
-
-  //     toast.success("Loan disbursed successfully!");
-  //     fetchPendingDisbursementLoans();
-  //     setSelectedLoan(null);
-  //   } catch (error) {
-  //     console.error("Error disbursing loan:", error);
-  //     toast.error("Failed to disburse loan");
-  //   }
-  // };
+  
 
   if (loading) {
     return (
@@ -436,24 +418,6 @@ const LoanPendingDisbursementrm = () => {
                     </div>
                   </div>
 
-                  {/* Disbursement Action */}
-                  {/* <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200">
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
-                      <CheckCircleIcon className="h-6 w-6 text-green-600 mr-3" />
-                      Ready for Disbursement
-                    </h3>
-                    <p className="text-gray-700 mb-4">
-                      This loan has been fully approved and is ready for disbursement. 
-                      Click the button below to mark it as disbursed.
-                    </p>
-                    <button
-                      onClick={() => handleDisbursement(selectedLoan.id)}
-                      className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg font-semibold"
-                    >
-                      <CurrencyDollarIcon className="h-5 w-5" />
-                      Confirm Disbursement
-                    </button>
-                  </div> */}
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl shadow-lg p-12 text-center">

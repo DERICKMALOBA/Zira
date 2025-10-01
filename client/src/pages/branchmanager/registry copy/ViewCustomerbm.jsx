@@ -86,16 +86,15 @@ const ViewCustomerbm = ({ customer, onClose }) => {
       if (!loanError) setLoanDetails(loanData || null);
       if (!guarantorsError) setGuarantors(guarantorsData || []);
      if (!securityError) {
-  const processedSecurityItems = (securityItemsData || []).map((item) => {
-    const images = (item.security_item_images || []).map((img) =>
-      img.image_url
-        ? supabase.storage
-            .from("customers") // 👈 replace with your storage bucket name
-            .getPublicUrl(img.image_url).data.publicUrl
-        : null
-    );
-    return { ...item, images };
-  });
+const processedSecurityItems = (securityItemsData || []).map((item) => ({
+  ...item,
+  images: item.security_item_images?.map((img) => img.image_url) || [],
+}));
+
+console.log("Processed Security Items:", processedSecurityItems);
+
+setSecurityItems(processedSecurityItems);
+
   setSecurityItems(processedSecurityItems);
   console.log("🔗 Security items with images:", processedSecurityItems);
 

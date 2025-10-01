@@ -142,16 +142,15 @@ setLoanDetails({
       if (!guarantorsError) setGuarantors(guarantorsData || []);
       
       if (!securityError) {
-        const processedSecurityItems = (securityItemsData || []).map((item) => {
-          const images = (item.security_item_images || []).map((img) =>
-            img.image_url
-              ? supabase.storage
-                  .from("customers") 
-                  .getPublicUrl(img.image_url).data.publicUrl
-              : null
-          );
-          return { ...item, images };
-        });
+       const processedSecurityItems = (securityItemsData || []).map((item) => ({
+  ...item,
+  images: item.security_item_images?.map((img) => img.image_url) || [],
+}));
+
+console.log("Processed Security Items:", processedSecurityItems);
+
+setSecurityItems(processedSecurityItems);
+
         setSecurityItems(processedSecurityItems);
       }
 

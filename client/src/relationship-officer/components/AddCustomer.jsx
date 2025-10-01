@@ -1,4 +1,4 @@
-  import { useState, memo, useCallback } from "react";
+import { useState, memo, useCallback } from "react";
 import {
   UserCircleIcon,
   BuildingOffice2Icon,
@@ -24,62 +24,64 @@ import "react-toastify/dist/ReactToastify.css";
 import { checkUniqueValue } from "../../utils/Unique";
 
 // Fixed FormField component outside of AddCustomer
-const FormField = memo(({
-  label,
-  name,
-  value,
-  onChange,
-  required = false,
-  type = "text",
-  options = null,
-  placeholder = "",
-  section = null,
-  className = "",
-  disabled = false,
-  errors = {},
-  handleNestedChange,
-}) => (
-  <div className={className}>
-    <label className="block text-sm font-medium text-gray-700 mb-2">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    {options ? (
-      <select
-        name={name}
-        value={value || ""}
-        onChange={section ? (e) => handleNestedChange(e, section) : onChange}
-        className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-          errors[name] ? "border-red-500" : ""
-        }`}
-        required={required}
-        disabled={disabled}
-      >
-        <option value="">{placeholder || `Select ${label}`}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    ) : (
-      <input
-        type={type}
-        name={name}
-        value={value || ""}
-        onChange={section ? (e) => handleNestedChange(e, section) : onChange}
-        placeholder={placeholder}
-        className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-          errors[name] ? "border-red-500" : ""
-        }`}
-        required={required}
-        disabled={disabled}
-      />
-    )}
-    {errors[name] && (
-      <span className="text-red-500 text-xs mt-1">{errors[name]}</span>
-    )}
-  </div>
-));
+const FormField = memo(
+  ({
+    label,
+    name,
+    value,
+    onChange,
+    required = false,
+    type = "text",
+    options = null,
+    placeholder = "",
+    section = null,
+    className = "",
+    disabled = false,
+    errors = {},
+    handleNestedChange,
+  }) => (
+    <div className={className}>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      {options ? (
+        <select
+          name={name}
+          value={value || ""}
+          onChange={section ? (e) => handleNestedChange(e, section) : onChange}
+          className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+            errors[name] ? "border-red-500" : ""
+          }`}
+          required={required}
+          disabled={disabled}
+        >
+          <option value="">{placeholder || `Select ${label}`}</option>
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          type={type}
+          name={name}
+          value={value || ""}
+          onChange={section ? (e) => handleNestedChange(e, section) : onChange}
+          placeholder={placeholder}
+          className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+            errors[name] ? "border-red-500" : ""
+          }`}
+          required={required}
+          disabled={disabled}
+        />
+      )}
+      {errors[name] && (
+        <span className="text-red-500 text-xs mt-1">{errors[name]}</span>
+      )}
+    </div>
+  )
+);
 
 const AddCustomer = ({ profile, onClose }) => {
   const [activeSection, setActiveSection] = useState("personal");
@@ -117,8 +119,8 @@ const AddCustomer = ({ profile, onClose }) => {
     road: "",
     landmark: "",
     hasLocalAuthorityLicense: "",
-    prequalifiedAmount: "", 
-    
+    prequalifiedAmount: "",
+
     guarantor: {
       prefix: "",
       Firstname: "",
@@ -130,7 +132,7 @@ const AddCustomer = ({ profile, onClose }) => {
       residenceStatus: "",
       gender: "",
       mobile: "",
-         alternativeMobile: "",
+      alternativeMobile: "",
       postalAddress: "",
       code: "",
       occupation: "",
@@ -172,188 +174,212 @@ const AddCustomer = ({ profile, onClose }) => {
   const sections = [
     { id: "personal", label: "Personal Info", icon: UserCircleIcon },
     { id: "business", label: "Business Info", icon: BuildingOffice2Icon },
-    { id: "borrowerSecurity", label: "Borrower Security", icon: ShieldCheckIcon },
+    {
+      id: "borrowerSecurity",
+      label: "Borrower Security",
+      icon: ShieldCheckIcon,
+    },
     { id: "loan", label: "Loan Details", icon: CurrencyDollarIcon },
     { id: "guarantor", label: "Guarantor", icon: UserGroupIcon },
-    { id: "guarantorSecurity", label: "Guarantor Security", icon: ShieldCheckIcon },
+    {
+      id: "guarantorSecurity",
+      label: "Guarantor Security",
+      icon: ShieldCheckIcon,
+    },
     { id: "nextOfKin", label: "Next of Kin", icon: UserGroupIcon },
     { id: "documents", label: "Documents", icon: DocumentTextIcon },
   ];
 
   // Fixed change handlers with useCallback to prevent re-renders
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: null }));
-    }
-  }, [errors]);
+  const handleChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      if (errors[name]) {
+        setErrors((prev) => ({ ...prev, [name]: null }));
+      }
+    },
+    [errors]
+  );
 
-  const handleNestedChange = useCallback((e, section) => {
-    if (!e || !e.target) return;
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [section]: { ...prev[section], [name]: value },
-    }));
-    const errorKey = `${section}${name.charAt(0).toUpperCase() + name.slice(1)}`;
-    if (errors[errorKey]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[errorKey];
-        return newErrors;
-      });
-    }
-  }, [errors]);
+  const handleNestedChange = useCallback(
+    (e, section) => {
+      if (!e || !e.target) return;
+      const { name, value } = e.target;
+      setFormData((prev) => ({
+        ...prev,
+        [section]: { ...prev[section], [name]: value },
+      }));
+      const errorKey = `${section}${
+        name.charAt(0).toUpperCase() + name.slice(1)
+      }`;
+      if (errors[errorKey]) {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[errorKey];
+          return newErrors;
+        });
+      }
+    },
+    [errors]
+  );
 
-  const handleSecurityChange = useCallback((e, index) => {
-    const { name, value } = e.target;
-    setSecurityItems((prev) => {
-      const newItems = [...prev];
-      newItems[index][name] = value;
-      return newItems;
-    });
-    const errorKey = `securityValue_${index}`;
-    if (errors[errorKey]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[errorKey];
-        return newErrors;
+  const handleSecurityChange = useCallback(
+    (e, index) => {
+      const { name, value } = e.target;
+      setSecurityItems((prev) => {
+        const newItems = [...prev];
+        newItems[index][name] = value;
+        return newItems;
       });
-    }
-  }, [errors]);
+      const errorKey = `securityValue_${index}`;
+      if (errors[errorKey]) {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[errorKey];
+          return newErrors;
+        });
+      }
+    },
+    [errors]
+  );
 
-  const handleGuarantorSecurityChange = useCallback((e, index) => {
-    const { name, value } = e.target;
-    setGuarantorSecurityItems((prev) => {
-      const newItems = [...prev];
-      newItems[index][name] = value;
-      return newItems;
-    });
-    const errorKey = `guarantorSecurityValue_${index}`;
-    if (errors[errorKey]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[errorKey];
-        return newErrors;
+  const handleGuarantorSecurityChange = useCallback(
+    (e, index) => {
+      const { name, value } = e.target;
+      setGuarantorSecurityItems((prev) => {
+        const newItems = [...prev];
+        newItems[index][name] = value;
+        return newItems;
       });
-    }
-  }, [errors]);
+      const errorKey = `guarantorSecurityValue_${index}`;
+      if (errors[errorKey]) {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors[errorKey];
+          return newErrors;
+        });
+      }
+    },
+    [errors]
+  );
 
   // Validation functions (keep the same as before)
-const validatePersonalDetails = async () => {
-  const newErrors = {};
+  const validatePersonalDetails = async () => {
+    const newErrors = {};
 
-  if (!formData.Firstname) newErrors.Firstname = "First name is required";
-  if (!formData.Surname) newErrors.Surname = "Surname is required";
-  if (!formData.mobile) newErrors.mobile = "Mobile number is required";
-  if (!formData.alternativeMobile) newErrors.alternativeMobile = "Alternative mobile number is required";
-  if (!formData.idNumber) newErrors.idNumber = "ID number is required";
+    if (!formData.Firstname) newErrors.Firstname = "First name is required";
+    if (!formData.Surname) newErrors.Surname = "Surname is required";
+    if (!formData.mobile) newErrors.mobile = "Mobile number is required";
+    if (!formData.alternativeMobile)
+      newErrors.alternativeMobile = "Alternative mobile number is required";
+    if (!formData.idNumber) newErrors.idNumber = "ID number is required";
 
-  // Mobile number format
-  if (formData.mobile && !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))) {
-    newErrors.mobile = "Please enter a valid mobile number";
-  }
-  if (formData.alternativeMobile && !/^[0-9]{10,15}$/.test(formData.alternativeMobile.replace(/\D/g, ""))) {
-    newErrors.altMobile = "Please enter a valid alternative mobile number";
-  }
+    // Mobile number format
+    if (
+      formData.mobile &&
+      !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))
+    ) {
+      newErrors.mobile = "Please enter a valid mobile number";
+    }
+    if (
+      formData.alternativeMobile &&
+      !/^[0-9]{10,15}$/.test(formData.alternativeMobile.replace(/\D/g, ""))
+    ) {
+      newErrors.altMobile = "Please enter a valid alternative mobile number";
+    }
 
-  // ID format
-  if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
-    newErrors.idNumber = "Please enter a valid ID number";
-  }
+    // ID format
+    if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
+      newErrors.idNumber = "Please enter a valid ID number";
+    }
 
-  // Age validation
-  if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
-    newErrors.dateOfBirth = "Customer must be at least 18 years old";
-  }
+    // Age validation
+    if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
+      newErrors.dateOfBirth = "Customer must be at least 18 years old";
+    }
 
-  // Check uniqueness across customers, guarantors, next_of_kin
-  const fieldsToCheck = [
-    { field: "mobile", value: formData.mobile },
-   { field: "alternativeMobile", value: formData.alternativeMobile },
-    { field: "idNumber", value: formData.idNumber },
-  ];
+    // Check uniqueness across customers, guarantors, next_of_kin
+    const fieldsToCheck = [
+      { field: "mobile", value: formData.mobile },
+      { field: "alternativeMobile", value: formData.alternativeMobile },
+      { field: "idNumber", value: formData.idNumber },
+    ];
 
- for (const { field, value } of fieldsToCheck) {
-  if (value && !newErrors[field]) {
-    try {
-      const isUnique = await checkUniqueValue(
-        ["customers", "guarantors", "next_of_kin"],
-        field === "idNumber" ? "id_number" : "mobile",
-        value
-      );
-      if (!isUnique) {
-        newErrors[field] = `${field} already exists in our system`;
+    for (const { field, value } of fieldsToCheck) {
+      if (value && !newErrors[field]) {
+        try {
+          const isUnique = await checkUniqueValue(
+            ["customers", "guarantors", "next_of_kin"],
+            field === "idNumber" ? "id_number" : "mobile",
+            value
+          );
+          if (!isUnique) {
+            newErrors[field] = `${field} already exists in our system`;
+          }
+        } catch (error) {
+          console.error("Error checking uniqueness:", error);
+          newErrors[field] = `Error validating ${field}`;
+        }
       }
-    } catch (error) {
-      console.error("Error checking uniqueness:", error);
-      newErrors[field] = `Error validating ${field}`;
     }
-  }
-}
 
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
+  const validateBusinessDetails = () => {
+    let errorsFound = {};
 
-
-const validateBusinessDetails = () => {
-  let errorsFound = {};
-
-  // Business Name
-  if (!formData.businessName) {
-    errorsFound.businessName = "Business name is required";
-  }
-
-  // Business Type
-  if (!formData.businessType) {
-    errorsFound.businessType = "Business type is required";
-  }
-
-  // Year Established (>= 6 months)
-  if (!formData.yearEstablished) {
-    errorsFound.yearEstablished = "Year established is required";
-  } else {
-    const establishedDate = new Date(formData.yearEstablished);
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    if (establishedDate > sixMonthsAgo) {
-      errorsFound.yearEstablished = "Business must be at least 6 months old";
+    // Business Name
+    if (!formData.businessName) {
+      errorsFound.businessName = "Business name is required";
     }
-  }
 
-  // Business Location
-  if (!formData.businessLocation) {
-    errorsFound.businessLocation = "Business location is required";
-  }
+    // Business Type
+    if (!formData.businessType) {
+      errorsFound.businessType = "Business type is required";
+    }
 
-  // Road
-  if (!formData.road) {
-    errorsFound.road = "Road is required";
-  }
+    // Year Established (>= 6 months)
+    if (!formData.yearEstablished) {
+      errorsFound.yearEstablished = "Year established is required";
+    } else {
+      const establishedDate = new Date(formData.yearEstablished);
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
-  // Landmark
-  if (!formData.landmark) {
-    errorsFound.landmark = "Landmark is required";
-  }
+      if (establishedDate > sixMonthsAgo) {
+        errorsFound.yearEstablished = "Business must be at least 6 months old";
+      }
+    }
 
-  // Daily Sales
-  if (!formData.daily_Sales) {
-    errorsFound.daily_Sales = "Daily sales estimate is required";
-  }
+    // Business Location
+    if (!formData.businessLocation) {
+      errorsFound.businessLocation = "Business location is required";
+    }
 
-  
+    // Road
+    if (!formData.road) {
+      errorsFound.road = "Road is required";
+    }
 
-  setErrors(errorsFound);
+    // Landmark
+    if (!formData.landmark) {
+      errorsFound.landmark = "Landmark is required";
+    }
 
-  const isValid = Object.keys(errorsFound).length === 0;
-  console.log("Business validation result:", isValid, errorsFound); // 👈 check here
-  return isValid;
-};
+    // Daily Sales
+    if (!formData.daily_Sales) {
+      errorsFound.daily_Sales = "Daily sales estimate is required";
+    }
 
+    setErrors(errorsFound);
+
+    const isValid = Object.keys(errorsFound).length === 0;
+    console.log("Business validation result:", isValid, errorsFound); // 👈 check here
+    return isValid;
+  };
 
   const validateBorrowerSecurity = () => {
     let errorsFound = {};
@@ -370,11 +396,13 @@ const validateBusinessDetails = () => {
         isValid = false;
       }
       if (!item.identification) {
-        errorsFound[`securityIdentification_${index}`] = "Identification is required";
+        errorsFound[`securityIdentification_${index}`] =
+          "Identification is required";
         isValid = false;
       }
       if (!item.value || parseFloat(item.value) <= 0) {
-        errorsFound[`securityValue_${index}`] = "Estimated value must be greater than 0";
+        errorsFound[`securityValue_${index}`] =
+          "Estimated value must be greater than 0";
         isValid = false;
       }
     });
@@ -386,61 +414,88 @@ const validateBusinessDetails = () => {
   const validateLoanDetails = () => {
     const errorsFound = {};
     let isValid = true;
-    if (!formData.prequalifiedAmount || parseFloat(formData.prequalifiedAmount) <= 0) {
-      errorsFound.prequalifiedAmount = "Please enter a valid loan amount greater than 0";
+    if (
+      !formData.prequalifiedAmount ||
+      parseFloat(formData.prequalifiedAmount) <= 0
+    ) {
+      errorsFound.prequalifiedAmount =
+        "Please enter a valid loan amount greater than 0";
       isValid = false;
     }
     setErrors(errorsFound);
     return isValid;
   };
 
-// GUARANTOR DETAILS
-const validateGuarantorDetails = async () => {
-  const errorsFound = {};
-  const { Firstname, Surname, mobile, alternativeMobile, idNumber, dateOfBirth, gender } = formData.guarantor;
+  // GUARANTOR DETAILS
+  const validateGuarantorDetails = async () => {
+    const errorsFound = {};
+    const {
+      Firstname,
+      Surname,
+      mobile,
+      alternativeMobile,
+      idNumber,
+      dateOfBirth,
+      gender,
+    } = formData.guarantor;
 
-  // Required fields
-  if (!Firstname?.trim()) errorsFound.guarantorFirstname = "First Name is required";
-  if (!Surname?.trim()) errorsFound.guarantorSurname = "Surname is required";
-  if (!gender?.trim()) errorsFound.guarantorGender = "Gender is required";
-  if (!mobile?.trim()) errorsFound.guarantorMobile = "Mobile number is required";
-  if (!alternativeMobile?.trim()) errorsFound.guarantorAlternativeMobile = "Alternative mobile number is required";
-  if (!idNumber?.trim()) errorsFound.guarantorIdNumber = "ID number is required";
+    // Required fields
+    if (!Firstname?.trim())
+      errorsFound.guarantorFirstname = "First Name is required";
+    if (!Surname?.trim()) errorsFound.guarantorSurname = "Surname is required";
+    if (!gender?.trim()) errorsFound.guarantorGender = "Gender is required";
+    if (!mobile?.trim())
+      errorsFound.guarantorMobile = "Mobile number is required";
+    if (!alternativeMobile?.trim())
+      errorsFound.guarantorAlternativeMobile =
+        "Alternative mobile number is required";
+    if (!idNumber?.trim())
+      errorsFound.guarantorIdNumber = "ID number is required";
 
-  // Format checks
-  if (mobile && !/^[0-9]{10,15}$/.test(mobile.replace(/\D/g, ""))) errorsFound.guarantorMobile = "Please enter a valid mobile number";
-  if (alternativeMobile && !/^[0-9]{10,15}$/.test(alternativeMobile.replace(/\D/g, ""))) errorsFound.guarantorAlternativeMobile = "Please enter a valid alternative mobile number";
-  if (idNumber && !/^[0-9]{6,12}$/.test(idNumber)) errorsFound.guarantorIdNumber = "Please enter a valid ID number";
+    // Format checks
+    if (mobile && !/^[0-9]{10,15}$/.test(mobile.replace(/\D/g, "")))
+      errorsFound.guarantorMobile = "Please enter a valid mobile number";
+    if (
+      alternativeMobile &&
+      !/^[0-9]{10,15}$/.test(alternativeMobile.replace(/\D/g, ""))
+    )
+      errorsFound.guarantorAlternativeMobile =
+        "Please enter a valid alternative mobile number";
+    if (idNumber && !/^[0-9]{6,12}$/.test(idNumber))
+      errorsFound.guarantorIdNumber = "Please enter a valid ID number";
 
-  // Age check
-  if (dateOfBirth && !isAtLeast18YearsOld(dateOfBirth)) errorsFound.guarantorDateOfBirth = "Guarantor must be at least 18 years old";
+    // Age check
+    if (dateOfBirth && !isAtLeast18YearsOld(dateOfBirth))
+      errorsFound.guarantorDateOfBirth =
+        "Guarantor must be at least 18 years old";
 
-  // Uniqueness
-  const fieldsToCheck = [
-    { field: "guarantorMobile", value: mobile },
-    { field: "guarantorAlternativeMobile", value: alternativeMobile },
-    { field: "guarantorIdNumber", value: idNumber },
-  ];
+    // Uniqueness
+    const fieldsToCheck = [
+      { field: "guarantorMobile", value: mobile },
+      { field: "guarantorAlternativeMobile", value: alternativeMobile },
+      { field: "guarantorIdNumber", value: idNumber },
+    ];
 
-  for (const { field, value } of fieldsToCheck) {
-    if (value && !errorsFound[field]) {
-      try {
-        const isUnique = await checkUniqueValue(
-          ["customers", "guarantors", "next_of_kin"],
-          field.includes("IdNumber") ? "id_number" : "mobile",
-          value
-        );
-        if (!isUnique) errorsFound[field] = `${field} already exists in our system`;
-      } catch (err) {
-        console.error("Error checking uniqueness:", err);
-        errorsFound[field] = `Error validating ${field}`;
+    for (const { field, value } of fieldsToCheck) {
+      if (value && !errorsFound[field]) {
+        try {
+          const isUnique = await checkUniqueValue(
+            ["customers", "guarantors", "next_of_kin"],
+            field.includes("IdNumber") ? "id_number" : "mobile",
+            value
+          );
+          if (!isUnique)
+            errorsFound[field] = `${field} already exists in our system`;
+        } catch (err) {
+          console.error("Error checking uniqueness:", err);
+          errorsFound[field] = `Error validating ${field}`;
+        }
       }
     }
-  }
 
-  setErrors(errorsFound);
-  return Object.keys(errorsFound).length === 0;
-}
+    setErrors(errorsFound);
+    return Object.keys(errorsFound).length === 0;
+  };
 
   const validateGuarantorSecurity = () => {
     let isValid = true;
@@ -451,15 +506,23 @@ const validateGuarantorDetails = async () => {
         isValid = false;
       }
       if (!item.description || item.description.trim() === "") {
-        errorsFound[`guarantorSecurityDescription_${index}`] = "Description is required";
+        errorsFound[`guarantorSecurityDescription_${index}`] =
+          "Description is required";
         isValid = false;
       }
       if (!item.identification || item.identification.trim() === "") {
-        errorsFound[`guarantorSecurityIdentification_${index}`] = "Identification is required";
+        errorsFound[`guarantorSecurityIdentification_${index}`] =
+          "Identification is required";
         isValid = false;
       }
-      if (item.value === "" || item.value === null || isNaN(item.value) || Number(item.value) <= 0) {
-        errorsFound[`guarantorSecurityValue_${index}`] = "Valid Value is required";
+      if (
+        item.value === "" ||
+        item.value === null ||
+        isNaN(item.value) ||
+        Number(item.value) <= 0
+      ) {
+        errorsFound[`guarantorSecurityValue_${index}`] =
+          "Valid Value is required";
         isValid = false;
       }
     });
@@ -467,67 +530,78 @@ const validateGuarantorDetails = async () => {
     return isValid;
   };
 
+  // NEXT OF KIN DETAILS
+  const validateNextOfKinDetails = async () => {
+    const errorsFound = {};
+    const { Firstname, Surname, mobile, alternativeNumber, idNumber } =
+      formData.nextOfKin;
 
-// NEXT OF KIN DETAILS
-const validateNextOfKinDetails = async () => {
-  const errorsFound = {};
-  const { Firstname, Surname, mobile, alternativeNumber, idNumber } = formData.nextOfKin;
+    // Required fields
+    if (!Firstname?.trim())
+      errorsFound.nextOfKinFirstname = "First Name is required";
+    if (!Surname?.trim()) errorsFound.nextOfKinSurname = "Surname is required";
+    if (!mobile?.trim())
+      errorsFound.nextOfKinMobile = "Mobile number is required";
+    if (!alternativeNumber?.trim())
+      errorsFound.nextOfKinAlternativeNumber =
+        "Alternative mobile number is required";
+    if (!idNumber?.trim())
+      errorsFound.nextOfKinIdNumber = "ID number is required";
 
-  // Required fields
-  if (!Firstname?.trim()) errorsFound.nextOfKinFirstname = "First Name is required";
-  if (!Surname?.trim()) errorsFound.nextOfKinSurname = "Surname is required";
-  if (!mobile?.trim()) errorsFound.nextOfKinMobile = "Mobile number is required";
-  if (!alternativeNumber?.trim()) errorsFound.nextOfKinAlternativeNumber = "Alternative mobile number is required";
-  if (!idNumber?.trim()) errorsFound.nextOfKinIdNumber = "ID number is required";
+    // Format checks
+    if (mobile && !/^[0-9]{10,15}$/.test(mobile.replace(/\D/g, ""))) {
+      errorsFound.nextOfKinMobile = "Please enter a valid mobile number";
+    }
+    if (
+      alternativeNumber &&
+      !/^[0-9]{10,15}$/.test(alternativeNumber.replace(/\D/g, ""))
+    ) {
+      errorsFound.nextOfKinAlternativeNumber =
+        "Please enter a valid alternative mobile number";
+    }
+    if (idNumber && !/^[0-9]{6,12}$/.test(idNumber)) {
+      errorsFound.nextOfKinIdNumber = "Please enter a valid ID number";
+    }
 
-  // Format checks
-  if (mobile && !/^[0-9]{10,15}$/.test(mobile.replace(/\D/g, ""))) {
-    errorsFound.nextOfKinMobile = "Please enter a valid mobile number";
-  }
-  if (alternativeNumber && !/^[0-9]{10,15}$/.test(alternativeNumber.replace(/\D/g, ""))) {
-    errorsFound.nextOfKinAlternativeNumber = "Please enter a valid alternative mobile number";
-  }
-  if (idNumber && !/^[0-9]{6,12}$/.test(idNumber)) {
-    errorsFound.nextOfKinIdNumber = "Please enter a valid ID number";
-  }
+    // Uniqueness
+    const fieldsToCheck = [
+      { field: "nextOfKinMobile", value: mobile },
+      { field: "nextOfKinAlternativeNumber", value: alternativeNumber },
+      { field: "nextOfKinIdNumber", value: idNumber },
+    ];
 
-  // Uniqueness
-  const fieldsToCheck = [
-    { field: "nextOfKinMobile", value: mobile },
-    { field: "nextOfKinAlternativeNumber", value: alternativeNumber },
-    { field: "nextOfKinIdNumber", value: idNumber },
-  ];
-
-  for (const { field, value } of fieldsToCheck) {
-    if (value && !errorsFound[field]) {
-      try {
-        const isUnique = await checkUniqueValue(
-          ["customers", "guarantors", "next_of_kin"],
-          field.toLowerCase().includes("idnumber") ? "id_number" : "mobile",
-          value
-        );
-        if (!isUnique) errorsFound[field] = `${field} already exists in our system`;
-      } catch (err) {
-        console.error("Error checking uniqueness:", err);
-        errorsFound[field] = `Error validating ${field}`;
+    for (const { field, value } of fieldsToCheck) {
+      if (value && !errorsFound[field]) {
+        try {
+          const isUnique = await checkUniqueValue(
+            ["customers", "guarantors", "next_of_kin"],
+            field.toLowerCase().includes("idnumber") ? "id_number" : "mobile",
+            value
+          );
+          if (!isUnique)
+            errorsFound[field] = `${field} already exists in our system`;
+        } catch (err) {
+          console.error("Error checking uniqueness:", err);
+          errorsFound[field] = `Error validating ${field}`;
+        }
       }
     }
-  }
 
-  setErrors(errorsFound);
-  return Object.keys(errorsFound).length === 0;
-};
-
+    setErrors(errorsFound);
+    return Object.keys(errorsFound).length === 0;
+  };
 
   const validateDocuments = () => {
     let isValid = true;
     let errorsFound = {};
     if (!officerClientImage1) {
-      errorsFound.officerClientImage1 = "First Officer and Client Image is required";
+      errorsFound.officerClientImage1 =
+        "First Officer and Client Image is required";
       isValid = false;
     }
     if (!officerClientImage2) {
-      errorsFound.officerClientImage2 = "Second Officer and Client Image is required";
+      errorsFound.officerClientImage2 =
+        "Second Officer and Client Image is required";
       isValid = false;
     }
     if (!bothOfficersImage) {
@@ -571,16 +645,17 @@ const validateNextOfKinDetails = async () => {
     }
 
     if (isValid) {
-      const nextIndex = sections.findIndex((item) => item.id === activeSection) + 1;
+      const nextIndex =
+        sections.findIndex((item) => item.id === activeSection) + 1;
       if (nextIndex < sections.length) {
         setActiveSection(sections[nextIndex].id);
       }
     } else {
       toast.error("Please fix the highlighted errors before continuing.", {
-      position: "top-right",
-      autoClose: 3000,
-      theme: "colored",
-    });
+        position: "top-right",
+        autoClose: 3000,
+        theme: "colored",
+      });
       console.log("Please fix the highlighted errors before continuing.");
     }
   };
@@ -590,12 +665,19 @@ const validateNextOfKinDetails = async () => {
     if (!dateString) return true;
     const birthDate = new Date(dateString);
     const today = new Date();
-    const eighteenYearsAgo = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+    const eighteenYearsAgo = new Date(
+      today.getFullYear() - 18,
+      today.getMonth(),
+      today.getDate()
+    );
     return birthDate <= eighteenYearsAgo;
   };
 
   const addSecurityItem = () => {
-    setSecurityItems([...securityItems, { item: "", description: "", identification: "", value: "" }]);
+    setSecurityItems([
+      ...securityItems,
+      { item: "", description: "", identification: "", value: "" },
+    ]);
     setSecurityItemImages([...securityItemImages, []]);
   };
 
@@ -605,27 +687,30 @@ const validateNextOfKinDetails = async () => {
   };
 
   const addGuarantorSecurityItem = () => {
-    setGuarantorSecurityItems([...guarantorSecurityItems, { item: "", description: "", identification: "", value: "" }]);
+    setGuarantorSecurityItems([
+      ...guarantorSecurityItems,
+      { item: "", description: "", identification: "", value: "" },
+    ]);
     setGuarantorSecurityImages([...guarantorSecurityImages, []]);
   };
 
-const handleFileUpload = async (e, setter, key) => {
-  const file = e.target.files[0];
-  if (!file) return;
+  const handleFileUpload = async (e, setter, key) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-  try {
-    // Save file for upload using the individual setter
-    setter(file);
+    try {
+      // Save file for upload using the individual setter
+      setter(file);
 
-    // Save preview URL
-    setPreviews((prev) => ({ ...prev, [key]: URL.createObjectURL(file) }));
-    
-    console.log(`✅ File saved for ${key}:`, file.name);
-  } catch (err) {
-    console.error(err);
-    toast.error("Unexpected error during file selection.");
-  }
-};
+      // Save preview URL
+      setPreviews((prev) => ({ ...prev, [key]: URL.createObjectURL(file) }));
+
+      console.log(`✅ File saved for ${key}:`, file.name);
+    } catch (err) {
+      console.error(err);
+      toast.error("Unexpected error during file selection.");
+    }
+  };
 
   const handleRemoveFile = (key, setter) => {
     setter(null);
@@ -642,7 +727,6 @@ const handleFileUpload = async (e, setter, key) => {
     });
   };
 
- 
   const handleMultipleFiles = (e, setter) => {
     const files = Array.from(e.target.files);
     setter((prev) => [...prev, ...files]); // append new images
@@ -652,422 +736,493 @@ const handleFileUpload = async (e, setter, key) => {
     setBusinessImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-// ✅ Master validation function
-const validateForm = async () => {
-  const personalValid = await validatePersonalDetails();
-  const businessValid = validateBusinessDetails();
-  const borrowerSecurityValid = validateBorrowerSecurity();
-  const loanValid = validateLoanDetails();
-  const guarantorValid = await validateGuarantorDetails();
-  const guarantorSecurityValid = validateGuarantorSecurity();
-  const nextOfKinValid = await validateNextOfKinDetails();
-  const documentsValid = validateDocuments();
+  // ✅ Master validation function
+  const validateForm = async () => {
+    const personalValid = await validatePersonalDetails();
+    const businessValid = validateBusinessDetails();
+    const borrowerSecurityValid = validateBorrowerSecurity();
+    const loanValid = validateLoanDetails();
+    const guarantorValid = await validateGuarantorDetails();
+    const guarantorSecurityValid = validateGuarantorSecurity();
+    const nextOfKinValid = await validateNextOfKinDetails();
+    const documentsValid = validateDocuments();
 
-  const isValid =
-    personalValid &&
-    businessValid &&
-    borrowerSecurityValid &&
-    loanValid &&
-    guarantorValid &&
-    guarantorSecurityValid &&
-    nextOfKinValid &&
-    documentsValid;
+    const isValid =
+      personalValid &&
+      businessValid &&
+      borrowerSecurityValid &&
+      loanValid &&
+      guarantorValid &&
+      guarantorSecurityValid &&
+      nextOfKinValid &&
+      documentsValid;
 
-  if (!isValid) {
-    console.warn("❌ Validation failed: ", {
-      personalValid,
-      businessValid,
-      borrowerSecurityValid,
-      loanValid,
-      guarantorValid,
-      guarantorSecurityValid,
-      nextOfKinValid,
-      documentsValid,
-    });
-  }
+    if (!isValid) {
+      console.warn(" Validation failed: ", {
+        personalValid,
+        businessValid,
+        borrowerSecurityValid,
+        loanValid,
+        guarantorValid,
+        guarantorSecurityValid,
+        nextOfKinValid,
+        documentsValid,
+      });
+    }
 
-  return isValid;
-};
-
-
-
-  // Upload file helper function (keep the same)
- const uploadFile = async (file, path, bucket = "customers") => {
-  try {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(path, file, { upsert: true });
-
-    if (error) throw error;
-
-    const { data: urlData, error: urlError } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(data.path);
-
-    if (urlError) throw urlError;
-
-    return urlData.publicUrl;
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    toast.error(`Failed to upload file: ${error.message}`);
-    return null;
-  }
-};
-
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  console.log(" Submit button clicked");
-
-  const isValid = await validateForm();
-  if (!isValid) {
-    toast.error("Please fix the errors in the form before submitting.");
-    return;
-  }
-
-  setIsSubmitting(true);
-
-  const logError = (section, error) => {
-    console.group(` Error in ${section} section`);
-    console.error(error.message, error);
-    console.groupEnd();
-    toast.error(`Error in ${section}: ${error.message}`);
+    return isValid;
   };
 
-  try {
-    console.log("Starting file uploads...");
+  // Upload file helper function (keep the same)
+  const uploadFile = async (file, path, bucket = "customers") => {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(path, file, { upsert: true });
 
-    // ========= 1. Upload customer personal images =========
-    let passportUrl = null, idFrontUrl = null, idBackUrl = null, houseImageUrl = null;
+      if (error) throw error;
 
-    if (passportFile) {
-      passportUrl = await uploadFile(passportFile, `personal/${Date.now()}_passport_${passportFile.name}`, "customers");
-      if (!passportUrl) throw new Error("Failed to upload passport image");
+      const { data: urlData, error: urlError } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(data.path);
+
+      if (urlError) throw urlError;
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error(`Failed to upload file: ${error.message}`);
+      return null;
     }
+  };
 
-    if (idFrontFile) {
-      idFrontUrl = await uploadFile(idFrontFile, `personal/${Date.now()}_id_front_${idFrontFile.name}`, "customers");
-      if (!idFrontUrl) throw new Error("Failed to upload ID front image");
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    console.log(" Submit button clicked");
 
-    if (idBackFile) {
-      idBackUrl = await uploadFile(idBackFile, `personal/${Date.now()}_id_back_${idBackFile.name}`, "customers");
-      if (!idBackUrl) throw new Error("Failed to upload ID back image");
-    }
-
-    if (houseImageFile) {
-      houseImageUrl = await uploadFile(houseImageFile, `personal/${Date.now()}_house_${houseImageFile.name}`, "customers");
-      if (!houseImageUrl) throw new Error("Failed to upload house image");
-    }
-
-    // ========= 2. Insert customer =========
-    const { data: customerData, error: customerError } = await supabase
-      .from("customers")
-      .insert([{
-        prefix: formData.prefix || null,
-        Firstname: formData.Firstname || null,
-        Surname: formData.Surname || null,
-        Middlename: formData.Middlename || null,
-        marital_status: formData.maritalStatus || null,
-        residence_status: formData.residenceStatus || null,
-        mobile: formData.mobile || null,
-        alternative_mobile: formData.alternativeMobile || null,
-        occupation: formData.occupation || null,
-        date_of_birth: formData.dateOfBirth || null,
-        gender: formData.gender || null,
-        id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
-        postal_address: formData.postalAddress || null,
-        code: formData.code ? parseInt(formData.code) : null,
-        town: formData.town || null,
-        county: formData.county || null,
-        business_name: formData.businessName || null,
-        business_type: formData.businessType || null,
-        daily_Sales: formData.daily_Sales ? parseFloat(formData.daily_Sales) : null,
-        year_established: formData.yearEstablished ? parseInt(formData.yearEstablished) : null,
-        business_location: formData.businessLocation || null,
-        road: formData.road || null,
-        landmark: formData.landmark || null,
-        has_local_authority_license: formData.hasLocalAuthorityLicense === "Yes",
-        passport_url: passportUrl,
-        id_front_url: idFrontUrl,
-        id_back_url: idBackUrl,
-        house_image_url: houseImageUrl,
-        prequalifiedAmount: formData.loan?.prequalifiedAmount ? parseFloat(formData.loan.prequalifiedAmount) : null,
-         status: "bm_review",
-
-        // ✅ Metadata
-        created_by: profile?.id,
-        branch_id: profile?.branch_id,
-        region_id: profile?.region_id,
-        created_at: new Date().toISOString(),
-      }])
-      .select("id")
-      .single();
-
-    if (customerError) {
-      logError("Customer", customerError);
-      setIsSubmitting(false);
+    const isValid = await validateForm();
+    if (!isValid) {
+      toast.error("Please fix the errors in the form before submitting.");
       return;
     }
 
-    const customerId = customerData.id;
+    setIsSubmitting(true);
 
-    // ========= 3. Upload business images =========
-    if (businessImages.length > 0) {
-      const businessImageUrls = [];
-      for (const image of businessImages) {
-        const url = await uploadFile(image, `business/${Date.now()}_${image.name}`, "customers");
-        if (url) businessImageUrls.push(url);
+    const logError = (section, error) => {
+      console.group(` Error in ${section} section`);
+      console.error(error.message, error);
+      console.groupEnd();
+      toast.error(`Error in ${section}: ${error.message}`);
+    };
+
+    try {
+      console.log("Starting file uploads...");
+
+      // ========= 1. Upload customer personal images =========
+      let passportUrl = null,
+        idFrontUrl = null,
+        idBackUrl = null,
+        houseImageUrl = null;
+
+      if (passportFile) {
+        passportUrl = await uploadFile(
+          passportFile,
+          `personal/${Date.now()}_passport_${passportFile.name}`,
+          "customers"
+        );
+        if (!passportUrl) throw new Error("Failed to upload passport image");
       }
-      if (businessImageUrls.length > 0) {
-        const { error: businessImageError } = await supabase
-          .from("business_images")
-          .insert(businessImageUrls.map((url) => ({
-            customer_id: customerId,
-            image_url: url,
+
+      if (idFrontFile) {
+        idFrontUrl = await uploadFile(
+          idFrontFile,
+          `personal/${Date.now()}_id_front_${idFrontFile.name}`,
+          "customers"
+        );
+        if (!idFrontUrl) throw new Error("Failed to upload ID front image");
+      }
+
+      if (idBackFile) {
+        idBackUrl = await uploadFile(
+          idBackFile,
+          `personal/${Date.now()}_id_back_${idBackFile.name}`,
+          "customers"
+        );
+        if (!idBackUrl) throw new Error("Failed to upload ID back image");
+      }
+
+      if (houseImageFile) {
+        houseImageUrl = await uploadFile(
+          houseImageFile,
+          `personal/${Date.now()}_house_${houseImageFile.name}`,
+          "customers"
+        );
+        if (!houseImageUrl) throw new Error("Failed to upload house image");
+      }
+
+      // ========= 2. Insert customer =========
+      const { data: customerData, error: customerError } = await supabase
+        .from("customers")
+        .insert([
+          {
+            prefix: formData.prefix || null,
+            Firstname: formData.Firstname || null,
+            Surname: formData.Surname || null,
+            Middlename: formData.Middlename || null,
+            marital_status: formData.maritalStatus || null,
+            residence_status: formData.residenceStatus || null,
+            mobile: formData.mobile || null,
+            alternative_mobile: formData.alternativeMobile || null,
+            occupation: formData.occupation || null,
+            date_of_birth: formData.dateOfBirth || null,
+            gender: formData.gender || null,
+            id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
+            postal_address: formData.postalAddress || null,
+            code: formData.code ? parseInt(formData.code) : null,
+            town: formData.town || null,
+            county: formData.county || null,
+            business_name: formData.businessName || null,
+            business_type: formData.businessType || null,
+            daily_Sales: formData.daily_Sales
+              ? parseFloat(formData.daily_Sales)
+              : null,
+            year_established: formData.yearEstablished
+              ? parseInt(formData.yearEstablished)
+              : null,
+            business_location: formData.businessLocation || null,
+            road: formData.road || null,
+            landmark: formData.landmark || null,
+            has_local_authority_license:
+              formData.hasLocalAuthorityLicense === "Yes",
+            passport_url: passportUrl,
+            id_front_url: idFrontUrl,
+            id_back_url: idBackUrl,
+            house_image_url: houseImageUrl,
+            prequalifiedAmount: formData.prequalifiedAmount
+              ? parseFloat(formData.prequalifiedAmount)
+              : null,
+            status: "bm_review",
+
+            //  Metadata
             created_by: profile?.id,
             branch_id: profile?.branch_id,
             region_id: profile?.region_id,
             created_at: new Date().toISOString(),
-          })));
-        if (businessImageError) logError("Business Images", businessImageError);
-      }
-    }
-
-    // ========= 4. Next of Kin =========
-    const nextOfKin = formData.nextOfKin || {};
-    const nextOfKinFilled = Object.values(nextOfKin).some(val => val != null && String(val).trim() !== "");
-    if (nextOfKinFilled) {
-      const { error: nextOfKinError } = await supabase.from("next_of_kin").insert([{
-        customer_id: customerId,
-        Firstname: nextOfKin.Firstname || null,
-        Surname: nextOfKin.Surname || null,
-        Middlename: nextOfKin.Middlename || null,
-        id_number: nextOfKin.idNumber || null,
-        relationship: nextOfKin.relationship || null,
-        mobile: nextOfKin.mobile || null,
-        alternative_number: nextOfKin.alternativeNumber || null,
-        employment_status: nextOfKin.employmentStatus || null,
-        county: nextOfKin.county || null,
-        city_town: nextOfKin.cityTown || null,
-
-        created_by: profile?.id,
-        branch_id: profile?.branch_id,
-        region_id: profile?.region_id,
-        created_at: new Date().toISOString(),
-      }]);
-      if (nextOfKinError) logError("Next of Kin", nextOfKinError);
-    }
-
-    // ========= 5. Guarantor =========
-    const guarantor = formData.guarantor || {};
-    const guarantorFilled = Object.values(guarantor).some(val => val != null && String(val).trim() !== "");
-    let guarantorId = null;
-
-    if (guarantorFilled) {
-      let guarantorPassportUrl = null, guarantorIdFrontUrl = null, guarantorIdBackUrl = null;
-
-      if (guarantorPassportFile) {
-        guarantorPassportUrl = await uploadFile(guarantorPassportFile, `guarantor/${Date.now()}_passport_${guarantorPassportFile.name}`, "customers");
-      }
-      if (guarantorIdFrontFile) {
-        guarantorIdFrontUrl = await uploadFile(guarantorIdFrontFile, `guarantor/${Date.now()}_id_front_${guarantorIdFrontFile.name}`, "customers");
-      }
-      if (guarantorIdBackFile) {
-        guarantorIdBackUrl = await uploadFile(guarantorIdBackFile, `guarantor/${Date.now()}_id_back_${guarantorIdBackFile.name}`, "customers");
-      }
-
-      const { data: guarantorData, error: guarantorError } = await supabase
-        .from("guarantors")
-        .insert([{
-          customer_id: customerId,
-          Firstname: guarantor.Firstname || null,
-          Surname: guarantor.Surname || null,
-          Middlename: guarantor.Middlename || null,
-          id_number: guarantor.idNumber || null,
-          marital_status: guarantor.maritalStatus || null,
-          gender: guarantor.gender || null,
-          mobile: guarantor.mobile || null,
-            alternative_number: guarantor.alternativeNumber ,
-          residence_status: guarantor.residenceStatus || null,
-          postal_address: guarantor.postalAddress || null,
-          code: guarantor.code ? parseInt(guarantor.code) : null,
-          occupation: guarantor.occupation || null,
-          relationship: guarantor.relationship || null,
-          date_of_birth: guarantor.dateOfBirth || null,
-          county: guarantor.county || null,
-          city_town: guarantor.cityTown || null,
-          passport_url: guarantorPassportUrl,
-          id_front_url: guarantorIdFrontUrl,
-          id_back_url: guarantorIdBackUrl,
-
-          created_by: profile?.id,
-          branch_id: profile?.branch_id,
-          region_id: profile?.region_id,
-          created_at: new Date().toISOString(),
-        }])
+          },
+        ])
         .select("id")
         .single();
 
-      if (guarantorError) logError("Guarantor", guarantorError);
-      else guarantorId = guarantorData.id;
-    }
+      if (customerError) {
+        logError("Customer", customerError);
+        setIsSubmitting(false);
+        return;
+      }
 
-    // ========= 6. Guarantor Security =========
-    if (guarantorId && guarantorSecurityItems.length > 0) {
-      const itemsToInsert = guarantorSecurityItems.map((s) => ({
-        guarantor_id: guarantorId,
-        item: s.item || null,
-        description: s.description || null,
-        identification: s.identification || null,
-        estimated_market_value: s.value ? parseFloat(s.value) : null,
+      const customerId = customerData.id;
 
-        created_by: profile?.id,
-        branch_id: profile?.branch_id,
-        region_id: profile?.region_id,
-        created_at: new Date().toISOString(),
-      }));
-
-      const { data: insertedItems, error: gSecError } = await supabase
-        .from("guarantor_security")
-        .insert(itemsToInsert)
-        .select("id");
-
-      if (gSecError) logError("Guarantor Security", gSecError);
-      else {
-        for (let i = 0; i < insertedItems.length; i++) {
-          const securityId = insertedItems[i].id;
-          const files = guarantorSecurityImages[i] || [];
-          const urls = [];
-          for (const file of files) {
-            const url = await uploadFile(file, `guarantor_security/${Date.now()}_${file.name}`, "customers");
-            if (url) urls.push(url);
-          }
-          if (urls.length > 0) {
-            const { error: gSecImgError } = await supabase
-              .from("guarantor_security_images")
-              .insert(urls.map((url) => ({
-                guarantor_security_id: securityId,
+      // ========= 3. Upload business images =========
+      if (businessImages.length > 0) {
+        const businessImageUrls = [];
+        for (const image of businessImages) {
+          const url = await uploadFile(
+            image,
+            `business/${Date.now()}_${image.name}`,
+            "customers"
+          );
+          if (url) businessImageUrls.push(url);
+        }
+        if (businessImageUrls.length > 0) {
+          const { error: businessImageError } = await supabase
+            .from("business_images")
+            .insert(
+              businessImageUrls.map((url) => ({
+                customer_id: customerId,
                 image_url: url,
-
                 created_by: profile?.id,
                 branch_id: profile?.branch_id,
                 region_id: profile?.region_id,
                 created_at: new Date().toISOString(),
-              })));
-            if (gSecImgError) logError("Guarantor Security Images", gSecImgError);
-          }
+              }))
+            );
+          if (businessImageError)
+            logError("Business Images", businessImageError);
         }
       }
-    }
 
- // ========= 7. Borrower Security =========
-if (securityItems.length > 0) {
- 
-  const itemsToInsert = securityItems.map((s) => ({
-    customer_id: customerId,
-    item: s.item || null,
-    description: s.description || null,
-    identification: s.identification || null,
-    value: s.value ? parseFloat(s.value) : null,
+      // ========= 4. Next of Kin =========
+      const nextOfKin = formData.nextOfKin || {};
+      const nextOfKinFilled = Object.values(nextOfKin).some(
+        (val) => val != null && String(val).trim() !== ""
+      );
+      if (nextOfKinFilled) {
+        const { error: nextOfKinError } = await supabase
+          .from("next_of_kin")
+          .insert([
+            {
+              customer_id: customerId,
+              Firstname: nextOfKin.Firstname || null,
+              Surname: nextOfKin.Surname || null,
+              Middlename: nextOfKin.Middlename || null,
+              id_number: nextOfKin.idNumber || null,
+              relationship: nextOfKin.relationship || null,
+              mobile: nextOfKin.mobile || null,
+              alternative_number: nextOfKin.alternativeNumber || null,
+              employment_status: nextOfKin.employmentStatus || null,
+              county: nextOfKin.county || null,
+              city_town: nextOfKin.cityTown || null,
 
-    created_by: profile?.id,
-    branch_id: profile?.branch_id,
-    region_id: profile?.region_id,
-    created_at: new Date().toISOString(),
-  }));
-
-  const { data: insertedItems, error: secError } = await supabase
-    .from("security_items")
-    .insert(itemsToInsert)
-    .select("id");
-
-  if (secError) {
-    logError("Borrower Security", secError);
-  } else {
-    // 2. Upload images for each security item
-    for (let i = 0; i < insertedItems.length; i++) {
-      const securityId = insertedItems[i].id;
-      const files = securityItemImages[i] || []; // images from frontend
-      const urls = [];
-
-      for (const file of files) {
-        // Save in borrower_security folder
-        const filePath = `borrower_security/${Date.now()}_${file.name}`;
-        const url = await uploadFile(file, filePath, "customers"); // ensure bucket is 'customers'
-
-        if (url) urls.push(url);
-      }
-
-      // 3. Save URLs in security_item_images table
-      if (urls.length > 0) {
-        const { error: secImgError } = await supabase
-          .from("security_item_images")
-          .insert(
-            urls.map((url) => ({
-              security_item_id: securityId,
-              image_url: url,
               created_by: profile?.id,
               branch_id: profile?.branch_id,
               region_id: profile?.region_id,
               created_at: new Date().toISOString(),
-            }))
-          );
-
-        if (secImgError) logError("Borrower Security Images", secImgError);
+            },
+          ]);
+        if (nextOfKinError) logError("Next of Kin", nextOfKinError);
       }
-    }
-  }
-}
 
+      // ========= 5. Guarantor =========
+      const guarantor = formData.guarantor || {};
+      const guarantorFilled = Object.values(guarantor).some(
+        (val) => val != null && String(val).trim() !== ""
+      );
+      let guarantorId = null;
 
-    // ========= 9. Documents =========
-    const documentsToUpload = [
-      { file: officerClientImage1, type: "First Officer and Client Image" },
-      { file: officerClientImage2, type: "Second Officer and Client Image" },
-      { file: bothOfficersImage, type: "Both Officers Image" },
-    ];
+      if (guarantorFilled) {
+        let guarantorPassportUrl = null,
+          guarantorIdFrontUrl = null,
+          guarantorIdBackUrl = null;
 
-    const uploadedDocs = [];
-    for (const doc of documentsToUpload) {
-      if (doc.file) {
-        const url = await uploadFile(doc.file, `documents/${Date.now()}_${doc.file.name}`, "customers");
-        if (url) uploadedDocs.push({
-          customer_id: customerId,
-          document_type: doc.type,
-          document_url: url,
+        if (guarantorPassportFile) {
+          guarantorPassportUrl = await uploadFile(
+            guarantorPassportFile,
+            `guarantor/${Date.now()}_passport_${guarantorPassportFile.name}`,
+            "customers"
+          );
+        }
+        if (guarantorIdFrontFile) {
+          guarantorIdFrontUrl = await uploadFile(
+            guarantorIdFrontFile,
+            `guarantor/${Date.now()}_id_front_${guarantorIdFrontFile.name}`,
+            "customers"
+          );
+        }
+        if (guarantorIdBackFile) {
+          guarantorIdBackUrl = await uploadFile(
+            guarantorIdBackFile,
+            `guarantor/${Date.now()}_id_back_${guarantorIdBackFile.name}`,
+            "customers"
+          );
+        }
+
+        const { data: guarantorData, error: guarantorError } = await supabase
+          .from("guarantors")
+          .insert([
+            {
+              customer_id: customerId,
+              Firstname: guarantor.Firstname || null,
+              Surname: guarantor.Surname || null,
+              Middlename: guarantor.Middlename || null,
+              id_number: guarantor.idNumber || null,
+              marital_status: guarantor.maritalStatus || null,
+              gender: guarantor.gender || null,
+              mobile: guarantor.mobile || null,
+              alternative_number: guarantor.alternativeNumber,
+              residence_status: guarantor.residenceStatus || null,
+              postal_address: guarantor.postalAddress || null,
+              code: guarantor.code ? parseInt(guarantor.code) : null,
+              occupation: guarantor.occupation || null,
+              relationship: guarantor.relationship || null,
+              date_of_birth: guarantor.dateOfBirth || null,
+              county: guarantor.county || null,
+              city_town: guarantor.cityTown || null,
+              passport_url: guarantorPassportUrl,
+              id_front_url: guarantorIdFrontUrl,
+              id_back_url: guarantorIdBackUrl,
+
+              created_by: profile?.id,
+              branch_id: profile?.branch_id,
+              region_id: profile?.region_id,
+              created_at: new Date().toISOString(),
+            },
+          ])
+          .select("id")
+          .single();
+
+        if (guarantorError) logError("Guarantor", guarantorError);
+        else guarantorId = guarantorData.id;
+      }
+
+      // ========= 6. Guarantor Security =========
+      if (guarantorId && guarantorSecurityItems.length > 0) {
+        const itemsToInsert = guarantorSecurityItems.map((s) => ({
+          guarantor_id: guarantorId,
+          item: s.item || null,
+          description: s.description || null,
+          identification: s.identification || null,
+          estimated_market_value: s.value ? parseFloat(s.value) : null,
 
           created_by: profile?.id,
           branch_id: profile?.branch_id,
           region_id: profile?.region_id,
           created_at: new Date().toISOString(),
-        });
+        }));
+
+        const { data: insertedItems, error: gSecError } = await supabase
+          .from("guarantor_security")
+          .insert(itemsToInsert)
+          .select("id");
+
+        if (gSecError) logError("Guarantor Security", gSecError);
+        else {
+          for (let i = 0; i < insertedItems.length; i++) {
+            const securityId = insertedItems[i].id;
+            const files = guarantorSecurityImages[i] || [];
+            const urls = [];
+            for (const file of files) {
+              const url = await uploadFile(
+                file,
+                `guarantor_security/${Date.now()}_${file.name}`,
+                "customers"
+              );
+              if (url) urls.push(url);
+            }
+            if (urls.length > 0) {
+              const { error: gSecImgError } = await supabase
+                .from("guarantor_security_images")
+                .insert(
+                  urls.map((url) => ({
+                    guarantor_security_id: securityId,
+                    image_url: url,
+
+                    created_by: profile?.id,
+                    branch_id: profile?.branch_id,
+                    region_id: profile?.region_id,
+                    created_at: new Date().toISOString(),
+                  }))
+                );
+              if (gSecImgError)
+                logError("Guarantor Security Images", gSecImgError);
+            }
+          }
+        }
       }
+
+      // ========= 7. Borrower Security =========
+      if (securityItems.length > 0) {
+        const itemsToInsert = securityItems.map((s) => ({
+          customer_id: customerId,
+          item: s.item || null,
+          description: s.description || null,
+          identification: s.identification || null,
+          value: s.value ? parseFloat(s.value) : null,
+
+          created_by: profile?.id,
+          branch_id: profile?.branch_id,
+          region_id: profile?.region_id,
+          created_at: new Date().toISOString(),
+        }));
+
+        const { data: insertedItems, error: secError } = await supabase
+          .from("security_items")
+          .insert(itemsToInsert)
+          .select("id");
+
+        if (secError) {
+          logError("Borrower Security", secError);
+        } else {
+          // 2. Upload images for each security item
+          for (let i = 0; i < insertedItems.length; i++) {
+            const securityId = insertedItems[i].id;
+            const files = securityItemImages[i] || []; // images from frontend
+            const urls = [];
+
+            for (const file of files) {
+              // Save in borrower_security folder
+              const filePath = `borrower_security/${Date.now()}_${file.name}`;
+              const url = await uploadFile(file, filePath, "customers"); // ensure bucket is 'customers'
+
+              if (url) urls.push(url);
+            }
+
+            // 3. Save URLs in security_item_images table
+            if (urls.length > 0) {
+              const { error: secImgError } = await supabase
+                .from("security_item_images")
+                .insert(
+                  urls.map((url) => ({
+                    security_item_id: securityId,
+                    image_url: url,
+                    created_by: profile?.id,
+                    branch_id: profile?.branch_id,
+                    region_id: profile?.region_id,
+                    created_at: new Date().toISOString(),
+                  }))
+                );
+
+              if (secImgError)
+                logError("Borrower Security Images", secImgError);
+            }
+          }
+        }
+      }
+
+      // ========= 9. Documents =========
+      const documentsToUpload = [
+        { file: officerClientImage1, type: "First Officer and Client Image" },
+        { file: officerClientImage2, type: "Second Officer and Client Image" },
+        { file: bothOfficersImage, type: "Both Officers Image" },
+      ];
+
+      const uploadedDocs = [];
+      for (const doc of documentsToUpload) {
+        if (doc.file) {
+          const url = await uploadFile(
+            doc.file,
+            `documents/${Date.now()}_${doc.file.name}`,
+            "customers"
+          );
+          if (url)
+            uploadedDocs.push({
+              customer_id: customerId,
+              document_type: doc.type,
+              document_url: url,
+
+              created_by: profile?.id,
+              branch_id: profile?.branch_id,
+              region_id: profile?.region_id,
+              created_at: new Date().toISOString(),
+            });
+        }
+      }
+
+      if (uploadedDocs.length > 0) {
+        const { error: docError } = await supabase
+          .from("documents")
+          .insert(uploadedDocs);
+        if (docError) logError("Documents", docError);
+      }
+
+      // ========= ✅ Success =========
+      toast.success("Customer & all related details saved successfully!", {
+        position: "top-right",
+        autoClose: 4000,
+        theme: "colored",
+      });
+      onClose();
+    } catch (error) {
+      console.error("❌ Unexpected error:", error);
+      toast.error(
+        error.message || "Unexpected error occurred. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (uploadedDocs.length > 0) {
-      const { error: docError } = await supabase.from("documents").insert(uploadedDocs);
-      if (docError) logError("Documents", docError);
-    }
-
-    // ========= ✅ Success =========
-    toast.success("Customer & all related details saved successfully!", {
-      position: "top-right",
-      autoClose: 4000,
-      theme: "colored",
-    });
-    onClose();
-
-  } catch (error) {
-    console.error("❌ Unexpected error:", error);
-    toast.error(error.message || "Unexpected error occurred. Please try again.");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   return (
-  <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex justify-center items-start overflow-auto">
-  <div className="bg-white w-full max-w-7xl mx-4 my-8 rounded-xl shadow-lg p-8">
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex justify-center items-start overflow-auto">
+      <div className="bg-white w-full max-w-7xl mx-4 my-8 rounded-xl shadow-lg p-8">
         {/* Header */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
           <div className="flex items-center justify-between">
@@ -1112,7 +1267,6 @@ if (securityItems.length > 0) {
         {/* Content */}
         <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden">
           <form onSubmit={handleSubmit} className="p-8">
-            
             {/* Personal Information */}
             {activeSection === "personal" && (
               <div className="space-y-8">
@@ -1133,8 +1287,8 @@ if (securityItems.length > 0) {
                     value={formData.prefix}
                     onChange={handleChange}
                     options={["Mr", "Mrs", "Ms", "Dr"]}
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="First Name"
@@ -1142,16 +1296,16 @@ if (securityItems.length > 0) {
                     value={formData.Firstname}
                     onChange={handleChange}
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Middle Name"
                     name="Middlename"
                     value={formData.Middlename}
                     onChange={handleChange}
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Surname"
@@ -1159,8 +1313,8 @@ if (securityItems.length > 0) {
                     value={formData.Surname}
                     onChange={handleChange}
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Mobile Number"
@@ -1168,16 +1322,16 @@ if (securityItems.length > 0) {
                     value={formData.mobile}
                     onChange={handleChange}
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Alternative Mobile"
                     name="alternativeMobile"
                     value={formData.alternativeMobile}
                     onChange={handleChange}
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="ID Number"
@@ -1185,8 +1339,8 @@ if (securityItems.length > 0) {
                     value={formData.idNumber}
                     onChange={handleChange}
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Date of Birth"
@@ -1194,8 +1348,8 @@ if (securityItems.length > 0) {
                     type="date"
                     value={formData.dateOfBirth}
                     onChange={handleChange}
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Gender"
@@ -1203,17 +1357,22 @@ if (securityItems.length > 0) {
                     value={formData.gender}
                     onChange={handleChange}
                     options={["Male", "Female"]}
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Marital Status"
                     name="maritalStatus"
                     value={formData.maritalStatus}
                     onChange={handleChange}
-                    options={["Single", "Married", "Separated/Divorced", "Other"]}
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    options={[
+                      "Single",
+                      "Married",
+                      "Separated/Divorced",
+                      "Other",
+                    ]}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Residence Status"
@@ -1221,22 +1380,22 @@ if (securityItems.length > 0) {
                     value={formData.residenceStatus}
                     onChange={handleChange}
                     options={["Own", "Rent", "Family", "Other"]}
-                      errors={errors}
+                    errors={errors}
                   />
                   <FormField
                     label="Occupation"
                     name="occupation"
                     value={formData.occupation}
                     onChange={handleChange}
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Postal Address"
                     name="postalAddress"
                     value={formData.postalAddress}
                     onChange={handleChange}
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="Postal Code"
@@ -1244,21 +1403,21 @@ if (securityItems.length > 0) {
                     type="number"
                     value={formData.code}
                     onChange={handleChange}
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="Town/City"
                     name="town"
                     value={formData.town}
                     onChange={handleChange}
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="County"
                     name="county"
                     value={formData.county}
                     onChange={handleChange}
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                 </div>
 
@@ -1269,10 +1428,26 @@ if (securityItems.length > 0) {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {[
-                      { key: "passport", label: "Passport Photo", handler: setPassportFile },
-                      { key: "idFront", label: "ID Front", handler: setIdFrontFile },
-                      { key: "idBack", label: "ID Back", handler: setIdBackFile },
-                      { key: "house", label: "House Image", handler: setHouseImageFile },
+                      {
+                        key: "passport",
+                        label: "Passport Photo",
+                        handler: setPassportFile,
+                      },
+                      {
+                        key: "idFront",
+                        label: "ID Front",
+                        handler: setIdFrontFile,
+                      },
+                      {
+                        key: "idBack",
+                        label: "ID Back",
+                        handler: setIdBackFile,
+                      },
+                      {
+                        key: "house",
+                        label: "House Image",
+                        handler: setHouseImageFile,
+                      },
                     ].map((file) => (
                       <div
                         key={file.key}
@@ -1289,9 +1464,11 @@ if (securityItems.length > 0) {
                             <input
                               type="file"
                               accept="image/*"
-                              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                              onChange={(e) =>
+                                handleFileUpload(e, file.handler, file.key)
+                              }
                               className="hidden"
-                               handleNestedChange={handleNestedChange}
+                              handleNestedChange={handleNestedChange}
                             />
                           </label>
 
@@ -1301,10 +1478,14 @@ if (securityItems.length > 0) {
                             <input
                               type="file"
                               accept="image/*"
-                              capture={file.key === "passport" ? "user" : "environment"}
-                              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                              capture={
+                                file.key === "passport" ? "user" : "environment"
+                              }
+                              onChange={(e) =>
+                                handleFileUpload(e, file.handler, file.key)
+                              }
                               className="hidden"
-                               handleNestedChange={handleNestedChange}
+                              handleNestedChange={handleNestedChange}
                             />
                           </label>
                         </div>
@@ -1318,7 +1499,9 @@ if (securityItems.length > 0) {
                             />
                             <button
                               type="button"
-                              onClick={() => handleRemoveFile(file.key, file.handler)}
+                              onClick={() =>
+                                handleRemoveFile(file.key, file.handler)
+                              }
                               className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
                             >
                               <XMarkIcon className="w-4 h-4" />
@@ -1352,8 +1535,8 @@ if (securityItems.length > 0) {
                     value={formData.businessName}
                     onChange={handleChange}
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Business Type"
@@ -1362,8 +1545,8 @@ if (securityItems.length > 0) {
                     onChange={handleChange}
                     placeholder="e.g. Retail, Wholesale"
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Year Established"
@@ -1372,8 +1555,8 @@ if (securityItems.length > 0) {
                     value={formData.yearEstablished}
                     onChange={handleChange}
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Daily Sales (KES)"
@@ -1382,8 +1565,8 @@ if (securityItems.length > 0) {
                     value={formData.daily_Sales}
                     onChange={handleChange}
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Business Location"
@@ -1391,8 +1574,8 @@ if (securityItems.length > 0) {
                     value={formData.businessLocation}
                     onChange={handleChange}
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Road"
@@ -1400,8 +1583,8 @@ if (securityItems.length > 0) {
                     value={formData.road}
                     onChange={handleChange}
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Landmark"
@@ -1410,8 +1593,8 @@ if (securityItems.length > 0) {
                     onChange={handleChange}
                     placeholder="e.g. Near KCB Bank"
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Local Authority License"
@@ -1419,8 +1602,8 @@ if (securityItems.length > 0) {
                     value={formData.hasLocalAuthorityLicense}
                     onChange={handleChange}
                     options={["Yes", "No"]}
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                 </div>
 
@@ -1437,9 +1620,11 @@ if (securityItems.length > 0) {
                         type="file"
                         accept="image/*"
                         multiple
-                        onChange={(e) => handleMultipleFiles(e, setBusinessImages)}
+                        onChange={(e) =>
+                          handleMultipleFiles(e, setBusinessImages)
+                        }
                         className="hidden"
-                         handleNestedChange={handleNestedChange}
+                        handleNestedChange={handleNestedChange}
                       />
                     </label>
                   </div>
@@ -1510,8 +1695,8 @@ if (securityItems.length > 0) {
                           value={item.item}
                           onChange={(e) => handleSecurityChange(e, index)}
                           required
-                           handleNestedChange={handleNestedChange}
-                             errors={errors}
+                          handleNestedChange={handleNestedChange}
+                          errors={errors}
                         />
                         <FormField
                           label="Description"
@@ -1519,8 +1704,8 @@ if (securityItems.length > 0) {
                           value={item.description}
                           onChange={(e) => handleSecurityChange(e, index)}
                           required
-                           handleNestedChange={handleNestedChange}
-                             errors={errors}
+                          handleNestedChange={handleNestedChange}
+                          errors={errors}
                         />
                         <FormField
                           label="Identification"
@@ -1529,8 +1714,8 @@ if (securityItems.length > 0) {
                           onChange={(e) => handleSecurityChange(e, index)}
                           placeholder="e.g. Serial No."
                           required
-                           handleNestedChange={handleNestedChange}
-                             errors={errors}
+                          handleNestedChange={handleNestedChange}
+                          errors={errors}
                         />
                         <FormField
                           label="Est. Market Value (KES)"
@@ -1539,8 +1724,8 @@ if (securityItems.length > 0) {
                           value={item.value}
                           onChange={(e) => handleSecurityChange(e, index)}
                           required
-                           handleNestedChange={handleNestedChange}
-                             errors={errors}
+                          handleNestedChange={handleNestedChange}
+                          errors={errors}
                         />
                       </div>
 
@@ -1559,7 +1744,10 @@ if (securityItems.length > 0) {
                               multiple
                               onChange={(e) => {
                                 const files = Array.from(e.target.files);
-                                const newImages = [...(securityItemImages[index] || []), ...files];
+                                const newImages = [
+                                  ...(securityItemImages[index] || []),
+                                  ...files,
+                                ];
                                 const updated = [...securityItemImages];
                                 updated[index] = newImages;
                                 setSecurityItemImages(updated);
@@ -1578,7 +1766,10 @@ if (securityItems.length > 0) {
                               multiple
                               onChange={(e) => {
                                 const files = Array.from(e.target.files);
-                                const newImages = [...(securityItemImages[index] || []), ...files];
+                                const newImages = [
+                                  ...(securityItemImages[index] || []),
+                                  ...files,
+                                ];
                                 const updated = [...securityItemImages];
                                 updated[index] = newImages;
                                 setSecurityItemImages(updated);
@@ -1588,30 +1779,35 @@ if (securityItems.length > 0) {
                           </label>
                         </div>
 
-                        {securityItemImages[index] && securityItemImages[index].length > 0 && (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-                            {securityItemImages[index].map((img, imgIdx) => (
-                              <div key={imgIdx} className="relative">
-                                <img
-                                  src={URL.createObjectURL(img)}
-                                  alt={`Security ${index + 1} - Image ${imgIdx + 1}`}
-                                  className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updated = [...securityItemImages];
-                                    updated[index] = updated[index].filter((_, i) => i !== imgIdx);
-                                    setSecurityItemImages(updated);
-                                  }}
-                                  className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
-                                >
-                                  <XMarkIcon className="w-4 h-4" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        {securityItemImages[index] &&
+                          securityItemImages[index].length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+                              {securityItemImages[index].map((img, imgIdx) => (
+                                <div key={imgIdx} className="relative">
+                                  <img
+                                    src={URL.createObjectURL(img)}
+                                    alt={`Security ${index + 1} - Image ${
+                                      imgIdx + 1
+                                    }`}
+                                    className="w-full h-32 object-cover rounded-lg border border-gray-200 shadow-sm"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = [...securityItemImages];
+                                      updated[index] = updated[index].filter(
+                                        (_, i) => i !== imgIdx
+                                      );
+                                      setSecurityItemImages(updated);
+                                    }}
+                                    className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+                                  >
+                                    <XMarkIcon className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                       </div>
                     </div>
                   ))}
@@ -1651,8 +1847,8 @@ if (securityItems.length > 0) {
                       onChange={handleChange}
                       className="text-center"
                       required
-                       handleNestedChange={handleNestedChange}
-                         errors={errors}
+                      handleNestedChange={handleNestedChange}
+                      errors={errors}
                     />
                   </div>
                 </div>
@@ -1679,7 +1875,7 @@ if (securityItems.length > 0) {
                     value={formData.guarantor.prefix}
                     section="guarantor"
                     options={["Mr", "Mrs", "Ms", "Dr"]}
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="First Name"
@@ -1687,15 +1883,15 @@ if (securityItems.length > 0) {
                     value={formData.guarantor.Firstname}
                     section="guarantor"
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Middle Name"
                     name="Middlename"
                     value={formData.guarantor.Middlename}
                     section="guarantor"
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="Surname"
@@ -1703,8 +1899,8 @@ if (securityItems.length > 0) {
                     value={formData.guarantor.Surname}
                     section="guarantor"
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="ID Number"
@@ -1712,8 +1908,8 @@ if (securityItems.length > 0) {
                     value={formData.guarantor.idNumber}
                     section="guarantor"
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Mobile Number"
@@ -1721,17 +1917,16 @@ if (securityItems.length > 0) {
                     value={formData.guarantor.mobile}
                     section="guarantor"
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Alternative Number"
                     name="alternativeMobile"
                     value={formData.guarantor.alternativeMobile}
                     section="guarantor"
-                   
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Date of Birth"
@@ -1739,8 +1934,8 @@ if (securityItems.length > 0) {
                     type="date"
                     value={formData.guarantor.dateOfBirth}
                     section="guarantor"
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Gender"
@@ -1749,17 +1944,22 @@ if (securityItems.length > 0) {
                     section="guarantor"
                     options={["Male", "Female"]}
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Marital Status"
                     name="maritalStatus"
                     value={formData.guarantor.maritalStatus}
                     section="guarantor"
-                    options={["Single", "Married", "Separated/Divorced", "Other"]}
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    options={[
+                      "Single",
+                      "Married",
+                      "Separated/Divorced",
+                      "Other",
+                    ]}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Residence Status"
@@ -1767,16 +1967,16 @@ if (securityItems.length > 0) {
                     value={formData.guarantor.residenceStatus}
                     section="guarantor"
                     options={["Own", "Rent", "Family", "Other"]}
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Occupation"
                     name="occupation"
                     value={formData.guarantor.occupation}
                     section="guarantor"
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Relationship"
@@ -1784,15 +1984,15 @@ if (securityItems.length > 0) {
                     value={formData.guarantor.relationship}
                     section="guarantor"
                     placeholder="e.g. Spouse, Friend"
-                     handleNestedChange={handleNestedChange}
-                     required
+                    handleNestedChange={handleNestedChange}
+                    required
                   />
                   <FormField
                     label="Postal Address"
                     name="postalAddress"
                     value={formData.guarantor.postalAddress}
                     section="guarantor"
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="Postal Code"
@@ -1800,21 +2000,21 @@ if (securityItems.length > 0) {
                     type="number"
                     value={formData.guarantor.code}
                     section="guarantor"
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="County"
                     name="county"
                     value={formData.guarantor.county}
                     section="guarantor"
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="City/Town"
                     name="cityTown"
                     value={formData.guarantor.cityTown}
                     section="guarantor"
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                 </div>
 
@@ -1825,9 +2025,24 @@ if (securityItems.length > 0) {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {[
-                      { key: "guarantorPassport", label: "Guarantor Passport", handler: setGuarantorPassportFile, icon: UserCircleIcon },
-                      { key: "guarantorIdFront", label: "Guarantor ID Front", handler: setGuarantorIdFrontFile, icon: IdentificationIcon },
-                      { key: "guarantorIdBack", label: "Guarantor ID Back", handler: setGuarantorIdBackFile, icon: IdentificationIcon },
+                      {
+                        key: "guarantorPassport",
+                        label: "Guarantor Passport",
+                        handler: setGuarantorPassportFile,
+                        icon: UserCircleIcon,
+                      },
+                      {
+                        key: "guarantorIdFront",
+                        label: "Guarantor ID Front",
+                        handler: setGuarantorIdFrontFile,
+                        icon: IdentificationIcon,
+                      },
+                      {
+                        key: "guarantorIdBack",
+                        label: "Guarantor ID Back",
+                        handler: setGuarantorIdBackFile,
+                        icon: IdentificationIcon,
+                      },
                     ].map((file) => (
                       <div
                         key={file.key}
@@ -1835,7 +2050,9 @@ if (securityItems.length > 0) {
                       >
                         <div className="flex items-center gap-2 mb-4">
                           <file.icon className="h-6 w-6 text-indigo-600" />
-                          <h4 className="text-md font-medium text-gray-900">{file.label}</h4>
+                          <h4 className="text-md font-medium text-gray-900">
+                            {file.label}
+                          </h4>
                         </div>
 
                         <div className="flex gap-2 mb-3">
@@ -1845,9 +2062,11 @@ if (securityItems.length > 0) {
                             <input
                               type="file"
                               accept="image/*"
-                              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                              onChange={(e) =>
+                                handleFileUpload(e, file.handler, file.key)
+                              }
                               className="hidden"
-                               handleNestedChange={handleNestedChange}
+                              handleNestedChange={handleNestedChange}
                             />
                           </label>
 
@@ -1858,9 +2077,11 @@ if (securityItems.length > 0) {
                               type="file"
                               accept="image/*"
                               capture="environment"
-                              onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                              onChange={(e) =>
+                                handleFileUpload(e, file.handler, file.key)
+                              }
                               className="hidden"
-                               handleNestedChange={handleNestedChange}
+                              handleNestedChange={handleNestedChange}
                             />
                           </label>
                         </div>
@@ -1874,7 +2095,9 @@ if (securityItems.length > 0) {
                             />
                             <button
                               type="button"
-                              onClick={() => handleRemoveFile(file.key, file.handler)}
+                              onClick={() =>
+                                handleRemoveFile(file.key, file.handler)
+                              }
                               className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow"
                             >
                               <XMarkIcon className="w-4 h-4" />
@@ -1916,8 +2139,12 @@ if (securityItems.length > 0) {
                           <button
                             type="button"
                             onClick={() => {
-                              setGuarantorSecurityItems((prev) => prev.filter((_, i) => i !== index));
-                              setGuarantorSecurityImages((prev) => prev.filter((_, i) => i !== index));
+                              setGuarantorSecurityItems((prev) =>
+                                prev.filter((_, i) => i !== index)
+                              );
+                              setGuarantorSecurityImages((prev) =>
+                                prev.filter((_, i) => i !== index)
+                              );
                             }}
                             className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-50"
                           >
@@ -1931,39 +2158,47 @@ if (securityItems.length > 0) {
                           label="Item"
                           name="item"
                           value={item.item}
-                          onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                          onChange={(e) =>
+                            handleGuarantorSecurityChange(e, index)
+                          }
                           required
-                           handleNestedChange={handleNestedChange}
-                             errors={errors}
+                          handleNestedChange={handleNestedChange}
+                          errors={errors}
                         />
                         <FormField
                           label="Description"
                           name="description"
                           value={item.description}
-                          onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                          onChange={(e) =>
+                            handleGuarantorSecurityChange(e, index)
+                          }
                           required
-                           handleNestedChange={handleNestedChange}
-                             errors={errors}
+                          handleNestedChange={handleNestedChange}
+                          errors={errors}
                         />
                         <FormField
                           label="Identification"
                           name="identification"
                           value={item.identification}
-                          onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                          onChange={(e) =>
+                            handleGuarantorSecurityChange(e, index)
+                          }
                           placeholder="e.g. Serial No."
                           required
-                           handleNestedChange={handleNestedChange}
-                             errors={errors}
+                          handleNestedChange={handleNestedChange}
+                          errors={errors}
                         />
                         <FormField
                           label="Est. Market Value (KES)"
                           name="value"
                           type="number"
                           value={item.value}
-                          onChange={(e) => handleGuarantorSecurityChange(e, index)}
+                          onChange={(e) =>
+                            handleGuarantorSecurityChange(e, index)
+                          }
                           required
-                           handleNestedChange={handleNestedChange}
-                             errors={errors}
+                          handleNestedChange={handleNestedChange}
+                          errors={errors}
                         />
                       </div>
 
@@ -1982,7 +2217,10 @@ if (securityItems.length > 0) {
                               multiple
                               onChange={(e) => {
                                 const files = Array.from(e.target.files);
-                                const newImages = [...(guarantorSecurityImages[index] || []), ...files];
+                                const newImages = [
+                                  ...(guarantorSecurityImages[index] || []),
+                                  ...files,
+                                ];
                                 const updated = [...guarantorSecurityImages];
                                 updated[index] = newImages;
                                 setGuarantorSecurityImages(updated);
@@ -2001,7 +2239,10 @@ if (securityItems.length > 0) {
                               multiple
                               onChange={(e) => {
                                 const files = Array.from(e.target.files);
-                                const newImages = [...(guarantorSecurityImages[index] || []), ...files];
+                                const newImages = [
+                                  ...(guarantorSecurityImages[index] || []),
+                                  ...files,
+                                ];
                                 const updated = [...guarantorSecurityImages];
                                 updated[index] = newImages;
                                 setGuarantorSecurityImages(updated);
@@ -2011,30 +2252,39 @@ if (securityItems.length > 0) {
                           </label>
                         </div>
 
-                        {guarantorSecurityImages[index] && guarantorSecurityImages[index].length > 0 && (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-                            {guarantorSecurityImages[index].map((img, imgIdx) => (
-                              <div key={imgIdx} className="relative">
-                                <img
-                                  src={URL.createObjectURL(img)}
-                                  alt={`Guarantor Security ${index + 1} - Image ${imgIdx + 1}`}
-                                  className="w-full h-32 object-cover rounded-lg border border-purple-200 shadow-sm"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updated = [...guarantorSecurityImages];
-                                    updated[index] = updated[index].filter((_, i) => i !== imgIdx);
-                                    setGuarantorSecurityImages(updated);
-                                  }}
-                                  className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
-                                >
-                                  <XMarkIcon className="w-4 h-4" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        {guarantorSecurityImages[index] &&
+                          guarantorSecurityImages[index].length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+                              {guarantorSecurityImages[index].map(
+                                (img, imgIdx) => (
+                                  <div key={imgIdx} className="relative">
+                                    <img
+                                      src={URL.createObjectURL(img)}
+                                      alt={`Guarantor Security ${
+                                        index + 1
+                                      } - Image ${imgIdx + 1}`}
+                                      className="w-full h-32 object-cover rounded-lg border border-purple-200 shadow-sm"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = [
+                                          ...guarantorSecurityImages,
+                                        ];
+                                        updated[index] = updated[index].filter(
+                                          (_, i) => i !== imgIdx
+                                        );
+                                        setGuarantorSecurityImages(updated);
+                                      }}
+                                      className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
+                                    >
+                                      <XMarkIcon className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          )}
                       </div>
                     </div>
                   ))}
@@ -2071,15 +2321,15 @@ if (securityItems.length > 0) {
                     value={formData.nextOfKin.Firstname}
                     section="nextOfKin"
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Middle Name"
                     name="Middlename"
                     value={formData.nextOfKin.Middlename}
                     section="nextOfKin"
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="Surname"
@@ -2087,8 +2337,8 @@ if (securityItems.length > 0) {
                     value={formData.nextOfKin.Surname}
                     section="nextOfKin"
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="ID Number"
@@ -2096,8 +2346,8 @@ if (securityItems.length > 0) {
                     value={formData.nextOfKin.idNumber}
                     section="nextOfKin"
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Relationship"
@@ -2105,7 +2355,7 @@ if (securityItems.length > 0) {
                     value={formData.nextOfKin.relationship}
                     section="nextOfKin"
                     placeholder="e.g. Brother, Sister"
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="Mobile Number"
@@ -2113,38 +2363,44 @@ if (securityItems.length > 0) {
                     value={formData.nextOfKin.mobile}
                     section="nextOfKin"
                     required
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Alternative Number"
                     name="alternativeNumber"
                     value={formData.nextOfKin.alternativeNumber}
                     section="nextOfKin"
-                     handleNestedChange={handleNestedChange}
-                       errors={errors}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Employment Status"
                     name="employmentStatus"
                     value={formData.nextOfKin.employmentStatus}
                     section="nextOfKin"
-                    options={["Employed", "Self Employed", "Unemployed", "Student", "Retired"]}
-                     handleNestedChange={handleNestedChange}
+                    options={[
+                      "Employed",
+                      "Self Employed",
+                      "Unemployed",
+                      "Student",
+                      "Retired",
+                    ]}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="County"
                     name="county"
                     value={formData.nextOfKin.county}
                     section="nextOfKin"
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="City/Town"
                     name="cityTown"
                     value={formData.nextOfKin.cityTown}
                     section="nextOfKin"
-                     handleNestedChange={handleNestedChange}
+                    handleNestedChange={handleNestedChange}
                   />
                 </div>
               </div>
@@ -2165,9 +2421,21 @@ if (securityItems.length > 0) {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {[
-                    { key: "officerClient1", label: "First Officer & Client", handler: setOfficerClientImage1 },
-                    { key: "officerClient2", label: "Second Officer & Client", handler: setOfficerClientImage2 },
-                    { key: "bothOfficers", label: "Both Officers", handler: setBothOfficersImage },
+                    {
+                      key: "officerClient1",
+                      label: "First Officer & Client",
+                      handler: setOfficerClientImage1,
+                    },
+                    {
+                      key: "officerClient2",
+                      label: "Second Officer & Client",
+                      handler: setOfficerClientImage2,
+                    },
+                    {
+                      key: "bothOfficers",
+                      label: "Both Officers",
+                      handler: setBothOfficersImage,
+                    },
                   ].map((file) => (
                     <div
                       key={file.key}
@@ -2184,7 +2452,9 @@ if (securityItems.length > 0) {
                           <input
                             type="file"
                             accept="image/*"
-                            onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                            onChange={(e) =>
+                              handleFileUpload(e, file.handler, file.key)
+                            }
                             className="hidden"
                           />
                         </label>
@@ -2196,7 +2466,9 @@ if (securityItems.length > 0) {
                             type="file"
                             accept="image/*"
                             capture="environment"
-                            onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+                            onChange={(e) =>
+                              handleFileUpload(e, file.handler, file.key)
+                            }
                             className="hidden"
                           />
                         </label>
@@ -2211,7 +2483,9 @@ if (securityItems.length > 0) {
                           />
                           <button
                             type="button"
-                            onClick={() => handleRemoveFile(file.key, file.handler)}
+                            onClick={() =>
+                              handleRemoveFile(file.key, file.handler)
+                            }
                             className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 shadow-md"
                           >
                             <XMarkIcon className="w-4 h-4" />
@@ -2231,7 +2505,9 @@ if (securityItems.length > 0) {
                   <button
                     type="button"
                     onClick={() => {
-                      const currentIndex = sections.findIndex(s => s.id === activeSection);
+                      const currentIndex = sections.findIndex(
+                        (s) => s.id === activeSection
+                      );
                       setActiveSection(sections[currentIndex - 1].id);
                     }}
                     className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
@@ -2241,7 +2517,7 @@ if (securityItems.length > 0) {
                     Previous
                   </button>
                 )}
-                
+
                 {activeSection !== sections[sections.length - 1].id && (
                   <button
                     type="button"
@@ -2264,7 +2540,7 @@ if (securityItems.length > 0) {
                 >
                   Cancel
                 </button>
-                
+
                 {activeSection === sections[sections.length - 1].id && (
                   <button
                     type="submit"

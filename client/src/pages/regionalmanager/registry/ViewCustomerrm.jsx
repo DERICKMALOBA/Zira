@@ -1,4 +1,4 @@
-import { useState, useEffect} from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../../../supabaseClient";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -24,7 +24,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../../hooks/userAuth";
 
-const ViewCustomerrm = ({ customer, onClose }) => {
+const ViewCustomerrm = ({ customer: initialCustomer, onClose }) => {
+  const [customer, setCustomer] = useState(initialCustomer);
   const [guarantors, setGuarantors] = useState([]);
   const [securityItems, setSecurityItems] = useState([]);
   const [guarantorSecurityItems, setGuarantorSecurityItems] = useState([]);
@@ -34,178 +35,158 @@ const ViewCustomerrm = ({ customer, onClose }) => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [nextOfKin, setNextOfKin] = useState(null);
   const [documents, setDocuments] = useState([]);
-  const [existingImages, setExistingImages] = useState({}); 
+  const [existingImages, setExistingImages] = useState({});
   const [formData, setFormData] = useState({ documents: [] });
-  const { profile } = useAuth();
- const [ setCustomer] = useState();
 
+  const { profile } = useAuth();
 
   useEffect(() => {
-    // Only fetch customer details when both customer and profile are available
-    if (customer && profile?.region_id) {
-      fetchCustomerDetails(customer.id);
+    if (initialCustomer?.id && profile?.region_id) {
+      fetchCustomerDetails(initialCustomer.id);
     }
-  }, [customer, profile?.region_id]);
+    //  Only run when prop `initialCustomer` or `profile.region_id` changes
+  }, [initialCustomer?.id, profile?.region_id]);
 
-  const fetchCustomerDetails = async (customerId) => {
-    try {
-      setLoading(true);
+const fetchCustomerDetails = async (customerId) => {
+  try {
+    setLoading(true);
 
-      // Check if profile and region_id exist before making the API call
-      if (!profile?.region_id) {
-        console.error("No region_id found for this RM profile");
-        toast.error("Profile not loaded. Please try again.");
-        setLoading(false);
-        return;
-      }
+    if (!profile?.region_id) {
+      console.error("No region_id found for this RM profile");
+      toast.error("Profile not loaded. Please try again.");
+      return;
+    }
 
-      const { data: customerData, error: customerError } = await supabase
-        .from("customers")
-        .select(`
+    // Fetch main customer record
+    const { data: customerData, error: customerError } = await supabase
+      .from("customers")
+      .select(
+        `
           *,
           customer_verifications!inner (
-            bm_scored_loan_amount
+            bm_loan_scored_amount
           )
-        `)
-        .eq("id", customerId)
-        .eq("region_id", profile.region_id)
-        .single();
+        `
+      )
+      .eq("id", customerId)
+      .eq("region_id", profile.region_id)
+      .single();
 
-      if (customerError) {
-        console.error("Error fetching customer:", customerError);
-        toast.error("Error loading customer details");
-        setLoading(false);
-        return;
-      }
+    if (customerError) {
+      console.error("Error fetching customer:", customerError);
+      toast.error("Error loading customer details");
+      return;
+    }
 
-      console.log("Customer data:", customerData);
-      console.log("Prequalified amount:", customerData.prequalified_amount);
-      console.log("BM scored amount:", customerData.customer_verifications?.[0]?.bm_scored_loan_amount);
+    console.log("Customer Data from Supabase:", customerData);
+    console.log("prequalifiedAmount from DB:", customerData.prequalifiedAmount);
+    console.log(
+      "BM scored amount from DB:",
+      customerData.customer_verifications?.[0]?.bm_loan_scored_amount
+    );
 
-      setCustomer(customerData);
+    setCustomer(customerData);
 
-      // Set loan details with proper field names
-      setLoanDetails({
-        prequalified_amount: customerData.prequalified_amount,
-        bm_scored_amount: customerData.customer_verifications?.[0]?.bm_scored_loan_amount || null,
-      });
+    // Set loan details ONCE with the correct data
+    setLoanDetails({
+      prequalifiedAmount: customerData.prequalifiedAmount,
+      bm_loan_scored_amount:
+        customerData.customer_verifications?.[0]?.bm_loan_scored_amount || null,
+    });
 
-      // Log the amounts for review
-      console.log("Loan amounts for review:", {
-        prequalified_amount: customerData.prequalified_amount,
-        bm_scored_amount: customerData.customer_verifications?.[0]?.bm_scored_loan_amount
-      })
+    // Fetch related data in parallel (remove loans from this query since we don't need it)
+    const [
+      { data: nextOfKinData },
+      { data: documentsData },
+      { data: businessImagesData },
+      { data: guarantorsData },
+      { data: securityItemsData },
+    ] = await Promise.all([
+      supabase.from("next_of_kin").select("*").eq("customer_id", customerId).single(),
+      supabase
+        .from("documents")
+        .select("id, document_type, document_url")
+        .eq("customer_id", customerId),
+      supabase.from("business_images").select("*").eq("customer_id", customerId),
+      
+      supabase.from("guarantors").select("*").eq("customer_id", customerId),
+      supabase
+        .from("security_items")
+        .select("*, security_item_images(image_url)")
+        .eq("customer_id", customerId),
+    ]);
 
-if (customerError) {
-  console.error("Error fetching customer:", customerError);
-  toast.error("Error loading customer details");
-  setLoading(false);
-  return;
+    // Update state with fetched data
+    setNextOfKin(nextOfKinData || null);
+    setDocuments(documentsData || []);
+    setFormData((prev) => ({ ...prev, documents: documentsData || [] }));
+    setBusinessImages(businessImagesData || []);
+    
+    setGuarantors(guarantorsData || []);
+
+   // Security items + images
+if (securityItemsData?.length > 0) {
+  const securityWithImages = securityItemsData.map((item) => ({
+    ...item,
+    images: item.security_item_images?.map((img) => img.image_url) || [],
+  }));
+
+  console.log("Processed Security Items:", securityWithImages);
+
+  setSecurityItems(securityWithImages);
 }
 
-setCustomer(customerData);
 
-setLoanDetails({
-  prequalified_amount: customerData.prequalified_amount,
-  bm_scored_amount: customerData.customer_verifications?.[0]?.bm_loan_scored_amount || null,
-});
+    // Guarantor security + images
+    if (guarantorsData?.length > 0) {
+      const guarantorIds = guarantorsData.map((g) => g.id);
+      const { data: gSecurityData } = await supabase
+        .from("guarantor_security")
+        .select("*, guarantor_security_images(image_url)")
+        .in("guarantor_id", guarantorIds);
 
+      const gSecurityWithImages = (gSecurityData || []).map((item) => ({
+        ...item,
+        images: item.guarantor_security_images?.map((img) => img.image_url) || [],
+      }));
 
-      // Fetch related data in parallel
-      const [
-        { data: nextOfKin, error: nextOfKinError },
-        { data: documentsData, error: documentsError },
-        { data: businessImagesData, error: businessError },
-        { data: loanData, error: loanError },
-        { data: guarantorsData, error: guarantorsError },
-        { data: securityItemsData, error: securityError },
-      ] = await Promise.all([
-        supabase.from("next_of_kin").select("*").eq("customer_id", customerId).single(),
-        supabase.from("documents").select("id, document_type, document_url").eq("customer_id", customerId),
-        supabase.from("business_images").select("*").eq("customer_id", customerId),
-        supabase.from("loans").select("*").eq("customer_id", customerId).single(),
-        supabase.from("guarantors").select("*").eq("customer_id", customerId),
-        supabase
-          .from("security_items")
-          .select("*, security_item_images(image_url)")
-          .eq("customer_id", customerId),
-      ]);
-
-      // Set states
-      if (!nextOfKinError) setNextOfKin(nextOfKin || null);
-      if (!documentsError) {
-        setDocuments(documentsData || []);
-        setFormData((prev) => ({ ...prev, documents: documentsData || [] }));
-      }
-      if (!businessError) setBusinessImages(businessImagesData || []);
-      if (!loanError) setLoanDetails(loanData || null);
-      if (!guarantorsError) setGuarantors(guarantorsData || []);
-      
-      if (!securityError) {
-        const processedSecurityItems = (securityItemsData || []).map((item) => {
-          const images = (item.security_item_images || []).map((img) =>
-            img.image_url
-              ? supabase.storage
-                  .from("customers") 
-                  .getPublicUrl(img.image_url).data.publicUrl
-              : null
-          );
-          return { ...item, images };
-        });
-        setSecurityItems(processedSecurityItems);
-      }
-
-      // Fetch guarantor security + images
-      if (guarantorsData?.length > 0) {
-        const guarantorIds = guarantorsData.map((g) => g.id);
-
-        const { data: gSecurityData } = await supabase
-          .from("guarantor_security")
-          .select("*, guarantor_security_images(image_url)")
-          .in("guarantor_id", guarantorIds);
-
-        const gSecurityWithImages = (gSecurityData || []).map((item) => ({
-          ...item,
-          images: item.guarantor_security_images?.map((img) => img.image_url) || [],
-        }));
-
-        setGuarantorSecurityItems(gSecurityWithImages);
-      }
-
-      // Map existing images + documents
-      const imageData = {
-        passport: customerData?.passport_url || null,
-        idFront: customerData?.id_front_url || null,
-        idBack: customerData?.id_back_url || null,
-        house: customerData?.house_image_url || null,
-        business: businessImagesData?.map((img) => img.image_url) || [],
-        security:
-          securityItemsData?.flatMap((item) =>
-            item.security_item_images?.map((img) => img.image_url) || []
-          ) || [],
-        guarantorPassport: guarantorsData?.[0]?.passport_url || null,
-        guarantorIdFront: guarantorsData?.[0]?.id_front_url || null,
-        guarantorIdBack: guarantorsData?.[0]?.id_back_url || null,
-        officerClient1:
-          documentsData?.find((doc) => doc.document_type === "First Officer and Client Image")
-            ?.document_url || null,
-        officerClient2:
-          documentsData?.find((doc) => doc.document_type === "Second Officer and Client Image")
-            ?.document_url || null,
-        bothOfficers:
-          documentsData?.find((doc) => doc.document_type === "Both Officers Image")
-            ?.document_url || null,
-      };
-
-      setExistingImages(imageData);
-      toast.success("Customer details loaded");
-    } catch (error) {
-      console.error("Error fetching customer details:", error);
-      toast.error("Error loading customer details");
-    } finally {
-      setLoading(false);
+      setGuarantorSecurityItems(gSecurityWithImages);
     }
-  };
+
+    // Map existing images
+    const imageData = {
+      passport: customerData?.passport_url || null,
+      idFront: customerData?.id_front_url || null,
+      idBack: customerData?.id_back_url || null,
+      house: customerData?.house_image_url || null,
+      business: businessImagesData?.map((img) => img.image_url) || [],
+      security:
+        securityItemsData?.flatMap((item) =>
+          item.security_item_images?.map((img) => img.image_url) || []
+        ) || [],
+      guarantorPassport: guarantorsData?.[0]?.passport_url || null,
+      guarantorIdFront: guarantorsData?.[0]?.id_front_url || null,
+      guarantorIdBack: guarantorsData?.[0]?.id_back_url || null,
+      officerClient1:
+        documentsData?.find((doc) => doc.document_type === "First Officer and Client Image")
+          ?.document_url || null,
+      officerClient2:
+        documentsData?.find((doc) => doc.document_type === "Second Officer and Client Image")
+          ?.document_url || null,
+      bothOfficers:
+        documentsData?.find((doc) => doc.document_type === "Both Officers Image")
+          ?.document_url || null,
+    };
+
+    setExistingImages(imageData);
+    toast.success("Customer details loaded");
+  } catch (error) {
+    console.error("Error fetching customer details:", error);
+    toast.error("Error loading customer details");
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   const DocumentCard = ({ title, imageUrl, placeholder, icon: Icon }) => (
@@ -290,7 +271,7 @@ setLoanDetails({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Customer Details rm
+                Customer Details 
               </h1>
               <p className="text-gray-600 mt-2">Complete customer information and documents </p>
             </div>
@@ -455,134 +436,7 @@ setLoanDetails({
           </div>
         )}
 
-        {/* Documents Verification Section */}
-        {documents.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
-            <div className="p-8">
-              <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                  <DocumentTextIcon className="h-8 w-8 text-indigo-600 mr-3" />
-                  Document Verification
-                </h2>
-                <p className="text-gray-600 mt-2">
-                  Verification and officer images
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  {
-                    key: "first_officer_client",
-                    label: "First Officer & Client",
-                    document: documents.find(d => d.document_type === "First Officer and Client Image")
-                  },
-                  {
-                    key: "second_officer_client",
-                    label: "Second Officer & Client",
-                    document: documents.find(d => d.document_type === "Second Officer and Client Image")
-                  },
-                  {
-                    key: "both_officers",
-                    label: "Both Officers",
-                    document: documents.find(d => d.document_type === "Both Officers Image")
-                  }
-                ].map(({ key, label, document }) => (
-                  <div
-                    key={key}
-                    className="flex flex-col items-start p-4 border border-blue-200 rounded-xl bg-white shadow-sm"
-                  >
-                    {/* Label */}
-                    <div className="block text-sm font-medium text-blue-800 mb-3">
-                      {label}
-                    </div>
-
-                    {/* Document Preview */}
-                    {document && document.document_url ? (
-                      <div className="mt-4 relative w-full">
-                        <img
-                          src={document.document_url}
-                          alt={label}
-                          className="w-full h-48 object-cover rounded-lg border border-green-200 shadow-sm cursor-pointer"
-                          onClick={() => setSelectedImage({
-                            url: document.document_url,
-                            title: label
-                          })}
-                        />
-                      </div>
-                    ) : (
-                      <div className="mt-4 text-center text-gray-500 text-sm w-full h-48 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
-                        No image available
-                      </div>
-                    )}
-
-                    {/* Upload Date */}
-                    {document && document.uploaded_at && (
-                      <div className="mt-3 text-xs text-gray-500">
-                        Uploaded: {new Date(document.uploaded_at).toLocaleDateString()}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Additional Documents */}
-              {documents.filter(d => ![
-                "First Officer and Client Image",
-                "Second Officer and Client Image",
-                "Both Officers Image"
-              ].includes(d.document_type)).length > 0 && (
-                <div className="mt-8">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6">Additional Documents</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {documents
-                      .filter(d => ![
-                        "First Officer and Client Image",
-                        "Second Officer and Client Image",
-                        "Both Officers Image"
-                      ].includes(d.document_type))
-                      .map((document, index) => (
-                        <div
-                          key={index}
-                          className="flex flex-col items-start p-4 border border-blue-200 rounded-xl bg-white shadow-sm"
-                        >
-                          {/* Label */}
-                          <div className="block text-sm font-medium text-blue-800 mb-3">
-                            {document.document_type}
-                          </div>
-
-                          {/* Document Preview */}
-                          {document.document_url ? (
-                            <div className="mt-4 relative w-full">
-                              <img
-                                src={document.document_url}
-                                alt={document.document_type}
-                                className="w-full h-48 object-cover rounded-lg border border-green-200 shadow-sm cursor-pointer"
-                                onClick={() => setSelectedImage({
-                                  url: document.document_url,
-                                  title: document.document_type
-                                })}
-                              />
-                            </div>
-                          ) : (
-                            <div className="mt-4 text-center text-gray-500 text-sm w-full h-48 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
-                              No image available
-                            </div>
-                          )}
-
-                          {/* Upload Date */}
-                          {document.uploaded_at && (
-                            <div className="mt-3 text-xs text-gray-500">
-                              Uploaded: {new Date(document.uploaded_at).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+      
 
         {/* Business Information */}
         <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
@@ -942,7 +796,7 @@ setLoanDetails({
         )}
 
         {/* Loan Information Section */}
-        {(loanDetails?.prequalified_amount || loanDetails?.bm_scored_amount) && (
+        {(loanDetails?.prequalifiedAmount || loanDetails?.bm_loan_scored_amount) && (
           <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
@@ -963,13 +817,13 @@ setLoanDetails({
                     </div>
                   </div>
                   <p className="text-3xl font-bold text-blue-700 mb-2">
-                    KES {loanDetails.prequalified_amount?.toLocaleString() || "0"}
+                    KES {loanDetails.prequalifiedAmount?.toLocaleString() || "0"}
                   </p>
                   <p className="text-sm text-blue-600">Amount from RO prequalification</p>
                 </div>
 
                 {/* BM Scored Amount */}
-                {loanDetails.bm_scored_amount && (
+                {loanDetails.bm_loan_scored_amount && (
                   <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
                     <div className="flex items-center justify-between mb-4">
                       <h4 className="font-semibold text-purple-900">BM Scored Amount</h4>
@@ -978,7 +832,7 @@ setLoanDetails({
                       </div>
                     </div>
                     <p className="text-3xl font-bold text-purple-700 mb-2">
-                      KES {loanDetails.bm_scored_amount.toLocaleString()}
+                      KES {loanDetails.bm_loan_scored_amount.toLocaleString()}
                     </p>
                     <p className="text-sm text-purple-600">BM assessment amount</p>
                   </div>

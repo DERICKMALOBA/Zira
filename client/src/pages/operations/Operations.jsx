@@ -31,13 +31,22 @@ export default function OperationsManagement() {
   const [formData, setFormData] = useState({});
   const [editingItem, setEditingItem] = useState(null);
 
-  // Define roles array - THIS WAS MISSING
+  
+  // Define roles array
   const roles = [
-    { value: 'admin', label: 'Admin' },
-    { value: 'manager', label: 'Manager' },
-    { value: 'staff', label: 'Staff' },
-    { value: 'user', label: 'User' }
+    { value: "admin", label: "Admin" },
+    { value: "operation_officer", label: "Operation Officer" },
+    { value: "regional_manager", label: "Regional Manager" },
+    { value: "relationship_officer", label: "Relationship Officer" },
+    { value: "customer_service_officer", label: "Customer Service Officer" },
+    { value: "credit_analyst_officer", label: "Credit Analyst Officer" },
+    { value: "branch_manager", label: "Branch Manager" },
   ];
+
+  // Helper function to check if role requires branch/region
+  const roleRequiresBranchRegion = (role) => {
+    return role && role !== 'admin' && role !== 'operation_officer';
+  };
 
   useEffect(() => {
     fetchData();
@@ -61,6 +70,7 @@ export default function OperationsManagement() {
         email,
         full_name,
         role,
+        phone,
         profiles (
           branch_id,
           region_id,
@@ -119,19 +129,19 @@ export default function OperationsManagement() {
     setSubmitting(true);
 
     try {
-      if (modalType === 'user') {
+      if (modalType === "user") {
         await handleUserSubmit();
-      } else if (modalType === 'branch') {
+      } else if (modalType === "branch") {
         await handleBranchSubmit();
-      } else if (modalType === 'region') {
+      } else if (modalType === "region") {
         await handleRegionSubmit();
       }
-      
+
       await fetchData();
       closeModal();
     } catch (error) {
-      console.error('Error submitting:', error);
-      alert('Error: ' + error.message);
+      console.error(" Error submitting:", error);
+      alert("Error: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -139,125 +149,158 @@ export default function OperationsManagement() {
 
   const handleBranchSubmit = async () => {
     const branchData = {
-      name: formData.name,
-      region_id: formData.region_id,
-      code: formData.code,
-      address: formData.address,
-      phone: formData.phone,
-      status: formData.status || 'active'
+      name: formData.name?.trim(),
+      region_id: formData.region_id || null,
+      code: formData.code?.trim(),
+      address: formData.address?.trim() || null,
     };
 
-    if (editingItem) {
-      const { error } = await supabase
-        .from('branches')
-        .update(branchData)
-        .eq('id', editingItem.id);
-      
-      if (error) throw error;
-    } else {
-      const { error } = await supabase
-        .from('branches')
-        .insert(branchData);
-      
-      if (error) throw error;
+    if (!branchData.name || !branchData.region_id) {
+      throw new Error("Branch name and region are required");
     }
+
+    const query = editingItem
+      ? supabase.from("branches").update(branchData).eq("id", editingItem.id)
+      : supabase.from("branches").insert(branchData);
+
+    const { error } = await query;
+    if (error) throw error;
   };
 
   const handleRegionSubmit = async () => {
     const regionData = {
-      name: formData.name,
-      code: formData.code,
-      description: formData.description,
-      status: formData.status || 'active'
+      name: formData.name?.trim(),
+      code: formData.code?.trim(),
     };
 
-    if (editingItem) {
-      const { error } = await supabase
-        .from('regions')
-        .update(regionData)
-        .eq('id', editingItem.id);
-      
-      if (error) throw error;
-    } else {
-      const { error } = await supabase
-        .from('regions')
-        .insert(regionData);
-      
-      if (error) throw error;
+    if (!regionData.name || !regionData.code) {
+      throw new Error("Region name and code are required");
     }
+
+    const query = editingItem
+      ? supabase.from("regions").update(regionData).eq("id", editingItem.id)
+      : supabase.from("regions").insert(regionData);
+
+    const { error } = await query;
+    if (error) throw error;
   };
 
   const handleUserSubmit = async () => {
     try {
+      const requiresBranchRegion = roleRequiresBranchRegion(formData.role);
+
       if (editingItem) {
-        // Update user
+        console.log(" Updating existing user:", editingItem.id, formData);
+
         const { error: userError } = await supabase
           .from("users")
           .update({
-            full_name: formData.full_name,
-            email: formData.email,
+            full_name: formData.full_name?.trim(),
+            email: formData.email?.trim(),
             role: formData.role,
-            status: formData.status,
+            phone: formData.phone?.trim() || null,
           })
           .eq("id", editingItem.id);
 
-        if (userError) throw userError;
+        if (userError) {
+          console.error(" User update error:", userError);
+          throw userError;
+        }
 
-        // Update profile
+        // Set branch_id and region_id to null for admin/operation_officer
         const { error: profileError } = await supabase
           .from("profiles")
           .update({
-            phone: formData.phone,
-            branch_id: formData.branch_id || null,
-            region_id: formData.region_id || null,
+            branch_id: requiresBranchRegion ? (formData.branch_id || null) : null,
+            region_id: requiresBranchRegion ? (formData.region_id || null) : null,
           })
           .eq("id", editingItem.id);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error("❌ Profile update error:", profileError);
+          throw profileError;
+        }
       } else {
-        // Create auth user
-        const { data: authData, error: authError } =
-          await supabase.auth.signUp({
-            email: formData.email,
-            password: formData.password,
-            options: {
-              data: { full_name: formData.full_name, role: formData.role },
+     
+        if (!formData.email || !formData.password) {
+          throw new Error("Email and password are required");
+        }
+        if (formData.password.length < 6) {
+          throw new Error("Password must be at least 6 characters");
+        }
+
+        console.log(" Creating auth user with email:", formData.email);
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email.trim(),
+          password: formData.password.trim(),
+          options: {
+            emailRedirectTo: window.location.origin,
+            data: {
+              full_name: formData.full_name?.trim(),
+              role: formData.role,
+              phone: formData.phone?.trim() || null,
+              branch_id: requiresBranchRegion ? (formData.branch_id || null) : null,
+              region_id: requiresBranchRegion ? (formData.region_id || null) : null,
             },
-          });
+          },
+        });
+
+        console.log("✅ Auth response:", { authData, authError });
+
         if (authError) throw authError;
 
-        const userId = authData.user.id;
+        const userId = authData?.user?.id;
+        if (!userId) throw new Error("Failed to create user in Auth");
 
-        // Insert into users table
-        const { error: userError } = await supabase.from("users").insert({
-          id: userId,
-          full_name: formData.full_name,
-          email: formData.email,
-          role: formData.role,
-          status: "active",
-        });
-        if (userError) throw userError;
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Insert into profiles table
-        const { error: profileError } = await supabase.from("profiles").insert({
-          id: userId, // same as user.id
-          phone: formData.phone,
-          branch_id: formData.branch_id || null,
-          region_id: formData.region_id || null,
-        });
-        if (profileError) throw profileError;
+        console.log("🟢 Upserting into users table with ID:", userId);
+        const { error: userError } = await supabase
+          .from("users")
+          .upsert({
+            id: userId,
+            full_name: formData.full_name?.trim(),
+            email: formData.email.trim(),
+            role: formData.role,
+            phone: formData.phone?.trim() || null,
+          }, {
+            onConflict: 'id',
+            ignoreDuplicates: false
+          });
+
+        if (userError) {
+          console.error("❌ Users upsert error:", userError);
+          throw userError;
+        }
+
+        console.log("🟢 Upserting into profiles table with ID:", userId);
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .upsert({
+            id: userId,
+            branch_id: requiresBranchRegion ? (formData.branch_id || null) : null,
+            region_id: requiresBranchRegion ? (formData.region_id || null) : null,
+          }, {
+            onConflict: 'id',
+            ignoreDuplicates: false
+          });
+
+        if (profileError) {
+          console.error("❌ Profiles upsert error:", profileError);
+          throw profileError;
+        }
       }
 
+      console.log("✅ User operation successful");
       await fetchUsers();
       setEditingItem(null);
       setFormData({});
     } catch (err) {
-      console.error("❌ Error saving user:", err.message);
-      alert(err.message);
+      console.error("❌ Error saving user (outer catch):", err);
+      alert(err.message || "Unexpected error saving user");
     }
   };
 
-  // Delete User + Profile
   const handleDelete = async (type, id) => {
     if (!confirm("Are you sure?")) return;
 
@@ -275,12 +318,11 @@ export default function OperationsManagement() {
         else fetchRegions();
       }
     } catch (err) {
-      console.error(" Error deleting:", err.message);
+      console.error("❌ Error deleting:", err.message);
       alert(err.message);
     }
   };
 
-  // Filter data based on search
   const filteredUsers = users.filter(u => 
     (u.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -402,9 +444,14 @@ export default function OperationsManagement() {
                             {user.role}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">{user.branches?.name || 'N/A'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">{user.regions?.name || 'N/A'}</td>
-                      
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {roleRequiresBranchRegion(user.role) ? (user.branches?.name || 'N/A') : 
+                          <span className="text-gray-400 italic">All Branches</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {roleRequiresBranchRegion(user.role) ? (user.regions?.name || 'N/A') : 
+                          <span className="text-gray-400 italic">All Regions</span>}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <button
                             onClick={() => openModal('user', user)}
@@ -453,7 +500,6 @@ export default function OperationsManagement() {
                           {regions.find(r => r.id === branch.region_id)?.name || 'N/A'}
                         </td>
                         <td className="px-6 py-4">{branch.address || 'N/A'}</td>
-                       
                         <td className="px-6 py-4 whitespace-nowrap">
                           <button
                             onClick={() => openModal('branch', branch)}
@@ -602,33 +648,46 @@ export default function OperationsManagement() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Region</label>
-                    <select
-                      value={formData.region_id || ''}
-                      onChange={(e) => setFormData({ ...formData, region_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    >
-                      <option value="">Select Region</option>
-                      {regions.map(region => (
-                        <option key={region.id} value={region.id}>{region.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Conditionally show Region and Branch fields */}
+                  {roleRequiresBranchRegion(formData.role) && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Region</label>
+                        <select
+                          value={formData.region_id || ''}
+                          onChange={(e) => setFormData({ ...formData, region_id: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        >
+                          <option value="">Select Region</option>
+                          {regions.map(region => (
+                            <option key={region.id} value={region.id}>{region.name}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
-                    <select
-                      value={formData.branch_id || ''}
-                      onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    >
-                      <option value="">Select Branch</option>
-                      {branches.map(branch => (
-                        <option key={branch.id} value={branch.id}>{branch.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                        <select
+                          value={formData.branch_id || ''}
+                          onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        >
+                          <option value="">Select Branch</option>
+                          {branches.map(branch => (
+                            <option key={branch.id} value={branch.id}>{branch.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  {!roleRequiresBranchRegion(formData.role) && formData.role && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-sm text-blue-800">
+                        <strong>System-wide Access:</strong> {formData.role === 'admin' ? 'Admins' : 'Operation Officers'} have access to all branches and regions.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

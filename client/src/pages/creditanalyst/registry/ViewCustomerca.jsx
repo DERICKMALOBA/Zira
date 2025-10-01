@@ -33,8 +33,8 @@ const ViewCustomerca = ({ customer, onClose }) => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [nextOfKin, setNextOfKin] = useState(null);
   const [documents, setDocuments] = useState([]);
-  const [existingImages, setExistingImages] = useState({}); // ✅ Added
-  const [formData, setFormData] = useState({ documents: [] }); // ✅ Added
+  const [existingImages, setExistingImages] = useState({}); 
+  const [formData, setFormData] = useState({ documents: [] }); 
 
   useEffect(() => {
     if (customer) {
@@ -43,7 +43,7 @@ const ViewCustomerca = ({ customer, onClose }) => {
   }, [customer]);
 
   const fetchCustomerDetails = async (customerId) => {
-    console.log("🔍 Fetching full customer details for ID:", customerId);
+    console.log(" Fetching full customer details for ID:", customerId);
     try {
       setLoading(true);
 
@@ -76,7 +76,7 @@ const ViewCustomerca = ({ customer, onClose }) => {
           .eq("customer_id", customerId),
       ]);
 
-      // ✅ Set states
+      // Set states
       if (!nextOfKinError) setNextOfKin(nextOfKin || null);
       if (!documentsError) {
         setDocuments(documentsData || []);
@@ -86,23 +86,22 @@ const ViewCustomerca = ({ customer, onClose }) => {
       if (!loanError) setLoanDetails(loanData || null);
       if (!guarantorsError) setGuarantors(guarantorsData || []);
      if (!securityError) {
-  const processedSecurityItems = (securityItemsData || []).map((item) => {
-    const images = (item.security_item_images || []).map((img) =>
-      img.image_url
-        ? supabase.storage
-            .from("customers") // 👈 replace with your storage bucket name
-            .getPublicUrl(img.image_url).data.publicUrl
-        : null
-    );
-    return { ...item, images };
-  });
+const processedSecurityItems = (securityItemsData || []).map((item) => ({
+  ...item,
+  images: item.security_item_images?.map((img) => img.image_url) || [],
+}));
+
+console.log("Processed Security Items:", processedSecurityItems);
+
+setSecurityItems(processedSecurityItems);
+
   setSecurityItems(processedSecurityItems);
-  console.log("🔗 Security items with images:", processedSecurityItems);
+  console.log(" Security items with images:", processedSecurityItems);
 
 }
 
 
-      // 🔐 Fetch guarantor security + images
+      //  Fetch guarantor security + images
       if (guarantorsData?.length > 0) {
         const guarantorIds = guarantorsData.map((g) => g.id);
 
@@ -119,7 +118,7 @@ const ViewCustomerca = ({ customer, onClose }) => {
         setGuarantorSecurityItems(gSecurityWithImages);
       }
 
-      // 🖼️ Map existing images + documents
+      // Map existing images + documents
       const imageData = {
         passport: customerData?.passport_url || null,
         idFront: customerData?.id_front_url || null,
@@ -145,28 +144,19 @@ const ViewCustomerca = ({ customer, onClose }) => {
       };
 
       setExistingImages(imageData);
-      console.log("✅ Documents mapped:", documentsData);
-      console.log("🖼️ Existing images set:", imageData);
+      console.log(" Documents mapped:", documentsData);
+      console.log(" Existing images set:", imageData);
 
       toast.success("Customer details loaded");
     } catch (error) {
-      console.error("❌ Error fetching customer details:", error);
+      console.error(" Error fetching customer details:", error);
       toast.error("Error loading customer details");
     } finally {
       setLoading(false);
     }
   };
 
-//   // ✅ Memoize document map
-//   const existingDocuments = useMemo(() => {
-//     const docs = {};
-//     formData.documents?.forEach((doc) => {
-//       if (doc.document_type && doc.document_url) {
-//         docs[doc.document_type] = doc.document_url;
-//       }
-//     });
-//     return docs;
-//   }, [formData.documents]);
+
 
 
   const DocumentCard = ({ title, imageUrl, placeholder, icon: Icon }) => (
