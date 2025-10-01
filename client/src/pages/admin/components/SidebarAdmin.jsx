@@ -84,13 +84,13 @@ const SidebarAdmin = ({ sidebarOpen, setSidebarOpen }) => {
       bgColor: 'bg-red-400/10',
       children: [
         { name: 'All Loans', href: '/loans/all/admin', icon: FileText },
-        { name: 'Pending Approval', href: '/loans/pending/admin', icon: Clock },
-        { name: 'Approved Loans', href: '/loans/approved/admin', icon: CheckCircle },
+        { name: 'Pending Disbursement', href: '/loans/pending/admin', icon: Clock },
+        // { name: 'Approved Loans', href: '/loans/approved/admin', icon: CheckCircle },
         { name: 'Rejected Loans', href: '/loans/rejected/admin', icon: XCircle },
         { name: 'Disbursed Loans', href: '/loans/disbursed/admin', icon: CreditCard },
-        { name: 'Loan Products', href: '/loans/products/admin', icon: FolderOpen },
-        { name: 'Restructure Loans', href: '/loans/restructure/admin', icon: RefreshCw },
-        { name: 'Write-offs', href: '/loans/writeoffs/admin', icon: Archive },
+        // { name: 'Loan Products', href: '/loans/products/admin', icon: FolderOpen },
+        // { name: 'Restructure Loans', href: '/loans/restructure/admin', icon: RefreshCw },
+        // { name: 'Write-offs', href: '/loans/writeoffs/admin', icon: Archive },
       ],
     },
     {
