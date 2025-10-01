@@ -54,89 +54,58 @@ export default function AddUsers() {
     setLoading(false);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError('');
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setSubmitting(true);
+  setError('');
 
-    try {
-      const requiresBranchRegion = roleRequiresBranchRegion(formData.role);
+  try {
+    const requiresBranchRegion = roleRequiresBranchRegion(formData.role);
 
-      if (!formData.email || !formData.password) {
-        throw new Error("Email and password are required");
-      }
-      if (formData.password.length < 6) {
-        throw new Error("Password must be at least 6 characters");
-      }
-
-     // 
-const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-  email: formData.email.trim(),
-  password: formData.password.trim(),
-//   email_confirm: true, // optional, auto-confirms email
-  user_metadata: {
-    full_name: formData.full_name?.trim(),
-    role: formData.role,
-    phone: formData.phone?.trim() || null,
-    branch_id: requiresBranchRegion ? (formData.branch_id || null) : null,
-    region_id: requiresBranchRegion ? (formData.region_id || null) : null,
-  },
-});
-
-
-      if (authError) throw authError;
-
-      const userId = authData?.user?.id;
-      if (!userId) throw new Error("Failed to create user in Auth");
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const { error: userError } = await supabase
-        .from("users")
-        .upsert({
-          id: userId,
-          full_name: formData.full_name?.trim(),
-          email: formData.email.trim(),
-          role: formData.role,
-          phone: formData.phone?.trim() || null,
-        }, {
-          onConflict: 'id',
-          ignoreDuplicates: false
-        });
-
-      if (userError) throw userError;
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .upsert({
-          id: userId,
-          branch_id: requiresBranchRegion ? (formData.branch_id || null) : null,
-          region_id: requiresBranchRegion ? (formData.region_id || null) : null,
-        }, {
-          onConflict: 'id',
-          ignoreDuplicates: false
-        });
-
-      if (profileError) throw profileError;
-
-      setShowSuccess(true);
-      setFormData({
-        full_name: '',
-        email: '',
-        password: '',
-        role: '',
-        phone: '',
-        branch_id: '',
-        region_id: ''
-      });
-
-      setTimeout(() => setShowSuccess(false), 5000);
-    } catch (err) {
-      setError(err.message || "Failed to create user");
-    } finally {
-      setSubmitting(false);
+    if (!formData.email || !formData.password) {
+      throw new Error("Email and password are required");
     }
-  };
+    if (formData.password.length < 6) {
+      throw new Error("Password must be at least 6 characters");
+    }
+
+    //  Send to backend
+    const response = await fetch("http://localhost:5000/create-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        full_name: formData.full_name?.trim(),
+        email: formData.email.trim(),
+        password: formData.password.trim(),
+        role: formData.role,
+        phone: formData.phone?.trim() || null,
+        branch_id: requiresBranchRegion ? (formData.branch_id || null) : null,
+        region_id: requiresBranchRegion ? (formData.region_id || null) : null,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to create user");
+
+    setShowSuccess(true);
+    setFormData({
+      full_name: '',
+      email: '',
+      password: '',
+      role: '',
+      phone: '',
+      branch_id: '',
+      region_id: ''
+    });
+
+    setTimeout(() => setShowSuccess(false), 5000);
+  } catch (err) {
+    setError(err.message || "Failed to create user");
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   if (loading) {
     return (
