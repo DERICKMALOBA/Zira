@@ -133,6 +133,9 @@ export default function Login() {
         case "customer_service_officer":
           navigate("/dashboard/cs");
           break;
+          case "admin": 
+    navigate("/dashboard/admin");
+    break;
         default:
           setError(`Unauthorized role: ${userData.role}`);
       }

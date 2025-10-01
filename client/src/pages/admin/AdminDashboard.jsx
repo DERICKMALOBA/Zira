@@ -387,28 +387,33 @@ const AdminDashboard = () => {
     
     return count || 0;
   };
-
-  // Fetch recent activity
+// Fetch recent activity across all regions and branches
   const fetchRecentActivity = async () => {
     try {
-      // Fetch recent loan approvals and updates
+      const activities = [];
+
+      // 1. Fetch recent loan activities with customer, region, and branch info
       const { data: loanActivities, error: loansError } = await supabase
         .from("loans")
-        .select(
-          `
+        .select(`
           *,
           customers:customer_id (
             Firstname,
             Surname
+          ),
+          regions:region_id (
+            region_name
+          ),
+          branches:branch_id (
+            branch_name
           )
-        `
-        )
-      
+        `)
         .order("created_at", { ascending: false })
-        .limit(5);
-      if (loansError) throw loansError;
+        .limit(2);
 
-      // Fetch recent payments
+      if (loansError) console.error('Loans error:', loansError);
+
+      // 2. Fetch recent payments with customer info
       const { data: recentPayments, error: paymentsError } = await supabase
         .from('payments')
         .select(`
@@ -416,38 +421,76 @@ const AdminDashboard = () => {
           amount,
           payment_date,
           status,
-          customers!payments_customer_id_fkey (
-            first_name,
-            last_name
+          created_at,
+          customers:customer_id (
+            Firstname,
+            Surname
           )
         `)
         .order('payment_date', { ascending: false })
-        .limit(10);
+        .limit(2);
 
-      if (paymentsError) throw paymentsError;
+      if (paymentsError) console.error('Payments error:', paymentsError);
 
-      // Fetch user activities
-      const { data: userActivities, error: usersError } = await supabase
+      // 3. Fetch new user registrations
+      const { data: newUsers, error: usersError } = await supabase
         .from('users')
         .select(`
-          *,
-          users:user_id (
-            full_name
+          id,
+          full_name,
+          email,
+          role,
+          created_at
+        `)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (usersError) console.error('Users error:', usersError);
+
+      // 4. Fetch new customer registrations with region/branch
+      const { data: newCustomers, error: customersError } = await supabase
+        .from('customers')
+        .select(`
+          id,
+          Firstname,
+          Surname,
+          created_at,
+          regions:region_id (
+            region_name
+          ),
+          branches:branch_id (
+            branch_name
           )
         `)
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(2);
 
-      if (usersError) throw usersError;
+      if (customersError) console.error('Customers error:', customersError);
 
-      // Format activity data
-      const activities = [];
+      // 5. Fetch user login activities (if you have an audit/login table)
+      const { data: loginActivities, error: loginError } = await supabase
+        .from('user_login_logs')
+        .select(`
+          id,
+          created_at,
+          users:user_id (
+            full_name,
+            email
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(2);
 
-      // Add loan activities
+      if (loginError) console.error('Login logs error:', loginError);
+
+      // Format loan activities
       loanActivities?.forEach(loan => {
         let action = '';
         let type = 'info';
         let icon = FileText;
+        const location = loan.branches?.branch_name 
+          ? `${loan.branches.branch_name}${loan.regions?.region_name ? `, ${loan.regions.region_name}` : ''}`
+          : loan.regions?.region_name || 'Unknown location';
 
         switch (loan.status) {
           case 'approved':
@@ -461,7 +504,7 @@ const AdminDashboard = () => {
             icon = XCircle;
             break;
           case 'pending':
-            action = 'Loan Application Submitted';
+            action = 'Loan Application';
             type = 'info';
             icon = Clock;
             break;
@@ -478,42 +521,75 @@ const AdminDashboard = () => {
 
         activities.push({
           action,
-          user: `${loan.customers?.first_name} ${loan.customers?.last_name}`,
-          details: `KES ${loan.amount?.toLocaleString()}`,
-          time: formatTimeAgo(loan.updated_at || loan.created_at),
+          user: `${loan.customers?.Firstname || 'Unknown'} ${loan.customers?.Surname || ''}`.trim(),
+          details: `KES ${loan.amount?.toLocaleString()} • ${location}`,
+          time: loan.updated_at || loan.created_at,
           type,
           icon
         });
       });
 
-      // Add payment activities
+      // Format payment activities
       recentPayments?.forEach(payment => {
         activities.push({
           action: 'Payment Received',
-          user: `${payment.customers?.first_name} ${payment.customers?.last_name}`,
+          user: `${payment.customers?.Firstname || 'Unknown'} ${payment.customers?.Surname || ''}`.trim(),
           details: `KES ${payment.amount?.toLocaleString()}`,
-          time: formatTimeAgo(payment.payment_date),
-          type: 'success',
+          time: payment.payment_date || payment.created_at,
+          type: payment.status === 'completed' ? 'success' : 'info',
           icon: CreditCard
         });
       });
 
-      // Add user activities
-      userActivities?.forEach(activity => {
+      // Format new user registrations
+      newUsers?.forEach(user => {
         activities.push({
-          action: activity.action,
-          user: `${activity.users?.first_name} ${activity.users?.last_name}`,
-          details: activity.details,
-          time: formatTimeAgo(activity.created_at),
+          action: 'New User Registered',
+          user: user.full_name || user.email,
+          details: `Role: ${user.role || 'User'}`,
+          time: user.created_at,
           type: 'info',
           icon: UserPlus
         });
       });
 
-      // Sort by time and return top 6
+      // Format new customer registrations
+      newCustomers?.forEach(customer => {
+        const location = customer.branches?.branch_name 
+          ? `${customer.branches.branch_name}${customer.regions?.region_name ? `, ${customer.regions.region_name}` : ''}`
+          : customer.regions?.region_name || '';
+
+        activities.push({
+          action: 'New Customer',
+          user: `${customer.Firstname || ''} ${customer.Surname || ''}`.trim() || 'Unknown',
+          details: location ? `Registered in ${location}` : 'Registered',
+          time: customer.created_at,
+          type: 'success',
+          icon: Users
+        });
+      });
+
+      // Format login activities
+      loginActivities?.forEach(login => {
+        activities.push({
+          action: 'User Login',
+          user: login.users?.full_name || login.users?.email || 'Unknown',
+          details: 'Signed in',
+          time: login.created_at,
+          type: 'info',
+          icon: Activity
+        });
+      });
+
+      // Sort all activities by time (most recent first) and return top 10
       return activities
+        .filter(activity => activity.time) // Remove activities without timestamp
         .sort((a, b) => new Date(b.time) - new Date(a.time))
-        .slice(0, 6);
+        .slice(0, 10)
+        .map(activity => ({
+          ...activity,
+          time: formatTimeAgo(activity.time)
+        }));
 
     } catch (error) {
       console.error('Error fetching recent activity:', error);
@@ -603,11 +679,7 @@ const AdminDashboard = () => {
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             
-            {/* Page Title */}
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-900">System Overview</h2>
-              <p className="text-gray-600 mt-1">Monitor and manage all lending operations</p>
-            </div>
+          
 
             {/* Statistics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
