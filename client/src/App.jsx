@@ -103,6 +103,9 @@ import OperationsManagement from "./pages/operations/Operations";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import SidebarAdmin from "./pages/admin/components/SidebarAdmin";
 import HeaderAdmin from "./pages/admin/components/HeaderAdmin";
+import AllUsers from "./pages/admin/AllUsers";
+import AddUsers from "./pages/admin/AddUsers";
+import SuspendedUsers from "./pages/admin/suspendedUsers";
 
 
 
@@ -652,6 +655,12 @@ const getDefaultRoute = () => {
  {role === "admin" && (
                 <>
                     <Route path="/dashboard/admin" element={<AdminDashboard/>} />
+                                        <Route path="/users/all/admin" element={<AllUsers/>} />
+                                                            <Route path="/users/add/admin" element={<AddUsers/>} />
+                                                                                <Route path="/users/suspended/admin" element={<SuspendedUsers/>} />
+
+
+
                 </>
               )}
 
