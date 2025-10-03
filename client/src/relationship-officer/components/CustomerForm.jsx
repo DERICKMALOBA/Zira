@@ -23,63 +23,83 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { checkUniqueValue } from "../../utils/Unique";
 
-// Fixed FormField component outside of AddCustomer
-const FormField = memo(({
-  label,
-  name,
-  value,
-  onChange,
-  required = false,
-  type = "text",
-  options = null,
-  placeholder = "",
-  section = null,
-  className = "",
-  disabled = false,
-  errors = {},
-  handleNestedChange,
-}) => (
-  <div className={className}>
-    <label className="block text-sm font-medium text-gray-700 mb-2">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    {options ? (
-      <select
-        name={name}
-        value={value || ""}
-        onChange={section ? (e) => handleNestedChange(e, section) : onChange}
-        className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-          errors[name] ? "border-red-500" : ""
-        }`}
-        required={required}
-        disabled={disabled}
-      >
-        <option value="">{placeholder || `Select ${label}`}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    ) : (
-      <input
-        type={type}
-        name={name}
-        value={value || ""}
-        onChange={section ? (e) => handleNestedChange(e, section) : onChange}
-        placeholder={placeholder}
-        className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-          errors[name] ? "border-red-500" : ""
-        }`}
-        required={required}
-        disabled={disabled}
-      />
-    )}
-    {errors[name] && (
-      <span className="text-red-500 text-xs mt-1">{errors[name]}</span>
-    )}
-  </div>
-));
+const FormField = memo(
+  ({
+    label,
+    name,
+    value,
+    onChange,
+    required = false,
+    type = "text",
+    options = null,
+    placeholder = "",
+    section = null,
+    className = "",
+    disabled = false,
+    errors = {},
+    handleNestedChange,
+    index, // Add index prop for security items
+  }) => {
+    
+    let errorMessage = '';
+    
+    if (index !== undefined && index !== null) {
+      // Handle security items with index - match the error key format from validation
+      errorMessage = errors[`security_${name}_${index}`] || errors[`guarantor_security_${name}_${index}`];
+    } else if (section) {
+      // Handle nested objects like guarantor, nextOfKin
+      errorMessage = errors?.[section]?.[name];
+    } else {
+      // Handle regular fields
+      errorMessage = errors?.[name];
+    }
+
+    return (
+      <div className={className}>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+
+        {options ? (
+          <select
+            name={name}
+            value={value || ""}
+            onChange={section ? (e) => handleNestedChange(e, section) : onChange}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+              errorMessage ? "border-red-500" : "border-gray-300"
+            }`}
+            required={required}
+            disabled={disabled}
+          >
+            <option value="">{placeholder || `Select ${label}`}</option>
+            {options.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type={type}
+            name={name}
+            value={value || ""}
+            onChange={section ? (e) => handleNestedChange(e, section) : onChange}
+            placeholder={placeholder}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+              errorMessage ? "border-red-500" : "border-gray-300"
+            }`}
+            required={required}
+            disabled={disabled}
+          />
+        )}
+
+        {errorMessage && (
+          <span className="text-red-500 text-xs mt-1">{errorMessage}</span>
+        )}
+      </div>
+    );
+  }
+);
 
 const CustomerForm= ({ profile, onClose,leadData }) => {
   const [activeSection, setActiveSection] = useState("personal");
@@ -255,350 +275,494 @@ const CustomerForm= ({ profile, onClose,leadData }) => {
     }
   }, [errors]);
 
-  // Validation functions (keep the same as before)
-const validatePersonalDetails = async () => {
-  const newErrors = {};
 
-  if (!formData.Firstname) newErrors.Firstname = "First name is required";
-  if (!formData.Surname) newErrors.Surname = "Surname is required";
-  if (!formData.mobile) newErrors.mobile = "Mobile number is required";
-  if (!formData.alternativeMobile) newErrors.alternativeMobile = "Alternative mobile number is required";
-  if (!formData.idNumber) newErrors.idNumber = "ID number is required";
+  const validatePersonalDetails = async () => {
+    const newErrors = {};
+    let hasErrors = false;
 
-  // Mobile number format
-  if (formData.mobile && !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))) {
-    newErrors.mobile = "Please enter a valid mobile number";
-  }
-  if (formData.alternativeMobile && !/^[0-9]{10,15}$/.test(formData.alternativeMobile.replace(/\D/g, ""))) {
-    newErrors.altMobile = "Please enter a valid alternative mobile number";
-  }
+    if (!formData.Firstname?.trim()) {
+      newErrors.Firstname = "First name is required";
+      toast.error("First name is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (!formData.Surname?.trim()) {
+      newErrors.Surname = "Surname is required";
+      toast.error("Surname is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (!formData.mobile?.trim()) {
+      newErrors.mobile = "Mobile number is required";
+      toast.error("Mobile number is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (!formData.alternativeMobile?.trim()) {
+      newErrors.alternativeMobile = "Alternative mobile number is required";
+      toast.error("Alternative mobile number is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (!formData.idNumber?.trim()) {
+      newErrors.idNumber = "ID number is required";
+      toast.error("ID number is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
 
-  // ID format
-  if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
-    newErrors.idNumber = "Please enter a valid ID number";
-  }
+    if (formData.mobile && !/^[0-9]{10,15}$/.test(formData.mobile.replace(/\D/g, ""))) {
+      newErrors.mobile = "Please enter a valid mobile number (10-15 digits)";
+      toast.error("Invalid mobile number format", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (formData.alternativeMobile && !/^[0-9]{10,15}$/.test(formData.alternativeMobile.replace(/\D/g, ""))) {
+      newErrors.alternativeMobile = "Please enter a valid alternative mobile number (10-15 digits)";
+      toast.error("Invalid alternative mobile number format", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
 
-  // Age validation
-  if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
-    newErrors.dateOfBirth = "Customer must be at least 18 years old";
-  }
+    if (formData.idNumber && !/^[0-9]{6,12}$/.test(formData.idNumber)) {
+      newErrors.idNumber = "Please enter a valid ID number (6-12 digits)";
+      toast.error("Invalid ID number format", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
 
-  // Check uniqueness across customers, guarantors, next_of_kin
-  const fieldsToCheck = [
-    { field: "mobile", value: formData.mobile },
-   { field: "alternativeMobile", value: formData.alternativeMobile },
-    { field: "idNumber", value: formData.idNumber },
-  ];
+    if (formData.dateOfBirth && !isAtLeast18YearsOld(formData.dateOfBirth)) {
+      newErrors.dateOfBirth = "Customer must be at least 18 years old";
+      toast.error("Customer must be at least 18 years old", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
 
- for (const { field, value } of fieldsToCheck) {
-  if (value && !newErrors[field]) {
-    try {
-      const isUnique = await checkUniqueValue(
-        ["customers", "guarantors", "next_of_kin"],
-        field === "idNumber" ? "id_number" : "mobile",
-        value
-      );
-      if (!isUnique) {
-        newErrors[field] = `${field} already exists in our system`;
+    const fieldsToCheck = [
+      { field: "mobile", value: formData.mobile, label: "Mobile number" },
+      { field: "alternativeMobile", value: formData.alternativeMobile, label: "Alternative mobile" },
+      { field: "idNumber", value: formData.idNumber, label: "ID number" },
+    ];
+
+    for (const { field, value, label } of fieldsToCheck) {
+      if (value && !newErrors[field]) {
+        try {
+          const isUnique = await checkUniqueValue(
+            ["customers", "guarantors", "next_of_kin"],
+            field === "idNumber" ? "id_number" : "mobile",
+            value
+          );
+          if (!isUnique) {
+            newErrors[field] = `${label} already exists in our system`;
+            toast.error(`${label} already exists in our system`, { position: "top-right", autoClose: 3000 });
+            hasErrors = true;
+          }
+        } catch (error) {
+          console.error("Error checking uniqueness:", error);
+          newErrors[field] = `Error validating ${label}`;
+          toast.error(`Error validating ${label}`, { position: "top-right", autoClose: 3000 });
+          hasErrors = true;
+        }
       }
-    } catch (error) {
-      console.error("Error checking uniqueness:", error);
-      newErrors[field] = `Error validating ${field}`;
     }
-  }
-}
 
+    setErrors(newErrors);
+    return !hasErrors;
+  };
 
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
-
-
-const validateBusinessDetails = () => {
-  let errorsFound = {};
-
-  // Business Name
-  if (!formData.businessName) {
-    errorsFound.businessName = "Business name is required";
-  }
-
-  // Business Type
-  if (!formData.businessType) {
-    errorsFound.businessType = "Business type is required";
-  }
-
-  // Year Established (>= 6 months)
-  if (!formData.yearEstablished) {
-    errorsFound.yearEstablished = "Year established is required";
-  } else {
-    const establishedDate = new Date(formData.yearEstablished);
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-    if (establishedDate > sixMonthsAgo) {
-      errorsFound.yearEstablished = "Business must be at least 6 months old";
-    }
-  }
-
-  // Business Location
-  if (!formData.businessLocation) {
-    errorsFound.businessLocation = "Business location is required";
-  }
-
-  // Road
-  if (!formData.road) {
-    errorsFound.road = "Road is required";
-  }
-
-  // Landmark
-  if (!formData.landmark) {
-    errorsFound.landmark = "Landmark is required";
-  }
-
-  // Daily Sales
-  if (!formData.daily_Sales) {
-    errorsFound.daily_Sales = "Daily sales estimate is required";
-  }
-
-  
-
-  setErrors(errorsFound);
-
-  const isValid = Object.keys(errorsFound).length === 0;
-  console.log("Business validation result:", isValid, errorsFound); // 👈 check here
-  return isValid;
-};
-
-
-  const validateBorrowerSecurity = () => {
+  const validateBusinessDetails = () => {
     let errorsFound = {};
-    let isValid = true;
-    if (securityItems.length === 0) return false;
+    let hasErrors = false;
 
-    securityItems.forEach((item, index) => {
-      if (!item.item) {
-        errorsFound[`securityItem_${index}`] = "Item name is required";
-        isValid = false;
+    if (!formData.businessName?.trim()) {
+      errorsFound.businessName = "Business name is required";
+      toast.error("Business name is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+
+    if (!formData.businessType?.trim()) {
+      errorsFound.businessType = "Business type is required";
+      toast.error("Business type is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+
+    if (!formData.yearEstablished) {
+      errorsFound.yearEstablished = "Year established is required";
+      toast.error("Year established is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    } else {
+      const establishedDate = new Date(formData.yearEstablished);
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      if (establishedDate > sixMonthsAgo) {
+        errorsFound.yearEstablished = "Business must be at least 6 months old";
+        toast.error("Business must be at least 6 months old", { position: "top-right", autoClose: 3000 });
+        hasErrors = true;
       }
-      if (!item.description) {
-        errorsFound[`securityDescription_${index}`] = "Description is required";
-        isValid = false;
-      }
-      if (!item.identification) {
-        errorsFound[`securityIdentification_${index}`] = "Identification is required";
-        isValid = false;
-      }
-      if (!item.value || parseFloat(item.value) <= 0) {
-        errorsFound[`securityValue_${index}`] = "Estimated value must be greater than 0";
-        isValid = false;
-      }
-    });
+    }
+
+    if (!formData.businessLocation?.trim()) {
+      errorsFound.businessLocation = "Business location is required";
+      toast.error("Business location is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+
+    if (!formData.road?.trim()) {
+      errorsFound.road = "Road is required";
+      toast.error("Road is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+
+    if (!formData.landmark?.trim()) {
+      errorsFound.landmark = "Landmark is required";
+      toast.error("Landmark is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+
+    if (!formData.daily_Sales) {
+      errorsFound.daily_Sales = "Daily sales estimate is required";
+      toast.error("Daily sales estimate is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    } else if (parseFloat(formData.daily_Sales) <= 0) {
+      errorsFound.daily_Sales = "Daily sales must be greater than 0";
+      toast.error("Daily sales must be greater than 0", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
 
     setErrors(errorsFound);
-    return isValid;
+    return !hasErrors;
   };
+
+const validateBorrowerSecurity = () => {
+  const errorsFound = {};
+  let hasErrors = false;
+
+  if (securityItems.length === 0) {
+    errorsFound.securityItems = "At least one security item is required";
+    toast.error("At least one security item is required", { position: "top-right", autoClose: 3000 });
+    hasErrors = true;
+  }
+
+  securityItems.forEach((item, index) => {
+    if (!item.item?.trim()) {
+      errorsFound[`security_item_${index}`] = "Item name is required";
+      toast.error(`Security Item ${index + 1}: Item name is required`, { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (!item.description?.trim()) {
+      errorsFound[`security_description_${index}`] = "Description is required";
+      toast.error(`Security Item ${index + 1}: Description is required`, { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (!item.identification?.trim()) {
+      errorsFound[`security_identification_${index}`] = "Identification is required";
+      toast.error(`Security Item ${index + 1}: Identification is required`, { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (!item.value || parseFloat(item.value) <= 0) {
+      errorsFound[`security_value_${index}`] = "Estimated value must be greater than 0";
+      toast.error(`Security Item ${index + 1}: Value must be greater than 0`, { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+  });
+
+  setErrors((prev) => ({ ...prev, ...errorsFound }));
+  return !hasErrors;
+};
+
+
 
   const validateLoanDetails = () => {
     const errorsFound = {};
-    let isValid = true;
-    if (!formData.prequalifiedAmount || parseFloat(formData.prequalifiedAmount) <= 0) {
-      errorsFound.prequalifiedAmount = "Please enter a valid loan amount greater than 0";
-      isValid = false;
+    let hasErrors = false;
+    
+    if (!formData.prequalifiedAmount) {
+      errorsFound.prequalifiedAmount = "Pre-qualified amount is required";
+      toast.error("Pre-qualified amount is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    } else if (parseFloat(formData.prequalifiedAmount) <= 0) {
+      errorsFound.prequalifiedAmount = "Loan amount must be greater than 0";
+      toast.error("Loan amount must be greater than 0", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
     }
+    
     setErrors(errorsFound);
-    return isValid;
+    return !hasErrors;
   };
 
-// GUARANTOR DETAILS
-const validateGuarantorDetails = async () => {
-  const errorsFound = {};
-  const { Firstname, Surname, mobile, alternativeMobile, idNumber, dateOfBirth, gender } = formData.guarantor;
+  const validateGuarantorDetails = async () => {
+  const errorsFound = { guarantor: {} };
+  let hasErrors = false;
+  const { Firstname, Surname, mobile, idNumber, dateOfBirth, gender } = formData.guarantor;
 
-  // Required fields
-  if (!Firstname?.trim()) errorsFound.guarantorFirstname = "First Name is required";
-  if (!Surname?.trim()) errorsFound.guarantorSurname = "Surname is required";
-  if (!gender?.trim()) errorsFound.guarantorGender = "Gender is required";
-  if (!mobile?.trim()) errorsFound.guarantorMobile = "Mobile number is required";
-  if (!alternativeMobile?.trim()) errorsFound.guarantorAlternativeMobile = "Alternative mobile number is required";
-  if (!idNumber?.trim()) errorsFound.guarantorIdNumber = "ID number is required";
-
-  // Format checks
-  if (mobile && !/^[0-9]{10,15}$/.test(mobile.replace(/\D/g, ""))) errorsFound.guarantorMobile = "Please enter a valid mobile number";
-  if (alternativeMobile && !/^[0-9]{10,15}$/.test(alternativeMobile.replace(/\D/g, ""))) errorsFound.guarantorAlternativeMobile = "Please enter a valid alternative mobile number";
-  if (idNumber && !/^[0-9]{6,12}$/.test(idNumber)) errorsFound.guarantorIdNumber = "Please enter a valid ID number";
-
-  // Age check
-  if (dateOfBirth && !isAtLeast18YearsOld(dateOfBirth)) errorsFound.guarantorDateOfBirth = "Guarantor must be at least 18 years old";
-
-  // Uniqueness
-  const fieldsToCheck = [
-    { field: "guarantorMobile", value: mobile },
-    { field: "guarantorAlternativeMobile", value: alternativeMobile },
-    { field: "guarantorIdNumber", value: idNumber },
-  ];
-
-  for (const { field, value } of fieldsToCheck) {
-    if (value && !errorsFound[field]) {
-      try {
-        const isUnique = await checkUniqueValue(
-          ["customers", "guarantors", "next_of_kin"],
-          field.includes("IdNumber") ? "id_number" : "mobile",
-          value
-        );
-        if (!isUnique) errorsFound[field] = `${field} already exists in our system`;
-      } catch (err) {
-        console.error("Error checking uniqueness:", err);
-        errorsFound[field] = `Error validating ${field}`;
-      }
-    }
+  if (!Firstname?.trim()) {
+    errorsFound.guarantor.Firstname = "Guarantor first name is required";
+    toast.error("Guarantor first name is required");
+    hasErrors = true;
+  }
+  if (!Surname?.trim()) {
+    errorsFound.guarantor.Surname = "Guarantor surname is required";
+    toast.error("Guarantor surname is required");
+    hasErrors = true;
+  }
+  if (!gender?.trim()) {
+    errorsFound.guarantor.gender = "Guarantor gender is required";
+    toast.error("Guarantor gender is required");
+    hasErrors = true;
+  }
+  if (!mobile?.trim()) {
+    errorsFound.guarantor.mobile = "Guarantor mobile number is required";
+    toast.error("Guarantor mobile number is required");
+    hasErrors = true;
+  }
+  if (!idNumber?.trim()) {
+    errorsFound.guarantor.idNumber = "Guarantor ID number is required";
+    toast.error("Guarantor ID number is required");
+    hasErrors = true;
   }
 
-  setErrors(errorsFound);
-  return Object.keys(errorsFound).length === 0;
-}
-
-  const validateGuarantorSecurity = () => {
-    let isValid = true;
-    let errorsFound = {};
-    guarantorSecurityItems.forEach((item, index) => {
-      if (!item.item || item.item.trim() === "") {
-        errorsFound[`guarantorSecurityItem_${index}`] = "Item is required";
-        isValid = false;
-      }
-      if (!item.description || item.description.trim() === "") {
-        errorsFound[`guarantorSecurityDescription_${index}`] = "Description is required";
-        isValid = false;
-      }
-      if (!item.identification || item.identification.trim() === "") {
-        errorsFound[`guarantorSecurityIdentification_${index}`] = "Identification is required";
-        isValid = false;
-      }
-      if (item.value === "" || item.value === null || isNaN(item.value) || Number(item.value) <= 0) {
-        errorsFound[`guarantorSecurityValue_${index}`] = "Valid Value is required";
-        isValid = false;
-      }
-    });
-    setErrors(errorsFound);
-    return isValid;
-  };
-
-
-// NEXT OF KIN DETAILS
-const validateNextOfKinDetails = async () => {
-  const errorsFound = {};
-  const { Firstname, Surname, mobile, alternativeNumber, idNumber } = formData.nextOfKin;
-
-  // Required fields
-  if (!Firstname?.trim()) errorsFound.nextOfKinFirstname = "First Name is required";
-  if (!Surname?.trim()) errorsFound.nextOfKinSurname = "Surname is required";
-  if (!mobile?.trim()) errorsFound.nextOfKinMobile = "Mobile number is required";
-  if (!alternativeNumber?.trim()) errorsFound.nextOfKinAlternativeNumber = "Alternative mobile number is required";
-  if (!idNumber?.trim()) errorsFound.nextOfKinIdNumber = "ID number is required";
-
-  // Format checks
   if (mobile && !/^[0-9]{10,15}$/.test(mobile.replace(/\D/g, ""))) {
-    errorsFound.nextOfKinMobile = "Please enter a valid mobile number";
-  }
-  if (alternativeNumber && !/^[0-9]{10,15}$/.test(alternativeNumber.replace(/\D/g, ""))) {
-    errorsFound.nextOfKinAlternativeNumber = "Please enter a valid alternative mobile number";
+    errorsFound.guarantor.mobile = "Please enter a valid mobile number (10-15 digits)";
+    toast.error("Invalid guarantor mobile number format");
+    hasErrors = true;
   }
   if (idNumber && !/^[0-9]{6,12}$/.test(idNumber)) {
-    errorsFound.nextOfKinIdNumber = "Please enter a valid ID number";
+    errorsFound.guarantor.idNumber = "Please enter a valid ID number (6-12 digits)";
+    toast.error("Invalid guarantor ID number format");
+    hasErrors = true;
   }
 
-  // Uniqueness
+  if (dateOfBirth && !isAtLeast18YearsOld(dateOfBirth)) {
+    errorsFound.guarantor.dateOfBirth = "Guarantor must be at least 18 years old";
+    toast.error("Guarantor must be at least 18 years old");
+    hasErrors = true;
+  }
+
+  //  Uniqueness checks
   const fieldsToCheck = [
-    { field: "nextOfKinMobile", value: mobile },
-    { field: "nextOfKinAlternativeNumber", value: alternativeNumber },
-    { field: "nextOfKinIdNumber", value: idNumber },
+    { field: "mobile", value: mobile, label: "Guarantor mobile" },
+    { field: "idNumber", value: idNumber, label: "Guarantor ID number" },
   ];
 
-  for (const { field, value } of fieldsToCheck) {
-    if (value && !errorsFound[field]) {
+  for (const { field, value, label } of fieldsToCheck) {
+    if (value && !errorsFound.guarantor[field]) {
       try {
         const isUnique = await checkUniqueValue(
           ["customers", "guarantors", "next_of_kin"],
-          field.toLowerCase().includes("idnumber") ? "id_number" : "mobile",
+          field === "idNumber" ? "id_number" : "mobile",
           value
         );
-        if (!isUnique) errorsFound[field] = `${field} already exists in our system`;
+        if (!isUnique) {
+          errorsFound.guarantor[field] = `${label} already exists in our system`;
+          toast.error(`${label} already exists in our system`);
+          hasErrors = true;
+        }
       } catch (err) {
         console.error("Error checking uniqueness:", err);
-        errorsFound[field] = `Error validating ${field}`;
+        errorsFound.guarantor[field] = `Error validating ${label}`;
+        toast.error(`Error validating ${label}`);
+        hasErrors = true;
       }
     }
   }
 
-  setErrors(errorsFound);
-  return Object.keys(errorsFound).length === 0;
+  setErrors((prev) => ({ ...prev, ...errorsFound }));
+  return !hasErrors;
 };
 
 
+
+const validateGuarantorSecurity = () => {
+  const errorsFound = {};
+  let hasErrors = false;
+
+  if (guarantorSecurityItems.length === 0) {
+    errorsFound.guarantorSecurityItems = "At least one guarantor security item is required";
+    toast.error("At least one guarantor security item is required", { position: "top-right", autoClose: 3000 });
+    hasErrors = true;
+  }
+
+  guarantorSecurityItems.forEach((item, index) => {
+    if (!item.item?.trim()) {
+      errorsFound[`guarantor_security_item_${index}`] = "Item name is required";
+      toast.error(`Guarantor Security ${index + 1}: Item name is required`, { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (!item.description?.trim()) {
+      errorsFound[`guarantor_security_description_${index}`] = "Description is required";
+      toast.error(`Guarantor Security ${index + 1}: Description is required`, { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (!item.identification?.trim()) {
+      errorsFound[`guarantor_security_identification_${index}`] = "Identification is required";
+      toast.error(`Guarantor Security ${index + 1}: Identification is required`, { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+    if (!item.value || parseFloat(item.value) <= 0) {
+      errorsFound[`guarantor_security_value_${index}`] = "Estimated value must be greater than 0";
+      toast.error(`Guarantor Security ${index + 1}: Value must be greater than 0`, { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
+    }
+  });
+
+  setErrors((prev) => ({ ...prev, ...errorsFound }));
+  return !hasErrors;
+};
+
+const validateNextOfKinDetails = async () => {
+  const errorsFound = { nextOfKin: {} };
+  let hasErrors = false;
+  const { Firstname, Surname, mobile, alternativeNumber, idNumber, relationship, employmentStatus } = formData.nextOfKin;
+
+  if (!Firstname?.trim()) {
+    errorsFound.nextOfKin.Firstname = "Next of kin first name is required";
+    toast.error(errorsFound.nextOfKin.Firstname);
+    hasErrors = true;
+  }
+  if (!Surname?.trim()) {
+    errorsFound.nextOfKin.Surname = "Next of kin surname is required";
+    toast.error(errorsFound.nextOfKin.Surname);
+    hasErrors = true;
+  }
+  if (!mobile?.trim()) {
+    errorsFound.nextOfKin.mobile = "Next of kin mobile number is required";
+    toast.error(errorsFound.nextOfKin.mobile);
+    hasErrors = true;
+  }
+  if (!idNumber?.trim()) {
+    errorsFound.nextOfKin.idNumber = "Next of kin ID number is required";
+    toast.error(errorsFound.nextOfKin.idNumber);
+    hasErrors = true;
+  }
+
+  // format checks
+  if (mobile && !/^[0-9]{10,15}$/.test(mobile.replace(/\D/g, ""))) {
+    errorsFound.nextOfKin.mobile = "Please enter a valid mobile number (10-15 digits)";
+    toast.error(errorsFound.nextOfKin.mobile);
+    hasErrors = true;
+  }
+  if (alternativeNumber && !/^[0-9]{10,15}$/.test(alternativeNumber.replace(/\D/g, ""))) {
+    errorsFound.nextOfKin.alternativeNumber = "Please enter a valid alternative mobile number (10-15 digits)";
+    toast.error(errorsFound.nextOfKin.alternativeNumber);
+    hasErrors = true;
+  }
+  if (idNumber && !/^[0-9]{6,12}$/.test(idNumber)) {
+    errorsFound.nextOfKin.idNumber = "Please enter a valid ID number (6-12 digits)";
+    toast.error(errorsFound.nextOfKin.idNumber);
+    hasErrors = true;
+  }
+
+  // optional checks
+  if (!relationship?.trim()) {
+    errorsFound.nextOfKin.relationship = "Relationship is required";
+    toast.error(errorsFound.nextOfKin.relationship);
+    hasErrors = true;
+  }
+  if (!employmentStatus?.trim()) {
+    errorsFound.nextOfKin.employmentStatus = "Employment status is required";
+    toast.error(errorsFound.nextOfKin.employmentStatus);
+    hasErrors = true;
+  }
+
+  // uniqueness check
+  const fieldsToCheck = [
+    { field: "mobile", value: mobile, label: "Next of kin mobile" },
+    { field: "alternativeNumber", value: alternativeNumber, label: "Next of kin alternative mobile" },
+    { field: "idNumber", value: idNumber, label: "Next of kin ID number" },
+  ];
+
+  for (const { field, value, label } of fieldsToCheck) {
+    if (value && !errorsFound.nextOfKin[field]) {
+      try {
+        const isUnique = await checkUniqueValue(
+          ["customers", "guarantors", "next_of_kin"],
+          field.includes("idNumber") ? "id_number" : "mobile",
+          value
+        );
+        if (!isUnique) {
+          errorsFound.nextOfKin[field] = `${label} already exists in our system`;
+          toast.error(errorsFound.nextOfKin[field]);
+          hasErrors = true;
+        }
+      } catch (err) {
+        console.error("Error checking uniqueness:", err);
+        errorsFound.nextOfKin[field] = `Error validating ${label}`;
+        toast.error(errorsFound.nextOfKin[field]);
+        hasErrors = true;
+      }
+    }
+  }
+
+  setErrors((prev) => ({ ...prev, ...errorsFound }));
+  return !hasErrors;
+};
+
+
+
   const validateDocuments = () => {
-    let isValid = true;
     let errorsFound = {};
+    let hasErrors = false;
+    
     if (!officerClientImage1) {
       errorsFound.officerClientImage1 = "First Officer and Client Image is required";
-      isValid = false;
+      toast.error("First Officer and Client Image is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
     }
     if (!officerClientImage2) {
       errorsFound.officerClientImage2 = "Second Officer and Client Image is required";
-      isValid = false;
+      toast.error("Second Officer and Client Image is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
     }
     if (!bothOfficersImage) {
       errorsFound.bothOfficersImage = "Both Officers Image is required";
-      isValid = false;
+      toast.error("Both Officers Image is required", { position: "top-right", autoClose: 3000 });
+      hasErrors = true;
     }
+    
     setErrors(errorsFound);
-    return isValid;
+    return !hasErrors;
   };
 
-  // Navigation handler
-  const handleNext = async () => {
-    let isValid = false;
-    switch (activeSection) {
-      case "personal":
-        isValid = await validatePersonalDetails();
-        break;
-      case "business":
-        isValid = validateBusinessDetails();
-        break;
-      case "borrowerSecurity":
-        isValid = validateBorrowerSecurity();
-        break;
-      case "loan":
-        isValid = validateLoanDetails();
-        break;
-      case "guarantor":
-        isValid = validateGuarantorDetails();
-        break;
-      case "guarantorSecurity":
-        isValid = validateGuarantorSecurity();
-        break;
-      case "nextOfKin":
-        isValid = validateNextOfKinDetails();
-        break;
-      case "documents":
-        isValid = validateDocuments();
-        break;
-      default:
-        break;
-    }
+const handleNext = async () => {
+  let isValid = false;
 
-    if (isValid) {
-      const nextIndex = sections.findIndex((item) => item.id === activeSection) + 1;
-      if (nextIndex < sections.length) {
-        setActiveSection(sections[nextIndex].id);
-      }
-    } else {
-      toast.error("Please fix the highlighted errors before continuing.", {
+  switch (activeSection) {
+    case "personal":
+      isValid = await validatePersonalDetails();
+      break;
+    case "business":
+      isValid = validateBusinessDetails();
+      break;
+    case "borrowerSecurity":
+      isValid = validateBorrowerSecurity();
+      break;
+    case "loan":
+      isValid = validateLoanDetails();
+      break;
+    case "guarantor":
+      isValid = await validateGuarantorDetails();
+      break;
+    case "guarantorSecurity":
+      isValid = validateGuarantorSecurity();
+      break;
+    case "nextOfKin":
+      isValid = await validateNextOfKinDetails();
+      break;
+    case "documents":
+      isValid = validateDocuments();
+      break;
+    default:
+      break;
+  }
+
+  if (!isValid) {
+    toast.error("Please fix the highlighted errors before continuing.", {
       position: "top-right",
       autoClose: 3000,
       theme: "colored",
     });
-      console.log("Please fix the highlighted errors before continuing.");
-    }
-  };
+    return; //  stop here if validation failed
+  }
+
+  // Only move to next section if validation passed
+  const nextIndex = sections.findIndex((item) => item.id === activeSection) + 1;
+  if (nextIndex < sections.length) {
+    setActiveSection(sections[nextIndex].id);
+  }
+};
+
 
   // Helper functions
   const isAtLeast18YearsOld = (dateString) => {
@@ -667,7 +831,7 @@ const handleFileUpload = async (e, setter, key) => {
     setBusinessImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-// ✅ Master validation function
+// Master validation function
 const validateForm = async () => {
   const personalValid = await validatePersonalDetails();
   const businessValid = validateBusinessDetails();

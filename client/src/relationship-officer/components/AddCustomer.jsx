@@ -727,53 +727,53 @@ const validateNextOfKinDetails = async () => {
     return !hasErrors;
   };
 
-  // Navigation handler
-  const handleNext = async () => {
-    let isValid = false;
-    switch (activeSection) {
-      case "personal":
-        isValid = await validatePersonalDetails();
-        break;
-      case "business":
-        isValid = validateBusinessDetails();
-        break;
-      case "borrowerSecurity":
-        isValid = validateBorrowerSecurity();
-        break;
-      case "loan":
-        isValid = validateLoanDetails();
-        break;
-      case "guarantor":
-        isValid = validateGuarantorDetails();
-        break;
-      case "guarantorSecurity":
-        isValid = validateGuarantorSecurity();
-        break;
-      case "nextOfKin":
-        isValid = validateNextOfKinDetails();
-        break;
-      case "documents":
-        isValid = validateDocuments();
-        break;
-      default:
-        break;
-    }
+ const handleNext = async () => {
+  let isValid = false;
 
-    if (isValid) {
-      const nextIndex =
-        sections.findIndex((item) => item.id === activeSection) + 1;
-      if (nextIndex < sections.length) {
-        setActiveSection(sections[nextIndex].id);
-      }
-    } else {
-      toast.error("Please fix the highlighted errors before continuing.", {
-        position: "top-right",
-        autoClose: 3000,
-        theme: "colored",
-      });
-      console.log("Please fix the highlighted errors before continuing.");
-    }
-  };
+  switch (activeSection) {
+    case "personal":
+      isValid = await validatePersonalDetails();
+      break;
+    case "business":
+      isValid = validateBusinessDetails();
+      break;
+    case "borrowerSecurity":
+      isValid = validateBorrowerSecurity();
+      break;
+    case "loan":
+      isValid = validateLoanDetails();
+      break;
+    case "guarantor":
+      isValid = await validateGuarantorDetails();
+      break;
+    case "guarantorSecurity":
+      isValid = validateGuarantorSecurity();
+      break;
+    case "nextOfKin":
+      isValid = await validateNextOfKinDetails();
+      break;
+    case "documents":
+      isValid = validateDocuments();
+      break;
+    default:
+      break;
+  }
+
+  if (!isValid) {
+    toast.error("Please fix the highlighted errors before continuing.", {
+      position: "top-right",
+      autoClose: 3000,
+      theme: "colored",
+    });
+    return; //  stop here if validation failed
+  }
+
+  // Only move to next section if validation passed
+  const nextIndex = sections.findIndex((item) => item.id === activeSection) + 1;
+  if (nextIndex < sections.length) {
+    setActiveSection(sections[nextIndex].id);
+  }
+};
 
   // Helper functions
   const isAtLeast18YearsOld = (dateString) => {
