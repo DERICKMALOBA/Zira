@@ -158,49 +158,37 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
       }
 
       // 5. Fetch borrower security items and images
-      const { data: securityItemsData, error: securityItemsError } =
-        await supabase
-          .from("security_items")
-          .select("*")
-          .eq("customer_id", customerId);
+const { data: securityItemsData, error: securityItemsError } =
+  await supabase
+    .from("security_items")
+    .select("*")
+    .eq("customer_id", customerId);
 
-      // 5. Fetch borrower (customer) security + images
-      if (!securityItemsError && securityItemsData) {
-        const { data: securityImagesData, error: securityImagesError } =
-          await supabase
-            .from("security_item_images")
-            .select("*")
-            .in(
-              "security_item_id",
-              securityItemsData.map((s) => s.id)
-            );
+if (!securityItemsError && securityItemsData) {
+  const { data: securityImagesData, error: securityImagesError } =
+    await supabase
+      .from("security_item_images")
+      .select("*")
+      .in(
+        "security_item_id",
+        securityItemsData.map((s) => s.id)
+      );
 
-        if (!securityImagesError) {
-          const securityWithImages = securityItemsData.map((item) => {
-            const images = (securityImagesData || [])
-              .filter((img) => img.security_item_id === item.id)
-              .map((img) => {
-                if (img.image_url) {
-                  const { data } = supabase.storage
-                    .from("customers")
-                    .getPublicUrl(img.image_url);
-                  console.log(
-                    "📸 Borrower Image Path:",
-                    img.image_url,
-                    "➡️",
-                    data.publicUrl
-                  );
-                  return data.publicUrl;
-                }
-                return null;
-              });
-            return { ...item, images };
-          });
+  if (!securityImagesError && securityImagesData) {
+    const securityWithImages = securityItemsData.map((item) => {
+      const images = (securityImagesData || [])
+        .filter((img) => img.security_item_id === item.id)
+        .map((img) => img.image_url) // ✅ exactly like guarantor
+        .filter(Boolean);
 
-          console.log(" securityWithImages (final):", securityWithImages);
-          setSecurityItems(securityWithImages);
-        }
-      }
+      return { ...item, images };
+    });
+
+    console.log("✅ Borrower securityWithImages (final):", securityWithImages);
+    setSecurityItems(securityWithImages);
+  }
+}
+
 
       // 6. Fetch guarantor security + images
       if (guarantorsData && guarantorsData.length > 0) {
@@ -1715,9 +1703,9 @@ console.log("✅ New Status to save:", newStatus);
                           <DetailRow label="Mobile" value={nok.mobile} />
                           <DetailRow
                             label="Alternative Mobile"
-                            value={nok.alternative_mobile}
+                            value={nok.alternative_number}
                           />
-                          <DetailRow label="Email" value={nok.email} />
+                         
                         </div>
 
                         {/* Right column */}
@@ -1726,10 +1714,10 @@ console.log("✅ New Status to save:", newStatus);
                             label="Relationship"
                             value={nok.relationship}
                           />
-                          <DetailRow label="Gender" value={nok.gender} />
+                          {/* <DetailRow label="Gender" value={nok.gender} /> */}
                           <DetailRow
-                            label="Occupation"
-                            value={nok.occupation}
+                            label="Employment status"
+                            value={nok.employment_status}
                           />
                           <DetailRow label="County" value={nok.county} />
                           <DetailRow label="City/Town" value={nok.city_town} />

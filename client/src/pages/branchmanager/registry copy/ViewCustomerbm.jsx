@@ -76,7 +76,7 @@ const ViewCustomerbm = ({ customer, onClose }) => {
           .eq("customer_id", customerId),
       ]);
 
-      // ✅ Set states
+      //  Set states
       if (!nextOfKinError) setNextOfKin(nextOfKin || null);
       if (!documentsError) {
         setDocuments(documentsData || []);
@@ -101,7 +101,7 @@ setSecurityItems(processedSecurityItems);
 }
 
 
-      // 🔐 Fetch guarantor security + images
+      //  Fetch guarantor security + images
       if (guarantorsData?.length > 0) {
         const guarantorIds = guarantorsData.map((g) => g.id);
 
@@ -118,7 +118,7 @@ setSecurityItems(processedSecurityItems);
         setGuarantorSecurityItems(gSecurityWithImages);
       }
 
-      // 🖼️ Map existing images + documents
+      //  Map existing images + documents
       const imageData = {
         passport: customerData?.passport_url || null,
         idFront: customerData?.id_front_url || null,
@@ -144,19 +144,18 @@ setSecurityItems(processedSecurityItems);
       };
 
       setExistingImages(imageData);
-      console.log("✅ Documents mapped:", documentsData);
-      console.log("🖼️ Existing images set:", imageData);
+   
 
       toast.success("Customer details loaded");
     } catch (error) {
-      console.error("❌ Error fetching customer details:", error);
+      
       toast.error("Error loading customer details");
     } finally {
       setLoading(false);
     }
   };
 
-//   // ✅ Memoize document map
+
 //   const existingDocuments = useMemo(() => {
 //     const docs = {};
 //     formData.documents?.forEach((doc) => {

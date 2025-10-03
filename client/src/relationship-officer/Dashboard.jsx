@@ -114,10 +114,7 @@ useEffect(() => {
 
   return (
     <div>
-      <div className="mb-8">
-    
-        <p className="text-gray-600 text-center">Welcome back! Here's your performance overview.</p>
-      </div>
+     
 
       {/* Statistics Cards */}
       <StatsCards stats={stats} />

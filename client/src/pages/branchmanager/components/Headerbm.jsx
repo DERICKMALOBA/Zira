@@ -20,6 +20,7 @@ const Headerbm = ({ sidebarOpen, setSidebarOpen }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+
   const getRoleBadgeColor = (role) => {
     const colors = {
       regional_manager: "bg-purple-100 text-purple-800 border-purple-200",

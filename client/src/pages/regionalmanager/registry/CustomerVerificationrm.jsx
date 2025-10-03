@@ -170,45 +170,30 @@ const CustomerVerificationFormrm = ({ customerId, onClose }) => {
           .eq("customer_id", customerId);
 
     
-      // 5. Fetch borrower (customer) security + images
-      if (!securityItemsError && securityItemsData) {
-        const { data: securityImagesData, error: securityImagesError } =
-          await supabase
-            .from("security_item_images")
-            .select("*")
-            .in(
-              "security_item_id",
-              securityItemsData.map((s) => s.id)
-            );
+    if (!securityItemsError && securityItemsData) {
+  const { data: securityImagesData, error: securityImagesError } =
+    await supabase
+      .from("security_item_images")
+      .select("*")
+      .in(
+        "security_item_id",
+        securityItemsData.map((s) => s.id)
+      );
 
+  if (!securityImagesError && securityImagesData) {
+    const securityWithImages = securityItemsData.map((item) => {
+      const images = (securityImagesData || [])
+        .filter((img) => img.security_item_id === item.id)
+        .map((img) => img.image_url) // ✅ same as guarantor
+        .filter(Boolean);
 
-        if (!securityImagesError) {
-          const securityWithImages = securityItemsData.map((item) => {
-            const images = (securityImagesData || [])
-              .filter((img) => img.security_item_id === item.id)
-              .map((img) => {
-                if (img.image_url) {
-                  const { data } = supabase.storage
-                    .from("customers")
-                    .getPublicUrl(img.image_url);
-                  console.log(
-                    "📸 Borrower Image Path:",
-                    img.image_url,
-                    "➡️",
-                    data.publicUrl
-                  );
-                  return data.publicUrl;
-                }
-                return null;
-              });
-            return { ...item, images };
-          });
+      return { ...item, images };
+    });
 
-          console.log(" securityWithImages (final):", securityWithImages);
-          setSecurityItems(securityWithImages);
-        }
-      }
-
+    console.log("✅ securityWithImages (final):", securityWithImages);
+    setSecurityItems(securityWithImages);
+  }
+}
       // 6. Fetch guarantor security + images
       if (guarantorsData && guarantorsData.length > 0) {
         const guarantorIds = guarantorsData.map((g) => g.id);

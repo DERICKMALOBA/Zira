@@ -4,7 +4,6 @@ import {
   MagnifyingGlassIcon,
   PlusIcon,
   EyeIcon,
-  PencilSquareIcon,
   UserCircleIcon,
   DevicePhoneMobileIcon,
   IdentificationIcon,
@@ -14,11 +13,17 @@ import {
   ArrowDownIcon,
 } from "@heroicons/react/24/outline";
 import AddCustomer from "./AddCustomer"; // import the separate AddCustomer component
+import CustomerDetailsModal from "./CustomerDetailsModal.jsx";
 
-function CustomersTable({ customers, loading,  onView, profile }) {
+function CustomersTable({ customers, loading,   profile }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+
+  const handleView = (customer) => {
+    setSelectedCustomer(customer);
+  };
 
   const handleSort = (key) => {
     let direction = "asc";
@@ -124,16 +129,14 @@ function CustomersTable({ customers, loading,  onView, profile }) {
                   <td className="p-4 font-mono">{customer.id_number}</td>
                   <td className="p-4">{customer.business_name || "N/A"}</td>
                   <td className="p-4">{customer.town || "N/A"}</td>
-                  <td className="p-4 flex justify-center gap-2">
-                    <button onClick={() => onView(customer.id)}
-                      className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100">
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
-                    {/* <button onClick={() => onEdit(customer)}
-                      className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100">
-                      <PencilSquareIcon className="h-5 w-5" />
-                    </button> */}
-                  </td>
+                 <td className="p-4 flex justify-center gap-2">
+                <button
+                  onClick={() => handleView(customer)}
+                  className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100"
+                >
+                  <EyeIcon className="h-5 w-5" />
+                </button>
+              </td>
                 </tr>
               ))
             ) : (
@@ -149,6 +152,13 @@ function CustomersTable({ customers, loading,  onView, profile }) {
 
       {/* Render AddCustomer modal if showForm is true */}
       {showForm && <AddCustomer profile={profile} onClose={() => setShowForm(false)} />}
+
+         {selectedCustomer && (
+        <CustomerDetailsModal
+          customer={selectedCustomer}
+          onClose={() => setSelectedCustomer(null)}
+        />
+      )}
     </div>
   );
 }

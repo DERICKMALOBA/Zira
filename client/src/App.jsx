@@ -114,6 +114,10 @@ import LoanProduct from "./pages/admin/loans/LoanProduct";
 import RestructureLoans from "./pages/admin/loans/RestructureLoans";
 import AllLoansAdmin from "./pages/admin/loans/AllLoansAdmin";
 import DisbursedLoans from "./pages/admin/loans/DisbursedLoans";
+import Transactionsca from "./pages/creditanalyst/accounting/Transactionsca";
+import ChartOfAccounts from "./pages/creditanalyst/accounting/ChartOfAccountsca";
+import BankReconciliationsca from "./pages/creditanalyst/accounting/BankReconciliationsca";
+import Journalsca from "./pages/creditanalyst/accounting/Journalsca";
 
 // Customer Service pages
 
@@ -752,6 +756,53 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
+
+
+  <Route
+                    path="/accounting/bank-reconciliations/ca"
+                    element={
+                      <ProtectedRoute>
+                        <Accountingca />
+                      </ProtectedRoute>
+                    }
+                  />
+                    <Route
+                    path="/accounting/transactions/ca"
+                    element={
+                      <ProtectedRoute>
+                        <Transactionsca />
+                      </ProtectedRoute>
+                    }
+                  />
+                    <Route
+                    path="/accounting/chart-of-accounts/ca"
+                    element={
+                      <ProtectedRoute>
+                        <ChartOfAccounts/>
+                      </ProtectedRoute>
+                    }
+                  />
+                    <Route
+                    path="/accounting/bank-reconciliations/ca/chart-of-accounts"
+                    element={
+                      <ProtectedRoute>
+                        <BankReconciliationsca />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
+                  
+                    <Route
+                    path="/accounting/journals/ca"
+                    element={
+                      <ProtectedRoute>
+                        <Journalsca />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
                   <Route
                     path="/registry/customer-transfer/ca"
                     element={
@@ -933,17 +984,37 @@ function App() {
                     element={<SuspendedUsers />}
                   />
 
-                                    <Route path="/loans/all/admin" element={<AllLoansAdmin />} />
+                  <Route path="/loans/all/admin" element={<AllLoansAdmin />} />
 
+                  <Route
+                    path="/loans/pending/admin"
+                    element={<PendingLoans />}
+                  />
+                  <Route
+                    path="/loans/approved/admin"
+                    element={<ApprovedLoans />}
+                  />
+                  <Route
+                    path="/loans/product/admin"
+                    element={<LoanProduct />}
+                  />
+                  <Route
+                    path="/loans/restructure/admin"
+                    element={<RestructureLoans />}
+                  />
+                  <Route
+                    path="/loans/rejected/admin"
+                    element={<RejectedLoans />}
+                  />
 
-                  <Route path="/loans/pending/admin" element={<PendingLoans />} />
-    <Route path="/loans/approved/admin" element={<ApprovedLoans />} />
-      <Route path="/loans/product/admin" element={<LoanProduct />} />
-        <Route path="/loans/restructure/admin" element={<RestructureLoans />} />
-    <Route path="/loans/rejected/admin" element={<RejectedLoans />} />
-
-     <Route path="/loans/disbursed/admin" element={<DisbursedLoans />} />
-    <Route path="/loans/writeoffs/admin" element={<LoanWriteOff />} />
+                  <Route
+                    path="/loans/disbursed/admin"
+                    element={<DisbursedLoans />}
+                  />
+                  <Route
+                    path="/loans/writeoffs/admin"
+                    element={<LoanWriteOff />}
+                  />
                 </>
               )}
             </Routes>

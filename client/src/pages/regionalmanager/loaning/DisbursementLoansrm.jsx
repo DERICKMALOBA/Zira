@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useAuth } from "../../../hooks/userAuth";
+import  { useState, useEffect } from 'react';
 import { supabase } from "../.../../../../supabaseClient";
 import {
   CheckCircleIcon,
@@ -25,10 +26,13 @@ const DisbursedLoansrm = () => {
   const [repaymentSchedule, setRepaymentSchedule] = useState([]);
   const [approvalTrail, setApprovalTrail] = useState([]);
   const [repaymentHistory, setRepaymentHistory] = useState([]);
-
-  useEffect(() => {
+   const { profile } = useAuth();
+useEffect(() => {
+  if (profile?.region_id) {
     fetchDisbursedLoans();
-  }, []);
+  }
+}, [profile]); // depend on profile, not just []
+
 
   useEffect(() => {
     if (selectedLoan) {
@@ -36,28 +40,42 @@ const DisbursedLoansrm = () => {
     }
   }, [selectedLoan]);
 
-  const fetchDisbursedLoans = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("loans")
-        .select(`
+
+const fetchDisbursedLoans = async () => {
+  try {
+    setLoading(true);
+
+    // ensure we have branch_id from profile
+    if (!profile?.region_id) {
+      console.error("No branch_id found in profile");
+      toast.error("Branch not found for this user");
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("loans")
+      .select(
+        `
           *,
           customers (*)
-        `)
-        .eq('status', 'disbursed')
-        .order('disbursed_at', { ascending: false });
+        `
+      )
+      .eq("status", "disbursed")
+      .eq("branch_id", profile.branch_id) // ✅ filter by branch
+      .order("disbursed_at", { ascending: false });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      setLoans(data || []);
-    } catch (error) {
-      console.error("Error fetching disbursed loans:", error);
-      toast.error("Failed to load disbursed loans");
-    } finally {
-      setLoading(false);
-    }
-  };
+    setLoans(data || []);
+  } catch (error) {
+    console.error("Error fetching disbursed loans:", error);
+    toast.error("Failed to load disbursed loans");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const fetchLoanFullDetails = async (loanId) => {
     try {
