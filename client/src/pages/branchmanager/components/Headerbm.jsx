@@ -142,32 +142,25 @@ const Headerbm = ({ sidebarOpen, setSidebarOpen }) => {
 
               {/* Role-specific Information */}
               <div className="px-4 py-3 border-b border-gray-100">
-                {profile?.role === "regional_manager" ? (
+                
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Region:</span>
                       <span className="font-medium text-gray-900">{profile?.region}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Branches:</span>
-                      <span className="font-medium text-gray-900">{profile?.branchCount || 'All'}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Branch:</span>
                       <span className="font-medium text-gray-900">{profile?.branch}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
+                    {/* <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Employee ID:</span>
                       <span className="font-medium text-gray-900">{profile?.employeeId || 'N/A'}</span>
-                    </div>
+                    </div> */}
                   </div>
-                )}
+                
               </div>
 
-              {/* Action Menu */}
+              {/* Action Menu
               <div className="py-2">
                 <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150">
                   My Profile
@@ -178,7 +171,7 @@ const Headerbm = ({ sidebarOpen, setSidebarOpen }) => {
                 <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150">
                   Help & Support
                 </button>
-              </div>
+              </div> */}
 
               {/* Logout */}
               <div className="border-t border-gray-100 pt-2">

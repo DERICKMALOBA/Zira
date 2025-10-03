@@ -207,13 +207,13 @@ function EditAmendment({ customerId, onClose }) {
         .single();
 
       if (customerError) {
-        console.error("❌ Customer fetch error:", customerError);
+        console.error(" Customer fetch error:", customerError);
         throw customerError;
       }
-      console.log("✅ Customer data fetched:", customer);
+      console.log("Customer data fetched:", customer);
 
       // First fetch: guarantor, nextOfKin, securityItems, loan, businessImages
-      console.log("📋 Fetching related data...");
+      console.log("Fetching related data...");
       const [
         { data: guarantor },
         { data: nextOfKin },
@@ -257,16 +257,16 @@ function EditAmendment({ customerId, onClose }) {
       }
 
       console.log(
-        "🔐 Guarantor security data:",
+        " Guarantor security data:",
         guarantorSecurityData
       );
 
       console.log(
-        "🏢 Business images data:",
+        " Business images data:",
         businessImagesData
       );
       console.log(
-        "📄 Documents data:",
+        "Documents data:",
         documentsData
       );
 
@@ -376,11 +376,11 @@ function EditAmendment({ customerId, onClose }) {
       };
 
       setFormData(updatedFormData);
-      console.log("✅ Form data set:", updatedFormData);
+      console.log("Form data set:", updatedFormData);
 
       // Security items
       if (securityItemsData && securityItemsData.length > 0) {
-        console.log("🔒 Processing security items...");
+        console.log(" Processing security items...");
         const processedSecurityItems = securityItemsData.map((item) => ({
           id: item.id,
           item: item.item || "",
@@ -397,14 +397,14 @@ function EditAmendment({ customerId, onClose }) {
         );
         setSecurityItemImages(securityImages);
       } else {
-        console.log("ℹ️ No security items found");
+        console.log("ℹ No security items found");
         setSecurityItems([]);
         setSecurityItemImages([]);
       }
 
       // Guarantor security
       if (guarantorSecurityData && guarantorSecurityData.length > 0) {
-        console.log("🔐 Processing guarantor security items...");
+        console.log(" Processing guarantor security items...");
         const processedGuarantorSecurity = guarantorSecurityData.map(
           (item) => ({
             id: item.id,
@@ -423,7 +423,7 @@ function EditAmendment({ customerId, onClose }) {
         );
         setGuarantorSecurityImages(guarantorSecurityImages);
       } else {
-        console.log("ℹ️ No guarantor security items found");
+        console.log("ℹNo guarantor security items found");
         setGuarantorSecurityItems([]);
         setGuarantorSecurityImages([]);
       }
@@ -469,18 +469,18 @@ function EditAmendment({ customerId, onClose }) {
       };
 
       setExistingImages(imageData);
-      console.log("🖼️ Existing images set:", imageData);
+      console.log(" Existing images set:", imageData);
 
       // Clear any errors
       setErrors({});
-      console.log("✅ Customer data fetch completed successfully");
+      console.log(" Customer data fetch completed successfully");
     } catch (error) {
-      console.error("❌ Error fetching customer data:", error);
+      console.error(" Error fetching customer data:", error);
       toast.error("Failed to load customer data: " + error.message);
       setErrors({ fetch: error.message });
     } finally {
       setLoading(false);
-      console.log("🏁 Fetch customer data process completed");
+      console.log(" Fetch customer data process completed");
     }
   };
 
@@ -554,29 +554,7 @@ function EditAmendment({ customerId, onClose }) {
     setExistingImages((prev) => ({ ...(prev || {}), [key]: null }));
   };
 
-  // const handleRemoveDocument = (documentType) => {
-  //   setFormData((prev) => {
-  //     const updatedDocuments =
-  //       prev.documents?.filter((doc) => doc.document_type !== documentType) ||
-  //       [];
-
-  //     return {
-  //       ...prev,
-  //       documents: updatedDocuments,
-  //     };
-  //   });
-  // };
-
-  // const getExistingDocuments = () => {
-  //   const docs = {};
-  //   formData.documents?.forEach((doc) => {
-  //     if (doc.document_type && doc.document_url) {
-  //       docs[doc.document_type] = doc.document_url;
-  //     }
-  //   });
-  //   return docs;
-  // };
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -607,8 +585,8 @@ function EditAmendment({ customerId, onClose }) {
         newStatus = "bm_review_amend";
       } else if (currentCustomer.status === "sent_back_by_rm") {
         newStatus = "rm_review_amend";
-      } else if (currentCustomer.status === "sent_back_by_co") {
-        newStatus = "co_review_amend";
+      } else if (currentCustomer.status === "sent_back_by_cso") {
+        newStatus = "cso_review_amend";
       }
 
       // Update customer status

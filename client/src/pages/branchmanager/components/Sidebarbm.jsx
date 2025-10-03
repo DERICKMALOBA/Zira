@@ -75,7 +75,7 @@ const Sidebarbm = ({ sidebarOpen, setSidebarOpen }) => {
         { name: 'Customers', href: '/registry/customers/bm', icon: Users },
         { name: 'Pending Amendments', href: '/registry/pending-amendments/bm', icon: FolderOpen },
         { name: 'Approvals Pending', href: '/registry/approvals-pending/bm', icon: UserCheck },
-        { name: 'Callbacks Pending', href: '/registry/callbacks-pending/bm', icon: PhoneCall },
+        // { name: 'Callbacks Pending', href: '/registry/callbacks-pending/bm', icon: PhoneCall },
         { name: 'Customer Transfer', href: '/registry/customer-transfer/bm', icon: UserCog },
         { name: 'Customer Categories', href: '/registry/customer-categories/bm', icon: UserPlus },
         { name: 'Customer Edits', href: '/registry/customer-edits/bm', icon: ClipboardList },

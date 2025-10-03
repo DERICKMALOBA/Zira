@@ -409,7 +409,7 @@ const submitVerification = async () => {
       verificationData.finalDecision === "approved" || 
       verificationData.finalDecision === "referred"
     ) {
-      newStatus = "co_review";
+      newStatus = "cso_review";
     } else if (
       verificationData.finalDecision === "pending" || 
       verificationData.finalDecision === "edit"

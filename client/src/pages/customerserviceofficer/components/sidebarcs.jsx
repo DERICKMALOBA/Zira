@@ -47,30 +47,7 @@ const Sidebarcs = ({ sidebarOpen, setSidebarOpen }) => {
       color: 'text-blue-400',
       bgColor: 'bg-blue-400/10'
     },
-    {
-      name: 'Accounting',
-      href: '/accounting/cs',
-      icon: Calculator,
-      color: 'text-green-400',
-      bgColor: 'bg-green-400/10',
-      children: [
-        { name: 'Chart of Accounts', href: '/accounting/chart-of-accounts/cs', icon: BookOpen },
-        { name: 'Journals', href: '/accounting/journals/cs', icon: Book },
-        { name: 'Transactions', href: '/accounting/transactions/cs', icon: CreditCard },
-        { name: 'Bank Reconciliations', href: '/accounting/bank-reconciliations/cs', icon: Landmark },
-      ],
-    },
-    {
-      name: 'Credit Settings',
-      href: '/credit-settings/cs',
-      icon: Settings,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-400/10',
-      children: [
-        { name: 'Document Settings', href: '/credit-settings/document-settings/cs', icon: FileCheck },
-        { name: 'KPI Categories', href: '/credit-settings/kpi-categories/cs', icon: Target },
-      ],
-    },
+   
     {
       name: 'Registry',
       href: '/registry/cs',
@@ -80,11 +57,8 @@ const Sidebarcs = ({ sidebarOpen, setSidebarOpen }) => {
       children: [
         { name: 'Customers', href: '/registry/customers/cs', icon: Users },
         { name: 'Pending Amendments', href: '/registry/pending-amendments/cs', icon: FolderOpen },
-        { name: 'Approvals Pending', href: '/registry/approvals-pending/cs', icon: UserCheck },
-        { name: 'Callbacks Pending', href: '/registry/callbacks-pending/cs', icon: PhoneCall },
-        { name: 'Customer Transfer', href: '/registry/customer-transfer/cs', icon: UserCog },
-        { name: 'Customer Categories', href: '/registry/customer-categories/cs', icon: UserPlus },
-        { name: 'Customer Edits', href: '/registry/customer-edits/cs', icon: ClipboardList },
+        { name: 'Callbacks Pending', href: '/registry/approvals-pending/cs', icon: PhoneCall },
+        
       ],
     },
    {

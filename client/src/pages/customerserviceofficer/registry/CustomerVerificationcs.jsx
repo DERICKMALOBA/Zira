@@ -97,7 +97,7 @@ const { data: bmRow, error: bmError } = await supabase
   .limit(1)
   .maybeSingle();
 
-if (bmError) console.error("❌ BM fetch error:", bmError);
+if (bmError) console.error(" BM fetch error:", bmError);
 
 // Fetch latest RM score
 const { data: rmRow, error: rmError } = await supabase
@@ -109,9 +109,9 @@ const { data: rmRow, error: rmError } = await supabase
   .limit(1)
   .maybeSingle();
 
-if (rmError) console.error("❌ RM fetch error:", rmError);
+if (rmError) console.error(" RM fetch error:", rmError);
 
-console.log("🔍 RM query result:", { rmRow, rmError, customerId: Number(customerId) });
+console.log(" RM query result:", { rmRow, rmError, customerId: Number(customerId) });
 
 // Update state with better null handling
 setVerificationData((prev) => ({
@@ -120,7 +120,7 @@ setVerificationData((prev) => ({
   rmScoredAmount: rmRow?.rm_loan_scored_amount ?? 0,
 }));
 
-console.log("✅ Latest BM:", bmRow?.bm_loan_scored_amount ?? 0, "Latest RM:", rmRow?.rm_loan_scored_amount ?? 0);
+console.log(" Latest BM:", bmRow?.bm_loan_scored_amount ?? 0, "Latest RM:", rmRow?.rm_loan_scored_amount ?? 0);
   
 
       // 3. Fetch loan details (only for scored amount and loan-specific info)
@@ -161,49 +161,38 @@ console.log("✅ Latest BM:", bmRow?.bm_loan_scored_amount ?? 0, "Latest RM:", r
         console.log(" Next of Kin:", nokData);
       }
 
-      // 5. Fetch borrower security items and images
+    // 5. Fetch borrower security items and images
       const { data: securityItemsData, error: securityItemsError } =
         await supabase
           .from("security_items")
           .select("*")
           .eq("customer_id", customerId);
 
-      if (!securityItemsError && securityItemsData) {
-        const { data: securityImagesData, error: securityImagesError } =
-          await supabase
-            .from("security_item_images")
-            .select("*")
-            .in(
-              "security_item_id",
-              securityItemsData.map((s) => s.id)
-            );
+    
+    if (!securityItemsError && securityItemsData) {
+  const { data: securityImagesData, error: securityImagesError } =
+    await supabase
+      .from("security_item_images")
+      .select("*")
+      .in(
+        "security_item_id",
+        securityItemsData.map((s) => s.id)
+      );
 
-        if (!securityImagesError) {
-          const securityWithImages = securityItemsData.map((item) => {
-            const images = (securityImagesData || [])
-              .filter((img) => img.security_item_id === item.id)
-              .map((img) => {
-                if (img.image_url) {
-                  const { data } = supabase.storage
-                    .from("customers")
-                    .getPublicUrl(img.image_url);
-                  console.log(
-                    "📸 Borrower Image Path:",
-                    img.image_url,
-                    "➡️",
-                    data.publicUrl
-                  );
-                  return data.publicUrl;
-                }
-                return null;
-              });
-            return { ...item, images };
-          });
+  if (!securityImagesError && securityImagesData) {
+    const securityWithImages = securityItemsData.map((item) => {
+      const images = (securityImagesData || [])
+        .filter((img) => img.security_item_id === item.id)
+        .map((img) => img.image_url) //  same as guarantor
+        .filter(Boolean);
 
-          console.log(" securityWithImages (final):", securityWithImages);
-          setSecurityItems(securityWithImages);
-        }
-      }
+      return { ...item, images };
+    });
+
+    console.log("securityWithImages (final):", securityWithImages);
+    setSecurityItems(securityWithImages);
+  }
+}
 
       // 6. Fetch guarantor security + images
       if (guarantorsData && guarantorsData.length > 0) {
@@ -235,7 +224,7 @@ console.log("✅ Latest BM:", bmRow?.bm_loan_scored_amount ?? 0, "Latest RM:", r
             });
 
             setGuarantorSecurityItems(gSecurityWithImages);
-            console.log("✅ gSecurityWithImages (final):", gSecurityWithImages);
+            console.log("gSecurityWithImages (final):", gSecurityWithImages);
           }
         }
       }
@@ -342,7 +331,7 @@ if (
   verificationData.finalDecision === "pending" || 
   verificationData.finalDecision === "edit"
 ) {
-  newStatus = "sent_back_by_co";
+  newStatus = "sent_back_by_cso";
 } else if (verificationData.finalDecision === "rejected") {
   newStatus = "rejected"; 
 }

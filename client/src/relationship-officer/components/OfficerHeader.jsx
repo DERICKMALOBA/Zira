@@ -159,40 +159,31 @@ const OfficerHeader = ({ sidebarOpen, setSidebarOpen }) => {
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-white ${getRoleBadgeColor(profile.role)}`}>
                     {getRoleDisplayName(profile.role)}
                   </span>
-                  <span className="text-xs text-gray-500">
-                    {profile.employee_id ? `ID: ${profile.employee_id}` : 'Active'}
-                  </span>
+               
                 </div>
               </div>
 
               {/* Role-specific Information */}
               <div className="px-4 py-3 border-b border-gray-100">
                 <div className="space-y-2">
-                  {profile.role === "regional_manager" ? (
+                 
                     <>
-                      <div className="flex justify-between text-sm">
+                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Region:</span>
                         <span className="font-medium text-gray-900">{profile.region || 'All Regions'}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Branches:</span>
-                        <span className="font-medium text-gray-900">{profile.branch_count || 'All'}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Branch:</span>
                         <span className="font-medium text-gray-900">{profile.branch || 'Main Branch'}</span>
                       </div>
                       
                     </>
-                  )}
+                 
                 </div>
               </div>
 
               {/* Actions */}
-              <div className="py-2">
+              {/* <div className="py-2">
                 <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150">
                   My Profile
                 </button>
@@ -202,7 +193,7 @@ const OfficerHeader = ({ sidebarOpen, setSidebarOpen }) => {
                 <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150">
                   Help Center
                 </button>
-              </div>
+              </div> */}
 
               {/* Logout */}
               <div className="border-t border-gray-100 pt-2">

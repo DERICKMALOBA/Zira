@@ -81,7 +81,7 @@ const Sidebarca = ({ sidebarOpen, setSidebarOpen }) => {
         { name: 'Customers', href: '/registry/customers/ca', icon: Users },
         { name: 'Pending Amendments', href: '/registry/pending-amendments/ca', icon: FolderOpen },
         { name: 'Approvals Pending', href: '/registry/approvals-pending/ca', icon: UserCheck },
-        { name: 'Callbacks Pending', href: '/registry/callbacks-pending/ca', icon: PhoneCall },
+        // { name: 'Callbacks Pending', href: '/registry/callbacks-pending/ca', icon: PhoneCall },
         { name: 'Customer Transfer', href: '/registry/customer-transfer/ca', icon: UserCog },
         { name: 'Customer Categories', href: '/registry/customer-categories/ca', icon: UserPlus },
         { name: 'Customer Edits', href: '/registry/customer-edits/ca', icon: ClipboardList },

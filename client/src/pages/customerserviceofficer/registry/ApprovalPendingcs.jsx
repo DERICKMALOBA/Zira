@@ -33,7 +33,7 @@ const ApprovalPendingcs = () => {
           customer_verifications(*)
         `
         )
-        .eq("status", "co_review");
+        .eq("status", "cso_review");
 
       if (error) {
         console.error("Error fetching pending customers:", error.message);

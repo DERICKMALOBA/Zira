@@ -19,17 +19,17 @@ const OfficerDashboard = () => {
   const [isLoading, setIsLoading] = useState(true)
    const { profile } = useAuth();
 
- // ✅ Fetch dashboard data only for the logged-in Relationship Officer
+ //  Fetch dashboard data only for the logged-in Relationship Officer
 useEffect(() => {
   const fetchDashboardData = async () => {
     if (!profile?.id || profile.role !== "relationship_officer") {
-      return; // stop if not logged in or not RO
+      return; 
     }
 
     try {
       setIsLoading(true);
 
-      // ✅ Fetch leads created by this RO
+      // Fetch leads created by this RO
       const { data: leadsData, error: leadsError } = await supabase
         .from("leads")
         .select("*")
@@ -37,7 +37,7 @@ useEffect(() => {
 
       if (leadsError) throw leadsError;
 
-      // ✅ Fetch customers created by this RO
+      //  Fetch customers created by this RO
       const { data: customersData, error: customersError } = await supabase
         .from("customers")
         .select("*")
@@ -45,26 +45,26 @@ useEffect(() => {
 
       if (customersError) throw customersError;
 
-      // ✅ Fetch loans related to this RO's customers
+      //  Fetch loans related to this RO's customers
       const { data: loansData, error: loansError } = await supabase
-        .from("loans")
-        .select("*, customer:customer_id(created_by)") // join customer
-        .eq("customer.created_by", profile.id);
-
+  .from("loans")
+  .select("*, customer:customer_id(created_by)")
+  .eq("customer.created_by", profile.id)
+  .eq("status", "disbursed"); 
       if (loansError) throw loansError;
 
-      // ✅ Count leads by status
+      // Count leads by status
       const hotLeads = leadsData.filter((lead) => lead.status === "Hot").length;
       const warmLeads = leadsData.filter((lead) => lead.status === "Warm").length;
       const coldLeads = leadsData.filter((lead) => lead.status === "Cold").length;
 
-      // ✅ Conversion rate
+      //  Conversion rate
       const conversionRate =
         customersData.length > 0
           ? (customersData.length / (customersData.length + leadsData.length)) * 100
           : 0;
 
-      // ✅ Recent leads (last 5)
+      // Recent leads (last 5)
       const recentLeads = leadsData
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .slice(0, 5)
@@ -76,7 +76,7 @@ useEffect(() => {
           created_at: lead.created_at ? new Date(lead.created_at) : new Date(),
         }));
 
-      // ✅ Update stats
+      //  Update stats
       setStats({
         totalLeads: leadsData.length,
         totalCustomers: customersData.length,
@@ -89,7 +89,7 @@ useEffect(() => {
         },
       });
 
-      // ✅ Update recent activity
+      //  Update recent activity
       setRecentActivity(recentLeads);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);

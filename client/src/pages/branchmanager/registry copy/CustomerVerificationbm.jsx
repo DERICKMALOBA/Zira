@@ -178,13 +178,13 @@ if (!securityItemsError && securityItemsData) {
     const securityWithImages = securityItemsData.map((item) => {
       const images = (securityImagesData || [])
         .filter((img) => img.security_item_id === item.id)
-        .map((img) => img.image_url) // ✅ exactly like guarantor
+        .map((img) => img.image_url) //  exactly like guarantor
         .filter(Boolean);
 
       return { ...item, images };
     });
 
-    console.log("✅ Borrower securityWithImages (final):", securityWithImages);
+    console.log("Borrower securityWithImages (final):", securityWithImages);
     setSecurityItems(securityWithImages);
   }
 }
@@ -221,7 +221,7 @@ if (!securityItemsError && securityItemsData) {
 
             setGuarantorSecurityItems(gSecurityWithImages);
 
-            console.log("✅ gSecurityWithImages (final):", gSecurityWithImages);
+            console.log(" gSecurityWithImages (final):", gSecurityWithImages);
             setGuarantorSecurityItems(gSecurityWithImages);
           }
         }
@@ -246,7 +246,7 @@ if (!securityItemsError && securityItemsData) {
           return doc;
         });
         setDocumentImages(docsWithUrls);
-        console.log("📄 Customer Documents:", docsWithUrls);
+        console.log("Customer Documents:", docsWithUrls);
       }
     } catch (error) {
       console.error(" Error fetching customer details:", error);

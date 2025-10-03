@@ -226,7 +226,8 @@ function LoanApplication() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     {application.lastLoanStatus === "bm_review" ||
                      application.lastLoanStatus === "rm_review" ||
-                     application.lastLoanStatus === "ca_review" ? (
+                      application.lastLoanStatus === "ca_review" ||
+                     application.lastLoanStatus === "disbursed" ? (
                       <button
                         disabled
                         className="bg-gray-400 text-white px-4 py-2 rounded-md cursor-not-allowed"

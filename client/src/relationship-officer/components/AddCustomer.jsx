@@ -2620,69 +2620,61 @@ const validateNextOfKinDetails = async () => {
             )}
 
             {/* Action Buttons */}
-            <div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
-              <div className="flex gap-4">
-                {activeSection !== sections[0].id && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const currentIndex = sections.findIndex(
-                        (s) => s.id === activeSection
-                      );
-                      setActiveSection(sections[currentIndex - 1].id);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                    disabled={isSubmitting}
-                  >
-                    <ChevronLeftIcon className="h-4 w-4" />
-                    Previous
-                  </button>
-                )}
+          <div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
+  {/* Previous button on the left */}
+  <div>
+    {activeSection !== sections[0].id && (
+      <button
+        type="button"
+        onClick={() => {
+          const currentIndex = sections.findIndex(
+            (s) => s.id === activeSection
+          );
+          setActiveSection(sections[currentIndex - 1].id);
+        }}
+        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+        disabled={isSubmitting}
+      >
+        <ChevronLeftIcon className="h-4 w-4" />
+        Previous
+      </button>
+    )}
+  </div>
 
-                {activeSection !== sections[sections.length - 1].id && (
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                    disabled={isSubmitting}
-                  >
-                    Next
-                    <ChevronRightIcon className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+  {/* Next or Submit button on the right */}
+  <div>
+    {activeSection !== sections[sections.length - 1].id ? (
+      <button
+        type="button"
+        onClick={handleNext}
+        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+        disabled={isSubmitting}
+      >
+        Next
+        <ChevronRightIcon className="h-4 w-4" />
+      </button>
+    ) : (
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isSubmitting ? (
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            Submitting Application...
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <CheckCircleIcon className="h-5 w-5" />
+            Submit Application
+          </div>
+        )}
+      </button>
+    )}
+  </div>
+</div>
 
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-
-                {activeSection === sections[sections.length - 1].id && (
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        Submitting Application...
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <CheckCircleIcon className="h-5 w-5" />
-                        Submit Application
-                      </div>
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
           </form>
         </div>
       </div>

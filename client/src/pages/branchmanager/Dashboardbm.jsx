@@ -54,7 +54,8 @@ const Dashboarbm = () => {
       const { count: totalLoans } = await supabase
         .from("loans")
         .select("*", { count: "exact" })
-        .eq("branch_id", branchId);
+        .eq("branch_id", branchId)
+          .eq("status", "disbursed");
 
       // Active customers for this branch
       const { count: activeCustomers } = await supabase
@@ -84,7 +85,7 @@ const Dashboarbm = () => {
           (sum, loan) => sum + (loan.scored_amount || 0),
           0
         );
-        approvedLoans = loansData.filter((loan) => loan.status === "booked")
+        approvedLoans = loansData.filter((loan) => loan.status === "disbursed")
           .length;
         defaultedLoans = loansData.filter(
           (loan) => loan.status === "defaulted"
