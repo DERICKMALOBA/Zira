@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from "../.../../../../supabaseClient";
+import axios from "axios";
+import { useAuth } from "../../../hooks/userAuth";
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -23,6 +25,8 @@ const PendingLoans = () => {
   const [customer, setCustomer] = useState(null);
   const [repaymentSchedule, setRepaymentSchedule] = useState([]);
   const [approvalTrail, setApprovalTrail] = useState([]);
+  const [disbursing, setDisbursing] = useState(false);
+  const { profile } = useAuth();
 
   useEffect(() => {
     fetchPendingDisbursementLoans();
@@ -43,7 +47,7 @@ const PendingLoans = () => {
           *,
           customers (*)
         `)
-        .eq('status', 'ca_review')
+        .eq('status', 'ready_for_disbursement')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -184,25 +188,86 @@ const PendingLoans = () => {
     setRepaymentSchedule(schedule);
   };
 
-  const handleDisbursement = async (loanId) => {
+  const handleDisbursement = async (loan) => {
     try {
+      setDisbursing(true);
+
+      // Validate required fields
+      if (!loan.customers || !loan.customers.mobile) {
+        toast.error("Customer mobile number is missing. Cannot process disbursement.");
+        return;
+      }
+
+      if (!loan.scored_amount || loan.scored_amount <= 0) {
+        toast.error("Invalid loan amount. Cannot process disbursement.");
+        return;
+      }
+
+      // Format mobile number to ensure it's in correct format (254...)
+      let mobileNumber = loan.customers.mobile;
+      
+      // Clean the mobile number - remove any spaces, dashes, etc.
+      mobileNumber = mobileNumber.replace(/\D/g, '');
+      
+      // Convert to 254 format if it starts with 0 or 7
+      if (mobileNumber.startsWith('0')) {
+        mobileNumber = '254' + mobileNumber.substring(1);
+      } else if (mobileNumber.startsWith('7')) {
+        mobileNumber = '254' + mobileNumber;
+      }
+
+      // Validate mobile number format
+      if (!mobileNumber.startsWith('254') || mobileNumber.length !== 12) {
+        toast.error("Invalid mobile number format. Please ensure it's a valid Kenyan number.");
+        return;
+      }
+
+      console.log('Disbursing loan:', {
+        amount: loan.scored_amount,
+        mobile: mobileNumber,
+        customer: `${loan.customers.Firstname} ${loan.customers.Surname}`
+      });
+
+      // Call backend to disburse via B2C
+      const { data, error: b2cError } = await axios.post('http://localhost:5000/mpesa/b2c/send', {
+        amount: loan.scored_amount,
+        msisdn: mobileNumber
+      });
+
+      if (b2cError) throw b2cError;
+
+      // Update loan status as disbursed
       const { error } = await supabase
         .from("loans")
         .update({
           status: 'disbursed',
+          checker_decision: 'approved',
+          checker_comment: 'Disbursed via B2C',
+          checker_id: profile?.id,
           disbursed_at: new Date().toISOString()
         })
-        .eq("id", loanId);
+        .eq("id", loan.id);
 
       if (error) throw error;
-
+      
       toast.success("Loan disbursed successfully!");
       fetchPendingDisbursementLoans();
-      setSelectedLoan(null);
-    } catch (error) {
-      console.error("Error disbursing loan:", error);
-      toast.error("Failed to disburse loan");
+      setSelectedLoan(null); // Clear selected loan after disbursement
+    } catch (err) {
+      console.error('Disbursement error:', err);
+      toast.error(`Failed to disburse loan: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setDisbursing(false);
     }
+  };
+
+  // Check if selected loan is valid for disbursement
+  const isLoanValidForDisbursement = (loan) => {
+    return loan && 
+           loan.customers && 
+           loan.customers.mobile && 
+           loan.scored_amount && 
+           loan.scored_amount > 0;
   };
 
   if (loading) {
@@ -273,7 +338,7 @@ const PendingLoans = () => {
                       </p>
                       <p className="text-sm text-gray-600">ID: {loan.customers?.id_number}</p>
                       
-                       <p className="text-sm text-gray-600">PHONE: {loan.customers?.mobile}</p>
+                      <p className="text-sm text-gray-600">PHONE: {loan.customers?.mobile}</p>
                       <div className="flex justify-between items-center mt-2">
                         <span className="text-indigo-600 font-bold">
                           KES {loan.scored_amount?.toLocaleString()}
@@ -282,6 +347,14 @@ const PendingLoans = () => {
                           {loan.duration_weeks} weeks
                         </span>
                       </div>
+                      
+                      {/* Validation indicators */}
+                      {(!loan.customers?.mobile || !loan.scored_amount) && (
+                        <div className="mt-2 text-xs text-red-600 flex items-center">
+                          <ExclamationTriangleIcon className="h-3 w-3 mr-1" />
+                          Missing required data
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -319,6 +392,14 @@ const PendingLoans = () => {
                           </span>
                         </div>
                         <div className="flex justify-between">
+                          <span className="text-gray-600 font-medium">Mobile Number:</span>
+                          <span className={`font-semibold ${
+                            customer?.mobile ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {customer?.mobile || 'Missing'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
                           <span className="text-gray-600 font-medium">Product Type:</span>
                           <span className="text-purple-600 font-semibold">
                             {loanDetails?.product_name}
@@ -328,8 +409,10 @@ const PendingLoans = () => {
                       <div className="space-y-4">
                         <div className="flex justify-between">
                           <span className="text-gray-600 font-medium">Approved Amount:</span>
-                          <span className="text-emerald-600 font-bold text-lg">
-                            KES {loanDetails?.scored_amount?.toLocaleString()}
+                          <span className={`font-bold text-lg ${
+                            loanDetails?.scored_amount ? 'text-emerald-600' : 'text-red-600'
+                          }`}>
+                            KES {loanDetails?.scored_amount?.toLocaleString() || 'Missing'}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -437,21 +520,47 @@ const PendingLoans = () => {
                   </div>
 
                   {/* Disbursement Action */}
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200">
+                  <div className={`rounded-2xl p-6 border ${
+                    isLoanValidForDisbursement(selectedLoan) 
+                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
+                      : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200'
+                  }`}>
                     <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
                       <CheckCircleIcon className="h-6 w-6 text-green-600 mr-3" />
                       Ready for Disbursement
                     </h3>
+                    
+                    {!isLoanValidForDisbursement(selectedLoan) && (
+                      <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-red-700 font-medium flex items-center">
+                          <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
+                          Cannot process disbursement - Missing required data:
+                        </p>
+                        <ul className="list-disc list-inside mt-2 text-red-600">
+                          {!selectedLoan.customers?.mobile && <li>Customer mobile number is missing</li>}
+                          {!selectedLoan.scored_amount && <li>Loan amount is missing</li>}
+                        </ul>
+                      </div>
+                    )}
+
                     <p className="text-gray-700 mb-4">
-                      This loan has been fully approved and is ready for disbursement. 
-                      Click the button below to mark it as disbursed.
+                      {isLoanValidForDisbursement(selectedLoan) 
+                        ? "This loan has been fully approved and is ready for disbursement. Click the button below to process disbursement via M-Pesa B2C."
+                        : "Please ensure all required customer and loan data is complete before processing disbursement."
+                      }
                     </p>
+                    
                     <button
-                      onClick={() => handleDisbursement(selectedLoan.id)}
-                      className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg font-semibold"
+                      onClick={() => handleDisbursement(selectedLoan)} 
+                      disabled={!isLoanValidForDisbursement(selectedLoan) || disbursing}
+                      className={`flex items-center gap-3 px-6 py-3 rounded-xl transition-all shadow-lg font-semibold ${
+                        isLoanValidForDisbursement(selectedLoan) && !disbursing
+                          ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
                     >
                       <CurrencyDollarIcon className="h-5 w-5" />
-                      Confirm Disbursement
+                      {disbursing ? 'Processing Disbursement...' : 'Confirm Disbursement'}
                     </button>
                   </div>
                 </div>

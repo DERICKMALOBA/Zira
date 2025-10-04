@@ -118,6 +118,7 @@ import Transactionsca from "./pages/creditanalyst/accounting/Transactionsca";
 import ChartOfAccounts from "./pages/creditanalyst/accounting/ChartOfAccountsca";
 import BankReconciliationsca from "./pages/creditanalyst/accounting/BankReconciliationsca";
 import Journalsca from "./pages/creditanalyst/accounting/Journalsca";
+import HQReportsrm from "./pages/regionalmanager/reports/HQReportsrm";
 
 // Customer Service pages
 
@@ -630,6 +631,16 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
+   <Route
+                    path="/reports/call-center-reports/rm"
+                    element={
+                      <ProtectedRoute>
+                        <HQReportsrm />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
                   <Route
                     path="/registry/customer-edits/rm"
                     element={

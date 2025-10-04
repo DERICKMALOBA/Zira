@@ -189,19 +189,19 @@ const LoanPendingDisbursementca = () => {
       const { error } = await supabase
         .from("loans")
         .update({
-          status: 'disbursed',
-          disbursed_at: new Date().toISOString()
+          status: 'ready_for_disbursement',
+          maker_at: new Date().toISOString()
         })
         .eq("id", loanId);
 
       if (error) throw error;
 
-      toast.success("Loan disbursed successfully!");
+      toast.success(" successfully");
       fetchPendingDisbursementLoans();
       setSelectedLoan(null);
     } catch (error) {
-      console.error("Error disbursing loan:", error);
-      toast.error("Failed to disburse loan");
+      console.error("Error:", error);
+      toast.error("Failed ");
     }
   };
 

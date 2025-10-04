@@ -1,8 +1,10 @@
-import "dotenv/config";  // ✅ load .env first
+import "dotenv/config";  // load .env first
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
 import { createClient } from "@supabase/supabase-js";
+import c2b from "./routes/c2b.js";
+import b2c from "./routes/b2c.js";
 
 const app = express();
 app.use(cors());
@@ -55,7 +57,8 @@ app.post("/create-user", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
+app.use("/mpesa/c2b",c2b );
+app.use("/mpesa/b2c", b2c);
 // Start server
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

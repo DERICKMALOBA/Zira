@@ -44,8 +44,7 @@ export default function Login() {
         .from("users")
         .select("id, full_name, email, role")
         .eq("id", userId)
-        .single();
-
+         .maybeSingle();
       if (userError) {
         console.error("User data error:", userError);
         setError(`User data error: ${userError.message}`);
