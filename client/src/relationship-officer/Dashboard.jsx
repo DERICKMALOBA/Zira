@@ -1,9 +1,9 @@
 // src/pages/relationship-officer/Dashboard.jsx
-import { useState, useEffect } from 'react'
-import { supabase } from '../supabaseClient'
-import StatsCards from './components/StatsCards'
-import RecentActivity from './components/RecentActivity'
-import ConversionChart from './components/CoversionChart'
+import { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
+import StatsCards from "./components/StatsCards";
+import RecentActivity from "./components/RecentActivity";
+import ConversionChart from "./components/CoversionChart";
 import { useAuth } from "../hooks/userAuth";
 
 const OfficerDashboard = () => {
@@ -12,110 +12,116 @@ const OfficerDashboard = () => {
     totalCustomers: 0,
     totalLoans: 0,
     conversionRate: 0,
-    activeLeads: { hot: 0, warm: 0, cold: 0 }
-  })
-  
-  const [recentActivity, setRecentActivity] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-   const { profile } = useAuth();
+    activeLeads: { hot: 0, warm: 0, cold: 0 },
+  });
 
- //  Fetch dashboard data only for the logged-in Relationship Officer
-useEffect(() => {
-  const fetchDashboardData = async () => {
-    if (!profile?.id || profile.role !== "relationship_officer") {
-      return; 
-    }
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { profile } = useAuth();
 
-    try {
-      setIsLoading(true);
+  //  Fetch dashboard data only for the logged-in Relationship Officer
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!profile?.id || profile.role !== "relationship_officer") {
+        return;
+      }
 
-      // Fetch leads created by this RO
-      const { data: leadsData, error: leadsError } = await supabase
-        .from("leads")
-        .select("*")
-        .eq("created_by", profile.id);
+      try {
+        setIsLoading(true);
 
-      if (leadsError) throw leadsError;
+        // Fetch leads created by this RO
+        const { data: leadsData, error: leadsError } = await supabase
+          .from("leads")
+          .select("*")
+          .eq("created_by", profile.id);
 
-      //  Fetch customers created by this RO
-      const { data: customersData, error: customersError } = await supabase
-        .from("customers")
-        .select("*")
-        .eq("created_by", profile.id);
+        if (leadsError) throw leadsError;
 
-      if (customersError) throw customersError;
+        //  Fetch customers created by this RO
+        const { data: customersData, error: customersError } = await supabase
+          .from("customers")
+          .select("*")
+          .eq("created_by", profile.id);
 
-      //  Fetch loans related to this RO's customers
-      const { data: loansData, error: loansError } = await supabase
+        if (customersError) throw customersError;
+
+       const { data: loansData } = await supabase
   .from("loans")
   .select("*, customer:customer_id(created_by)")
-  .eq("customer.created_by", profile.id)
-  .eq("status", "disbursed"); 
-      if (loansError) throw loansError;
+  .eq("created_by", profile.id)          
+  .eq("customer.created_by", profile.id) 
+  .eq("status", "disbursed");
 
-      // Count leads by status
-      const hotLeads = leadsData.filter((lead) => lead.status === "Hot").length;
-      const warmLeads = leadsData.filter((lead) => lead.status === "Warm").length;
-      const coldLeads = leadsData.filter((lead) => lead.status === "Cold").length;
+        // Count leads by status
+        const hotLeads = leadsData.filter(
+          (lead) => lead.status === "Hot"
+        ).length;
+        const warmLeads = leadsData.filter(
+          (lead) => lead.status === "Warm"
+        ).length;
+        const coldLeads = leadsData.filter(
+          (lead) => lead.status === "Cold"
+        ).length;
 
-      //  Conversion rate
-      const conversionRate =
-        customersData.length > 0
-          ? (customersData.length / (customersData.length + leadsData.length)) * 100
-          : 0;
+        //  Conversion rate
+        const conversionRate =
+          customersData.length > 0
+            ? (customersData.length /
+                (customersData.length + leadsData.length)) *
+              100
+            : 0;
 
-      // Recent leads (last 5)
-      const recentLeads = leadsData
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .slice(0, 5)
-        .map((lead) => ({
-          id: lead.id,
-          full_name: `${lead.Firstname || ""} ${lead.Surname || ""}`.trim(),
-          phone: lead.mobile || lead.phone || "N/A",
-          status: lead.status?.toLowerCase() || "cold",
-          created_at: lead.created_at ? new Date(lead.created_at) : new Date(),
-        }));
+        // Recent leads (last 5)
+        const recentLeads = leadsData
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+          .slice(0, 5)
+          .map((lead) => ({
+            id: lead.id,
+            full_name: `${lead.Firstname || ""} ${lead.Surname || ""}`.trim(),
+            phone: lead.mobile || lead.phone || "N/A",
+            status: lead.status?.toLowerCase() || "cold",
+            created_at: lead.created_at
+              ? new Date(lead.created_at)
+              : new Date(),
+          }));
 
-      //  Update stats
-      setStats({
-        totalLeads: leadsData.length,
-        totalCustomers: customersData.length,
-        totalLoans: loansData?.length || 0,
-        conversionRate: parseFloat(conversionRate.toFixed(1)),
-        activeLeads: {
-          hot: hotLeads,
-          warm: warmLeads,
-          cold: coldLeads,
-        },
-      });
+        //  Update stats
+        setStats({
+          totalLeads: leadsData.length,
+          totalCustomers: customersData.length,
+          totalLoans: loansData?.length || 0,
+          conversionRate: parseFloat(conversionRate.toFixed(1)),
+          activeLeads: {
+            hot: hotLeads,
+            warm: warmLeads,
+            cold: coldLeads,
+          },
+        });
 
-      //  Update recent activity
-      setRecentActivity(recentLeads);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-    } finally {
-      setIsLoading(false);
+        //  Update recent activity
+        setRecentActivity(recentLeads);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (profile) {
+      fetchDashboardData();
     }
-  };
-
-  if (profile) {
-    fetchDashboardData();
-  }
-}, [profile]);
-
+  }, [profile]);
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
-    )
+    );
   }
 
   return (
     <div>
-     
-
       {/* Statistics Cards */}
       <StatsCards stats={stats} />
 
@@ -142,28 +148,34 @@ useEffect(() => {
             className="p-4 border border-gray-200 rounded-lg hover:border-indigo-300 hover:bg-indigo-50 transition-colors"
           >
             <h3 className="font-semibold text-indigo-600">Add New Lead</h3>
-            <p className="text-sm text-gray-600">Capture new potential customer information</p>
+            <p className="text-sm text-gray-600">
+              Capture new potential customer information
+            </p>
           </a>
-          
+
           <a
             href="/officer/customers"
             className="p-4 border border-gray-200 rounded-lg hover:border-green-300 hover:bg-green-50 transition-colors"
           >
             <h3 className="font-semibold text-green-600">View Customers</h3>
-            <p className="text-sm text-gray-600">Manage your converted customers</p>
+            <p className="text-sm text-gray-600">
+              Manage your converted customers
+            </p>
           </a>
-          
+
           <a
             href="officer/loans/applications"
             className="p-4 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50 transition-colors"
           >
             <h3 className="font-semibold text-purple-600">Book Loan</h3>
-            <p className="text-sm text-gray-600">Create new loan applications</p>
+            <p className="text-sm text-gray-600">
+              Create new loan applications
+            </p>
           </a>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default OfficerDashboard
+export default OfficerDashboard;

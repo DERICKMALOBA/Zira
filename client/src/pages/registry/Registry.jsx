@@ -1,7 +1,7 @@
 // src/pages/registry/Registry.jsx
 
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import Customers from './Customers'
+import Customers from './AllCustomers'
 import PendingAmendments from './PendingAmendments'
 import ApprovalsPending from './ApprovalPending'
 import CallbacksPending from './CallbacksPending'

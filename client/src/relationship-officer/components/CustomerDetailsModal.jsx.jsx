@@ -198,7 +198,7 @@ setSecurityItems(processedSecurityItems);
         {Icon && <Icon className="h-4 w-4 mr-2 text-indigo-500" />}
         {label}:
       </div>
-      <span className="text-sm font-semibold text-gray-900 text-right">
+      <span className="text-sm font-semibold text-gray-600 text-right">
         {value || "Not provided"}
       </span>
     </div>
@@ -220,7 +220,7 @@ setSecurityItems(processedSecurityItems);
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center bg-white p-8 rounded-2xl shadow-lg">
           <DocumentMagnifyingGlassIcon className="mx-auto h-16 w-16 text-red-400 mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Customer Not Found</h3>
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">Customer Not Found</h3>
           <p className="text-gray-600">The requested customer details could not be loaded.</p>
           <button
             onClick={onClose}
@@ -240,7 +240,7 @@ setSecurityItems(processedSecurityItems);
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
+              <h1 className="text  bg-gradient-to-r from-gray-700 to-gray-700 bg-clip-text text-transparent">
                 Customer Details
               </h1>
               <p className="text-gray-600 mt-2">Complete customer information and documents</p>
@@ -258,7 +258,7 @@ setSecurityItems(processedSecurityItems);
         <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
           <div className="p-8">
             <div className="border-b border-gray-200 pb-6 mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+              <h2 className="text-2xl font-bold text-gray-600 flex items-center">
                 <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
                 Customer Information
               </h2>
@@ -292,10 +292,10 @@ setSecurityItems(processedSecurityItems);
                     )}
                   </div>
 
-                  <h3 className="text-2xl font-bold text-gray-900 mt-4 text-center">
+                  <h3 className="text-2xl font-bold text-gray-600 mt-4 text-center">
                     {customer.prefix} {customer.Firstname} {customer.Middlename} {customer.Surname}
                   </h3>
-                  <p className="text-indigo-600 font-semibold">Primary Applicant</p>
+                
                 </div>
 
                 {/* Personal Info Container */}
@@ -340,7 +340,7 @@ setSecurityItems(processedSecurityItems);
 
             {/* Documents Grid */}
             <div className="mb-8">
-              <h3 className="text-xl font-semibold text-gray-900 mb-6">Customer Documents</h3>
+              <h3 className="text-xl font-semibold text-gray-600 mb-6">Customer Documents</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <DocumentCard
                   title="ID Front"
@@ -370,7 +370,7 @@ setSecurityItems(processedSecurityItems);
           <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-2xl font-bold text-gray-600 flex items-center">
                   <UserGroupIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Next of Kin Information
                 </h2>
@@ -406,140 +406,13 @@ setSecurityItems(processedSecurityItems);
           </div>
         )}
 
-        {/* Documents Verification Section */}
-        {documents.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
-            <div className="p-8">
-              <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                  <DocumentTextIcon className="h-8 w-8 text-indigo-600 mr-3" />
-                  Document Verification
-                </h2>
-                <p className="text-gray-600 mt-2">
-                  Verification and officer images
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  {
-                    key: "first_officer_client",
-                    label: "First Officer & Client",
-                    document: documents.find(d => d.document_type === "First Officer and Client Image")
-                  },
-                  {
-                    key: "second_officer_client",
-                    label: "Second Officer & Client",
-                    document: documents.find(d => d.document_type === "Second Officer and Client Image")
-                  },
-                  {
-                    key: "both_officers",
-                    label: "Both Officers",
-                    document: documents.find(d => d.document_type === "Both Officers Image")
-                  }
-                ].map(({ key, label, document }) => (
-                  <div
-                    key={key}
-                    className="flex flex-col items-start p-4 border border-blue-200 rounded-xl bg-white shadow-sm"
-                  >
-                    {/* Label */}
-                    <div className="block text-sm font-medium text-blue-800 mb-3">
-                      {label}
-                    </div>
-
-                    {/* Document Preview */}
-                    {document && document.document_url ? (
-                      <div className="mt-4 relative w-full">
-                        <img
-                          src={document.document_url}
-                          alt={label}
-                          className="w-full h-48 object-cover rounded-lg border border-green-200 shadow-sm cursor-pointer"
-                          onClick={() => setSelectedImage({
-                            url: document.document_url,
-                            title: label
-                          })}
-                        />
-                      </div>
-                    ) : (
-                      <div className="mt-4 text-center text-gray-500 text-sm w-full h-48 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
-                        No image available
-                      </div>
-                    )}
-
-                    {/* Upload Date */}
-                    {document && document.uploaded_at && (
-                      <div className="mt-3 text-xs text-gray-500">
-                        Uploaded: {new Date(document.uploaded_at).toLocaleDateString()}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Additional Documents */}
-              {documents.filter(d => ![
-                "First Officer and Client Image",
-                "Second Officer and Client Image",
-                "Both Officers Image"
-              ].includes(d.document_type)).length > 0 && (
-                <div className="mt-8">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6">Additional Documents</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {documents
-                      .filter(d => ![
-                        "First Officer and Client Image",
-                        "Second Officer and Client Image",
-                        "Both Officers Image"
-                      ].includes(d.document_type))
-                      .map((document, index) => (
-                        <div
-                          key={index}
-                          className="flex flex-col items-start p-4 border border-blue-200 rounded-xl bg-white shadow-sm"
-                        >
-                          {/* Label */}
-                          <div className="block text-sm font-medium text-blue-800 mb-3">
-                            {document.document_type}
-                          </div>
-
-                          {/* Document Preview */}
-                          {document.document_url ? (
-                            <div className="mt-4 relative w-full">
-                              <img
-                                src={document.document_url}
-                                alt={document.document_type}
-                                className="w-full h-48 object-cover rounded-lg border border-green-200 shadow-sm cursor-pointer"
-                                onClick={() => setSelectedImage({
-                                  url: document.document_url,
-                                  title: document.document_type
-                                })}
-                              />
-                            </div>
-                          ) : (
-                            <div className="mt-4 text-center text-gray-500 text-sm w-full h-48 flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg">
-                              No image available
-                            </div>
-                          )}
-
-                          {/* Upload Date */}
-                          {document.uploaded_at && (
-                            <div className="mt-3 text-xs text-gray-500">
-                              Uploaded: {new Date(document.uploaded_at).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+       
 
         {/* Business Information */}
         <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
           <div className="p-8">
             <div className="border-b border-gray-200 pb-6 mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+              <h2 className="text-2xl font-bold text-gray-600 flex items-center">
                 <BuildingOffice2Icon className="h-8 w-8 text-indigo-600 mr-3" />
                 Business Information
               </h2>
@@ -547,7 +420,7 @@ setSecurityItems(processedSecurityItems);
 
             {/* Business Details */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-600 mb-4 flex items-center gap-2">
                 <BuildingOffice2Icon className="h-6 w-6 text-indigo-600" />
                 Business Details
               </h3>
@@ -566,12 +439,12 @@ setSecurityItems(processedSecurityItems);
             {businessImages.length === 0 ? (
               <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                 <BuildingOffice2Icon className="mx-auto h-20 w-20 text-gray-400 mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No Business Images</h3>
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">No Business Images</h3>
                 <p className="text-gray-600">This customer has not provided business images.</p>
               </div>
             ) : (
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-6">Business Images</h3>
+                <h3 className="text-xl font-semibold text-gray-600 mb-6">Business Images</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {businessImages.map((image, index) => (
                     <div
@@ -579,7 +452,7 @@ setSecurityItems(processedSecurityItems);
                       className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm"
                     >
                       <div className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b">
-                        <h4 className="text-sm font-semibold text-gray-800 flex items-center">
+                        <h4 className="text-sm font-semibold text-gray-600 flex items-center">
                           <PhotoIcon className="h-4 w-4 text-indigo-600 mr-2" />
                           Business Image {index + 1}
                         </h4>
@@ -621,7 +494,7 @@ setSecurityItems(processedSecurityItems);
           <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-2xl font-bold text-gray-600 flex items-center">
                   <UserGroupIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Guarantors
                 </h2>
@@ -636,7 +509,7 @@ setSecurityItems(processedSecurityItems);
                   >
                     {/* Header */}
                     <div className="flex items-center justify-between mb-8">
-                      <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                      <h3 className="text-xl font-semibold text-gray-600 flex items-center">
                         <UserGroupIcon className="h-6 w-6 text-indigo-600 mr-3" />
                         Guarantor {index + 1}
                       </h3>
@@ -673,7 +546,7 @@ setSecurityItems(processedSecurityItems);
                             )}
                           </div>
 
-                          <h4 className="text-2xl font-bold text-gray-900 mt-4 text-center">
+                          <h4 className="text-2xl font-bold text-gray-600 mt-4 text-center">
                             {guarantor.Firstname} {guarantor.Middlename} {guarantor.Surname}
                           </h4>
                         </div>
@@ -750,7 +623,7 @@ setSecurityItems(processedSecurityItems);
           <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-2xl font-bold text-gray-600 flex items-center">
                   <ShieldCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Security Items
                 </h2>
@@ -778,7 +651,7 @@ setSecurityItems(processedSecurityItems);
                               <ShieldCheckIcon className="h-6 w-6 text-indigo-600" />
                             </div>
                             <div>
-                              <h4 className="font-semibold text-gray-900">{item.item || "Security Item"}</h4>
+                              <h4 className="font-semibold text-gray-600">{item.item || "Security Item"}</h4>
                               <p className="text-sm text-gray-600">Item {index + 1}</p>
                             </div>
                           </div>
@@ -826,7 +699,7 @@ setSecurityItems(processedSecurityItems);
               {/* Guarantor Security */}
               {guarantorSecurityItems.length > 0 && (
                 <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                  <h3 className="text-xl font-semibold text-gray-600 mb-6 flex items-center">
                     <ShieldCheckIcon className="h-6 w-6 text-indigo-600 mr-3" />
                     Guarantor Security Items
                   </h3>
@@ -844,7 +717,7 @@ setSecurityItems(processedSecurityItems);
                               <ShieldCheckIcon className="h-6 w-6 text-purple-600" />
                             </div>
                             <div>
-                              <h4 className="font-semibold text-gray-900">{item.item || "Security Item"}</h4>
+                              <h4 className="font-semibold text-gray-600">{item.item || "Security Item"}</h4>
                               <p className="text-sm text-gray-600">Guarantor Item {index + 1}</p>
                             </div>
                           </div>
@@ -879,7 +752,7 @@ setSecurityItems(processedSecurityItems);
                           {item.description && (
                             <div>
                               <p className="text-sm font-medium text-gray-600">Description:</p>
-                              <p className="text-sm text-gray-900 mt-1">{item.description}</p>
+                              <p className="text-sm text-gray-600 mt-1">{item.description}</p>
                             </div>
                           )}
                         </div>
@@ -897,14 +770,14 @@ setSecurityItems(processedSecurityItems);
           <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-2xl font-bold text-gray-600 flex items-center">
                   <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Loan Information
                 </h2>
               </div>
 
               <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                <h3 className="text-xl font-semibold text-gray-600 mb-6 flex items-center">
                   <CurrencyDollarIcon className="h-6 w-6 text-indigo-600 mr-3" />
                   Loan Details
                 </h3>
@@ -914,11 +787,11 @@ setSecurityItems(processedSecurityItems);
                     <div className="flex items-center justify-between mb-4">
                       <h4 className="font-semibold text-blue-900">Prequalified Amount</h4>
                       <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-bold text-lg">₹</span>
+                        <span className="text-blue-600 font-bold text-lg">ksh</span>
                       </div>
                     </div>
                     <p className="text-3xl font-bold text-blue-700 mb-2">
-                      KES {customer.prequalified_amount?.toLocaleString() || '0'}
+                      KES {customer.prequalifiedAmount?.toLocaleString() || '0'}
                     </p>
                     <p className="text-sm text-blue-600">Initial assessment amount</p>
                   </div>
@@ -945,19 +818,14 @@ setSecurityItems(processedSecurityItems);
                     <div className="text-center">
                       <p className="text-sm font-medium text-amber-700">Application Date</p>
                       <p className="text-lg font-semibold text-amber-900">
-                        {new Date(loanDetails.application_date).toLocaleDateString()}
+                        {new Date(loanDetails.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-medium text-amber-700">Status</p>
                       <p className="text-lg font-semibold text-amber-900 capitalize">{loanDetails.status}</p>
                     </div>
-                    {loanDetails.interest_rate && (
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-amber-700">Interest Rate</p>
-                        <p className="text-lg font-semibold text-amber-900">{loanDetails.interest_rate}%</p>
-                      </div>
-                    )}
+                 
                     {loanDetails.term && (
                       <div className="text-center">
                         <p className="text-sm font-medium text-amber-700">Term</p>
@@ -974,7 +842,7 @@ setSecurityItems(processedSecurityItems);
 <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
   <div className="p-8">
     <div className="border-b border-gray-200 pb-6 mb-8">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+      <h2 className="text-2xl font-bold text-gray-600 flex items-center">
         <DocumentTextIcon className="h-8 w-8 text-indigo-600 mr-3" />
         Document Verification
       </h2>
@@ -1022,7 +890,7 @@ setSecurityItems(processedSecurityItems);
       "Both Officers Image"
     ].includes(d.document_type)).length > 0 && (
       <div className="mt-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">Additional Documents</h3>
+        <h3 className="text-xl font-semibold text-gray-600 mb-6">Additional Documents</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {documents
             .filter(d => ![

@@ -1,26 +1,35 @@
-// src/components/LoanPendingRm.jsx
 import React, { useState, useEffect } from 'react';
 import { supabase } from "../../supabaseClient";
+import { useAuth } from "../../hooks/userAuth";
 import {
   ClockIcon,
   UserIcon,
+  CurrencyDollarIcon,
   EyeIcon,
+  CalendarIcon,
   CheckCircleIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import ApproveLoan from "./ApproveLoan";
 
 const LoanPendingRm = () => {
+  const { profile, loading: authLoading } = useAuth();
   const [pendingLoans, setPendingLoans] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedLoan, setSelectedLoan] = useState(null);
 
+  // Check if user is regional manager
+  const isRegionalManager = profile?.role === "regional_manager";
+
   useEffect(() => {
-    fetchPendingLoans();
-  }, []);
+    if (profile) {
+      fetchPendingLoans();
+    }
+  }, [profile]);
 
   const fetchPendingLoans = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("loans")
         .select(`
           *,
@@ -28,12 +37,31 @@ const LoanPendingRm = () => {
             Firstname,
             Surname,
             mobile,
-            id_number
+            id_number,
+            branches (
+              id,
+              name,
+              region_id
+            )
           )
         `)
-        .eq('status', 'pending_regional_manager')
+        .eq('status', 'rn_review')
         .order('approved_by_bm_at', { ascending: true });
 
+      // Filter by region for regional managers
+      if (isRegionalManager && profile?.region_id) {
+        const { data: branchesInRegion } = await supabase
+          .from("branches")
+          .select("id")
+          .eq("region_id", profile.region_id);
+        
+        const branchIds = branchesInRegion?.map(b => b.id) || [];
+        if (branchIds.length > 0) {
+          query = query.in("branch_id", branchIds);
+        }
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setPendingLoans(data || []);
     } catch (error) {
@@ -52,7 +80,7 @@ const LoanPendingRm = () => {
     return <ApproveLoan loan={selectedLoan} onComplete={handleComplete} />;
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
@@ -70,116 +98,144 @@ const LoanPendingRm = () => {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-700 bg-clip-text text-transparent">
+              <h1 className="text-sm  bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
                 Loans Pending Regional Manager Approval
               </h1>
-              <p className="text-gray-600 mt-2">
-                Final approval required for loans approved by branch managers
+              <p className="text-sm text-gray-500 mt-1">
+                Role: {profile?.role?.replace(/_/g, " ").toUpperCase()} 
+               
               </p>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-blue-100 to-indigo-100 border border-blue-200">
-              <ClockIcon className="h-5 w-5 text-blue-600" />
-              <span className="font-medium text-blue-700">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-blue-100 border border-indigo-200">
+              <ClockIcon className="h-5 w-5 text-indigo-600" />
+              <span className="font-medium text-indigo-700">
                 {pendingLoans.length} Pending
               </span>
             </div>
           </div>
         </div>
 
-    {/* Pending Loans Table */}
-<div className="bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden">
-  <div className="overflow-x-auto">
-    <table className="min-w-full">
-      <thead>
-        <tr className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
-          <th className="px-6 py-4 text-left font-semibold">Customer Details</th>
-          <th className="px-6 py-4 text-left font-semibold">Product</th>
-          <th className="px-6 py-4 text-right font-semibold">Amount</th>
-          <th className="px-6 py-4 text-center font-semibold">Duration</th>
-          <th className="px-6 py-4 text-center font-semibold">BM Approved</th>
-          <th className="px-6 py-4 text-center font-semibold">Actions</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200">
-        {pendingLoans.map((loan, index) => (
-          <tr
-            key={loan.id}
-            className={`${
-              index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-            } hover:bg-blue-50 transition-colors`}
-          >
-            <td className="px-6 py-4">
-              <div className="space-y-1">
-                <div className="font-semibold text-gray-900 text-lg">
-                  {loan.customers?.Firstname} {loan.customers?.Surname}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">ID:</span> {loan.customers?.id_number}
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Phone:</span> {loan.customers?.mobile}
-                </div>
-                <div className="text-xs text-blue-600 font-mono mt-1">
-                  Loan #: {loan.id}
-                </div>
-              </div>
-            </td>
-            <td className="px-6 py-4">
-              <span className="font-semibold text-purple-600 text-lg">
-                {loan.product_name || loan.product}
-              </span>
-            </td>
-            <td className="px-6 py-4 text-right">
-              <div className="space-y-1">
-                <div className="font-bold text-emerald-600 text-lg">
-                  KES {loan.scored_amount?.toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-600">
-                  Total: KES {loan.total_payable?.toLocaleString()}
-                </div>
-              </div>
-            </td>
-            <td className="px-6 py-4 text-center">
-              <span className="px-3 py-2 bg-blue-100 text-blue-800 rounded-full text-lg font-medium">
-                {loan.duration_weeks} weeks
-              </span>
-            </td>
-            <td className="px-6 py-4 text-center">
-              <div className="space-y-1">
-                <div className="flex items-center justify-center text-green-600">
-                  <CheckCircleIcon className="h-5 w-5 mr-1" />
-                  <span className="font-medium">Approved</span>
-                </div>
-                <div className="text-sm text-gray-600">
-                  {new Date(loan.bm_approved_at).toLocaleDateString('en-GB')}
-                </div>
-              </div>
-            </td>
-            <td className="px-6 py-4 text-center">
-              <button 
-                onClick={() => setSelectedLoan(loan)}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg font-semibold"
-              >
-                <EyeIcon className="h-4 w-4" />
-                Review
-              </button>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
+        {/* Pending Loans Table */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full border-collapse">
+              {/* Table Header */}
+              <thead>
+                <tr className="text-sm bg-gray-600 text-gray-200">
+                  <th className="px-6 py-3 text-left font-medium">Loan ID</th>
+                  <th className="px-6 py-3 text-left font-medium">Customer</th>
+                  <th className="px-6 py-3 text-left font-medium">Branch</th>
+                  <th className="px-6 py-3 text-left font-medium">Product</th>
+                  <th className="px-6 py-3 text-right font-medium">Amount</th>
+                  <th className="px-6 py-3 text-center font-medium">Duration</th>
+                  <th className="px-6 py-3 text-center font-medium">BM Approved</th>
+                  <th className="px-6 py-3 text-center font-medium">Actions</th>
+                </tr>
+              </thead>
 
-  {pendingLoans.length === 0 && (
-    <div className="text-center py-12">
-      <ClockIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">No pending approvals</h3>
-      <p className="text-gray-600">
-        All approved loans have been reviewed by the regional manager.
-      </p>
-    </div>
-  )}
-</div>
+              {/* Table Body */}
+              <tbody className="divide-y divide-gray-200">
+                {pendingLoans.map((loan, index) => (
+                  <tr
+                    key={loan.id}
+                    className={`${
+                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                    } hover:bg-gray-100 transition-colors text-gray-900`}
+                  >
+                    <td className="px-6 py-3 whitespace-nowrap">
+                      <span className="font-mono text-indigo-600 font-semibold">
+                        #{loan.id}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="h-5 w-5 text-gray-400" />
+                        <div>
+                          <div className="font-semibold">
+                            {loan.customers?.Firstname} {loan.customers?.Surname}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {loan.customers?.mobile}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-3 whitespace-nowrap">
+                      <span className="text-sm text-gray-600">
+                        {loan.customers?.branches?.name || 'N/A'}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-3 whitespace-nowrap">
+                      <span className="font-semibold text-purple-600">
+                        {loan.product_name || loan.product}
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-3 text-right whitespace-nowrap">
+                      <div className="font-bold text-emerald-600">
+                        KES {loan.scored_amount?.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Total: KES {loan.total_payable?.toLocaleString()}
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-3 text-center whitespace-nowrap">
+                      <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
+                        {loan.duration_weeks} weeks
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1 text-gray-600">
+                        <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                        <span className="text-xs">
+                          {loan.bm_reviewed_at ? new Date(loan.bm_reviewed_at).toLocaleDateString('en-GB') : 'N/A'}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-3 text-center whitespace-nowrap">
+                      {isRegionalManager ? (
+                        <button 
+                          onClick={() => setSelectedLoan(loan)}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition text-sm"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                          Review
+                        </button>
+                      ) : (
+                        <button 
+                          disabled
+                          className="flex items-center gap-2 px-3 py-1.5 bg-gray-200 text-gray-500 rounded-md cursor-not-allowed text-sm"
+                        >
+                          <LockClosedIcon className="h-4 w-4" />
+                          View Only
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Empty State */}
+          {pendingLoans.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              <ClockIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">No pending approvals</h3>
+              <p>
+                {isRegionalManager 
+                  ? "All loans have been reviewed by the regional manager."
+                  : "There are no loans pending regional manager approval in your area."}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

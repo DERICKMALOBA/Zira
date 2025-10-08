@@ -28,9 +28,10 @@ import {
   PieChart,
   TrendingUp
 } from 'lucide-react';
-
-const Sidebarcs = ({ sidebarOpen, setSidebarOpen }) => {
+import { useAuth } from "../hooks/userAuth"; 
+const SharedSidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const [expandedItems, setExpandedItems] = useState({});
+  const { profile } = useAuth();
 
   const toggleItem = (itemName) => {
     setExpandedItems(prev => ({
@@ -42,50 +43,81 @@ const Sidebarcs = ({ sidebarOpen, setSidebarOpen }) => {
   const navigation = [
     { 
       name: 'Dashboard', 
-      href: '/dashboard/cs', 
+      href: '/dashboard', 
       icon: Home,
       color: 'text-blue-400',
       bgColor: 'bg-blue-400/10'
     },
-   
+    {
+      name: 'Accounting',
+      href: '/accounting',
+      icon: Calculator,
+      color: 'text-green-400',
+      bgColor: 'bg-green-400/10',
+      children: [
+        { name: 'Chart of Accounts', href: '/accounting/chart-of-accounts', icon: BookOpen },
+        { name: 'Journals', href: '/accounting/journals', icon: Book },
+        { name: 'Transactions', href: '/accounting/transactions', icon: CreditCard },
+        { name: 'Bank Reconciliations', href: '/accounting/bank-reconciliations', icon: Landmark },
+      ],
+    },
+    // {
+      
+    //   name: 'Credit Settings',
+    //   href: '/credit-settings',
+    //   icon: Settings,
+    //   color: 'text-purple-400',
+    //   bgColor: 'bg-purple-400/10',
+    //   children: [
+    //     { name: 'Document Settings', href: '/credit-settings/document-settings', icon: FileCheck },
+    //     { name: 'KPI Categories', href: '/credit-settings/kpi-categories', icon: Target },
+
+    //   ],
+    // },
     {
       name: 'Registry',
-      href: '/registry/cs',
+      href: '/registry',
       icon: Users,
       color: 'text-orange-400',
       bgColor: 'bg-orange-400/10',
       children: [
-        { name: 'Customers', href: '/registry/customers/cs', icon: Users },
-        { name: 'Pending Amendments', href: '/registry/pending-amendments/cs', icon: FolderOpen },
-        { name: 'Callbacks Pending', href: '/registry/approvals-pending/cs', icon: PhoneCall },
-        
+        { name: 'Customers', href: '/registry/customers', icon: Users },
+        { name: 'Pending Amendments', href: '/registry/pending-amendments', icon: FolderOpen },
+        { name: 'Approvals Pending', href: '/registry/approvals-pending', icon: UserCheck },
+       // ✅ Only show this if logged-in user is a CSO
+        ...(profile?.role === "customer_service_officer" 
+          ? [{ name: 'Callbacks Pending', href: '/registry/callbacks-pending', icon: PhoneCall }] 
+          : []),
+        // { name: 'Customer Transfer', href: '/registry/customer-transfer', icon: UserCog },
+        // { name: 'Customer Categories', href: '/registry/customer-categories', icon: UserPlus },
+        // { name: 'Customer Edits', href: '/registry/customer-edits', icon: ClipboardList },
       ],
     },
    {
   name: 'Loaning',
-  href: '/loaning/cs',
+  href: '/loaning',
   icon: FileText,
   color: 'text-red-400',
   bgColor: 'bg-red-400/10',
   children: [
-    { name: 'Loans', href: '/loaning/all/cs', icon: FileText },
-    { name: 'Loan Pending Branch Manager', href: '/loaning/pending-branch-manager/cs', icon: FileText },
-    { name: 'Loan Pending Regional Manager', href: '/loaning/pending-regional-manager/cs', icon: FileText },
-    { name: 'Loan Pending Disbursement', href: '/loaning/pending-disbursement/cs', icon: FileText },
-    { name: 'Disbursement Loans', href: '/loaning/disbursement-loans/cs', icon: FileText },
-    { name: 'Rejected Loans', href: '/loaning/rejected-loans/cs', icon: FileText },
+    { name: 'Loans', href: '/loaning/all', icon: FileText },
+    { name: 'Loan Pending Branch Manager', href: '/loaning/pending-branch-manager', icon: FileText },
+    { name: 'Loan Pending Regional Manager', href: '/loaning/pending-regional-manager', icon: FileText },
+    { name: 'Loan Pending Disbursement', href: '/loaning/pending-disbursement', icon: FileText },
+    { name: 'Disbursement Loans', href: '/loaning/disbursement-loans', icon: FileText },
+    { name: 'Rejected Loans', href: '/loaning/rejected-loans', icon: FileText },
   ],
 }
 ,
     {
       name: 'Reports',
-      href: '/reports/cs',
+      href: '/reports',
       icon: BarChart3,
       color: 'text-cyan-400',
       bgColor: 'bg-cyan-400/10',
       children: [
-        { name: 'Call Center Reports', href: '/reports/call-center-reports/cs', icon: PieChart },
-        { name: 'HQ Reports', href: '/reports/hq-reports/cs', icon: TrendingUp },
+        { name: 'Call Center Reports', href: '/reports/call-center-reports', icon: PieChart },
+        { name: 'HQ Reports', href: '/reports/hq-reports', icon: TrendingUp },
       ],
     },
   ];
@@ -194,4 +226,4 @@ const Sidebarcs = ({ sidebarOpen, setSidebarOpen }) => {
   );
 };
 
-export default Sidebarcs;
+export default SharedSidebar;

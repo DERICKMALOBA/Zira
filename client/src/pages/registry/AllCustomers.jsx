@@ -9,13 +9,12 @@ import {
   ArrowDownTrayIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
-import { supabase } from "../../../supabaseClient.js";
-import CustomerDetailsModal from "../../../relationship-officer/components/CustomerDetailsModal.jsx.jsx";
-import CustomerVerificationForm from "./CustomerVerificationcs.jsx";
-import ViewCustomer from "./ViewCustomercs.jsx";
-import { useAuth } from "../../../hooks/userAuth.js";
+import { supabase } from "../../supabaseClient.js";
+import CustomerDetailsModal from "../../relationship-officer/components/CustomerDetailsModal.jsx.jsx";
 
-const Customerscs = () => {
+import { useAuth } from "../../hooks/userAuth.js";
+
+const AllCustomers = () => {
   const [customers, setCustomers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -436,7 +435,7 @@ const Customerscs = () => {
 
             {/* View customer takes the whole screen */}
             <div className="p-6 h-full overflow-y-auto">
-              <ViewCustomer
+              <CustomerDetailsModal
                 customer={selectedCustomer}
                 onClose={() => setShowForm(false)}
               />
@@ -448,4 +447,4 @@ const Customerscs = () => {
   );
 };
 
-export default Customerscs;
+export default AllCustomers ;

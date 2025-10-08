@@ -1,9 +1,9 @@
-// src/components/LoanVerificationForm.jsx
+// src/components/Verification.jsx
 import { useState, useEffect } from "react";
-import { supabase } from "../../../supabaseClient";
+import { supabase } from "../../supabaseClient";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useAuth } from "../../../hooks/userAuth";
+import { useAuth } from "../../hooks/userAuth";
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -25,23 +25,28 @@ import {
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 
-const CustomerVerificationFormbm = ({ customerId, onClose }) => {
+const Verification = ({ customerId, onClose }) => {
   const [step, setStep] = useState(1);
   const { profile } = useAuth();
   const [customer, setCustomer] = useState(null);
   const [guarantors, setGuarantors] = useState([]);
   const [securityItems, setSecurityItems] = useState([]);
   const [guarantorSecurityItems, setGuarantorSecurityItems] = useState([]);
-  const [loanDetails, setLoanDetails] = useState(null);
   const [businessImages, setBusinessImages] = useState([]);
   const [documentImages, setDocumentImages] = useState([]);
   const [nextOfKinInfo, setNextOfKinInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
+  
+  // Loan amounts - READ ONLY
+  const [prequalifiedAmount, setPrequalifiedAmount] = useState(0);
+  const [bmScoredAmount, setBmScoredAmount] = useState(0);
+  const [userRole] = useState('credit_analyst_officer'); // Added missing state
+
+
   const [verificationData, setVerificationData] = useState({
     customer: {
       idVerified: false,
-      prequalifiedAmount: 0,
       phoneVerified: false,
       comment: "",
     },
@@ -66,10 +71,9 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
       verified: false,
       comment: "",
     },
-    loan: {
-      prequalifiedAmount: 0,
+    loan: { // Added missing loan object
       scoredAmount: 0,
-      comment: "",
+      comment: ""
     },
     finalDecision: "",
     overallComment: "",
@@ -85,6 +89,7 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
     try {
       setLoading(true);
 
+      // Fetch customer data
       const { data: customerData, error: customerError } = await supabase
         .from("customers")
         .select("*")
@@ -93,17 +98,23 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
 
       if (customerError) throw customerError;
       setCustomer(customerData);
+      setPrequalifiedAmount(customerData.prequalifiedAmount || 0);
 
-      setVerificationData((prev) => ({
-        ...prev,
-        loan: {
-          ...prev.loan,
-          prequalifiedAmount: customerData.prequalifedAmount || 0,
-        },
-      }));
-      console.log("Updated Verification Data:", verificationData);
+      // Fetch BM scored amount
+      const { data: bmRow, error: bmError } = await supabase
+        .from("customer_verifications")
+        .select("branch_manager_loan_scored_amount")
+        .eq("customer_id", Number(customerId))
+        .not("branch_manager_loan_scored_amount", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      // 2. Fetch business images
+      if (!bmError && bmRow) {
+        setBmScoredAmount(bmRow.branch_manager_loan_scored_amount || 0);
+      }
+
+      // Fetch business images
       const { data: businessData, error: businessError } = await supabase
         .from("business_images")
         .select("*")
@@ -111,25 +122,7 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
 
       if (!businessError) setBusinessImages(businessData || []);
 
-      // 3. Fetch loan details (only for scored amount and loan-specific info)
-      const { data: loanData, error: loanError } = await supabase
-        .from("loans")
-        .select("*")
-        .eq("customer_id", customerId)
-        .single();
-
-      if (!loanError && loanData) {
-        setLoanDetails(loanData);
-        setVerificationData((prev) => ({
-          ...prev,
-          loan: {
-            ...prev.loan,
-            scoredAmount: loanData.scored_amount || 0, // scored amount comes from loans table
-          },
-        }));
-      }
-
-      // 4. Fetch guarantors
+      // Fetch guarantors
       const { data: guarantorsData, error: guarantorsError } = await supabase
         .from("guarantors")
         .select("*")
@@ -147,50 +140,44 @@ const CustomerVerificationFormbm = ({ customerId, onClose }) => {
         }));
       }
 
+      // Fetch next of kin
       const { data: nokData, error: nokError } = await supabase
         .from("next_of_kin")
         .select("*")
         .eq("customer_id", customerId);
 
-      if (!nokError) {
-        setNextOfKinInfo(nokData || []); // save in state to display in UI
-        console.log(" Next of Kin:", nokData);
+      if (!nokError) setNextOfKinInfo(nokData || []);
+
+      // Fetch borrower security items and images
+      const { data: securityItemsData, error: securityItemsError } =
+        await supabase
+          .from("security_items")
+          .select("*")
+          .eq("customer_id", customerId);
+
+      if (!securityItemsError && securityItemsData) {
+        const { data: securityImagesData, error: securityImagesError } =
+          await supabase
+            .from("security_item_images")
+            .select("*")
+            .in(
+              "security_item_id",
+              securityItemsData.map((s) => s.id)
+            );
+
+        if (!securityImagesError && securityImagesData) {
+          const securityWithImages = securityItemsData.map((item) => {
+            const images = (securityImagesData || [])
+              .filter((img) => img.security_item_id === item.id)
+              .map((img) => img.image_url)
+              .filter(Boolean);
+            return { ...item, images };
+          });
+          setSecurityItems(securityWithImages);
+        }
       }
 
-      // 5. Fetch borrower security items and images
-const { data: securityItemsData, error: securityItemsError } =
-  await supabase
-    .from("security_items")
-    .select("*")
-    .eq("customer_id", customerId);
-
-if (!securityItemsError && securityItemsData) {
-  const { data: securityImagesData, error: securityImagesError } =
-    await supabase
-      .from("security_item_images")
-      .select("*")
-      .in(
-        "security_item_id",
-        securityItemsData.map((s) => s.id)
-      );
-
-  if (!securityImagesError && securityImagesData) {
-    const securityWithImages = securityItemsData.map((item) => {
-      const images = (securityImagesData || [])
-        .filter((img) => img.security_item_id === item.id)
-        .map((img) => img.image_url) //  exactly like guarantor
-        .filter(Boolean);
-
-      return { ...item, images };
-    });
-
-    console.log("Borrower securityWithImages (final):", securityWithImages);
-    setSecurityItems(securityWithImages);
-  }
-}
-
-
-      // 6. Fetch guarantor security + images
+      // Fetch guarantor security + images
       if (guarantorsData && guarantorsData.length > 0) {
         const guarantorIds = guarantorsData.map((g) => g.id);
 
@@ -215,18 +202,14 @@ if (!securityItemsError && securityItemsData) {
                 .filter((img) => img.guarantor_security_id === item.id)
                 .map((img) => img.image_url)
                 .filter(Boolean);
-
               return { ...item, images };
             });
-
-            setGuarantorSecurityItems(gSecurityWithImages);
-
-            console.log(" gSecurityWithImages (final):", gSecurityWithImages);
             setGuarantorSecurityItems(gSecurityWithImages);
           }
         }
       }
-      // 7. Fetch customer documents
+
+      // Fetch customer documents
       const { data: documentsData, error: documentsError } = await supabase
         .from("documents")
         .select("*")
@@ -240,30 +223,23 @@ if (!securityItemsError && securityItemsData) {
               .getPublicUrl(doc.document_url);
             return {
               ...doc,
-              image_url: data.publicUrl, // this will be used in your UI
+              image_url: data.publicUrl,
             };
           }
           return doc;
         });
         setDocumentImages(docsWithUrls);
-        console.log("Customer Documents:", docsWithUrls);
       }
     } catch (error) {
-      console.error(" Error fetching customer details:", error);
+      console.error("Error fetching customer details:", error);
       toast.error("Error loading customer details");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerificationChange = (
-    field,
-    value,
-    section = "customer",
-    index = null
-  ) => {
+  const handleVerificationChange = (field, value, section = "customer", index = null) => {
     setVerificationData((prev) => {
-      // Handle finalDecision as a top-level field
       if (field === "finalDecision" || field === "overallComment") {
         return {
           ...prev,
@@ -292,10 +268,10 @@ if (!securityItemsError && securityItemsData) {
       } else if (
         section === "security" ||
         section === "guarantorSecurity" ||
-        section === "loan" ||
         section === "business" ||
         section === "nextOfKin" ||
-        section === "document"
+        section === "document" ||
+        section === "loan" // Added loan section
       ) {
         return {
           ...prev,
@@ -305,7 +281,6 @@ if (!securityItemsError && securityItemsData) {
           },
         };
       } else {
-        
         return {
           ...prev,
           [field]: value,
@@ -317,10 +292,9 @@ if (!securityItemsError && securityItemsData) {
   const submitVerification = async () => {
     try {
       if (!validateCurrentStep()) {
-        return; // Stop submission if validation fails
+        return;
       }
 
-      // Additional final checks
       if (!verificationData.finalDecision) {
         toast.error("Please select a final decision");
         return;
@@ -330,83 +304,81 @@ if (!securityItemsError && securityItemsData) {
         toast.error("Please provide overall comments");
         return;
       }
+
       setLoading(true);
 
-      // Insert verification record with the new structure
-      const { data, error } = await supabase
+      // Update existing verification record with CA data
+      const { error } = await supabase
         .from("customer_verifications")
-        .insert({
-          // customer verification
-          customer_id: Number(customerId),
-          bm_customer_id_verified: verificationData.customer.idVerified,
-          bm_customer_phone_verified: verificationData.customer.phoneVerified,
-          bm_customer_comment: verificationData.customer.comment,
+        .update({
+          // CA customer verification
+          co_customer_id_verified: verificationData.customer.idVerified,
+          co_customer_phone_verified: verificationData.customer.phoneVerified,
+          co_customer_comment: verificationData.customer.comment,
 
-          // guarantor verification - handle multiple guarantors
-          bm_guarantor_id_verified: verificationData.guarantors.every(
+          // CA guarantor verification
+          co_guarantor_id_verified: verificationData.guarantors.every(
             (g) => g.idVerified
           ),
-          bm_guarantor_phone_verified: verificationData.guarantors.every(
+          co_guarantor_phone_verified: verificationData.guarantors.every(
             (g) => g.phoneVerified
           ),
-          bm_guarantor_comment: verificationData.guarantors
+          co_guarantor_comment: verificationData.guarantors
             .map((g) => g.comment)
             .join("; "),
 
-          // business verification
-          bm_business_verified: verificationData.business.verified,
-          bm_business_comment: verificationData.business.comment,
+          // CA business verification
+          co_business_verified: verificationData.business.verified,
+          co_business_comment: verificationData.business.comment,
 
-          // next of kin verification
-          bm_next_of_kin_verified: verificationData.nextOfKin.verified,
-          bm_next_of_kin_comment: verificationData.nextOfKin.comment,
+          // CA next of kin verification
+          co_next_of_kin_verified: verificationData.nextOfKin.verified,
+          co_next_of_kin_comment: verificationData.nextOfKin.comment,
 
-          // document verification
-          bm_document_verified: verificationData.document.verified,
-          bm_document_comment: verificationData.document.comment,
+          // CA document verification
+          co_document_verified: verificationData.document.verified,
+          co_document_comment: verificationData.document.comment,
 
-          // borrower security verification
-          bm_borrower_security_verified: verificationData.security.verified,
-          bm_borrower_security_comment: verificationData.security.comment,
+          // CA borrower security verification
+          co_borrower_security_verified: verificationData.security.verified,
+          co_borrower_security_comment: verificationData.security.comment,
 
-          // guarantor security verification
-          bm_guarantor_security_verified:
+          // CA guarantor security verification
+          co_guarantor_security_verified:
             verificationData.guarantorSecurity.verified,
-          bm_guarantor_security_comment:
+          co_guarantor_security_comment:
             verificationData.guarantorSecurity.comment,
 
-          // loan
-          bm_loan_scored_amount: verificationData.loan.scoredAmount,
-          bm_loan_comment: verificationData.loan.comment,
+          // CA loan assessment
+          co_loan_scored_amount: verificationData.loan.scoredAmount,
+          co_loan_comment: verificationData.loan.comment,
 
-          // decision
-          bm_final_decision: verificationData.finalDecision,
-          bm_overall_comment: verificationData.overallComment,
+          // CA decision
+          co_final_decision: verificationData.finalDecision,
+          co_overall_comment: verificationData.overallComment,
 
-          // who verified (BM officer profile id)
-          bm_verified_by: profile?.id || null,
-
-          // when verified
-          bm_verified_at: new Date().toISOString(),
-        });
+          // Cso metadata
+          co_verified_by: profile?.id || null,
+          co_verified_at: new Date().toISOString(),
+        })
+        .eq("customer_id", customerId);
 
       if (error) throw error;
-   let newStatus;
-if (
-  verificationData.finalDecision === "approved" || 
-  verificationData.finalDecision === "referred"
-) {
-  newStatus = "rm_review";
-} else if (
-  verificationData.finalDecision === "pending" || 
-  verificationData.finalDecision === "edit"
-) {
-  newStatus = "sent_back_by_bm";
-} else if (verificationData.finalDecision === "rejected") {
-  newStatus = "rejected"; 
-}
 
-
+      // Update customer status based on decision
+      let newStatus;
+      if (verificationData.finalDecision === "approved") {
+        newStatus = "ca_review";
+      } else if (
+        verificationData.finalDecision === "pending" ||
+        verificationData.finalDecision === "edit"
+      ) {
+        newStatus = "sent_back_by_cso";
+      } else if (verificationData.finalDecision === "rejected") {
+        newStatus = "rejected";
+      } else if (verificationData.finalDecision === "referred") {
+        newStatus = "ca_review";
+      }
 
       if (newStatus) {
         const { error: statusError } = await supabase
@@ -416,14 +388,11 @@ if (
 
         if (statusError) throw statusError;
       }
-      console.log("✅ Final Decision:", verificationData.finalDecision);
-console.log("✅ New Status to save:", newStatus);
-
 
       toast.success("Verification submitted successfully!");
       onClose();
     } catch (error) {
-      console.error("❌ Error submitting verification:", error);
+      console.error("Error submitting verification:", error);
       toast.error("Error submitting verification");
     } finally {
       setLoading(false);
@@ -488,7 +457,6 @@ console.log("✅ New Status to save:", newStatus);
               alt={title}
               className="w-full h-48 object-contain rounded-lg bg-gray-50 border border-gray-100 group-hover:scale-105 transition-transform duration-200"
             />
-            {/* Overlay only for icon */}
             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <div className="bg-white bg-opacity-95 rounded-full p-3 shadow-lg border border-indigo-100">
                 <DocumentMagnifyingGlassIcon className="h-6 w-6 text-indigo-600" />
@@ -506,6 +474,75 @@ console.log("✅ New Status to save:", newStatus);
       </div>
     </div>
   );
+
+  const DetailRow = ({ label, value }) => (
+    <div className="flex justify-between">
+      <span className="text-sm font-medium text-gray-600">{label}:</span>
+      <span className="text-sm font-semibold text-gray-900">
+        {value || "Not provided"}
+      </span>
+    </div>
+  );
+
+  const validateCurrentStep = () => {
+    switch (step) {
+      case 1:
+        if (!verificationData.customer.comment.trim()) {
+          toast.error("Please add comments for customer verification");
+          return false;
+        }
+        break;
+      case 2:
+        if (!verificationData.business.comment.trim()) {
+          toast.error("Please add business verification comments");
+          return false;
+        }
+        break;
+      case 3:
+        for (let i = 0; i < verificationData.guarantors.length; i++) {
+          if (!verificationData.guarantors[i]?.comment.trim()) {
+            toast.error(`Please add comments for Guarantor ${i + 1}`);
+            return false;
+          }
+        }
+        break;
+      case 4:
+        if (!verificationData.security.comment.trim()) {
+          toast.error("Please add customer security comments");
+          return false;
+        }
+        if (!verificationData.guarantorSecurity.comment.trim()) {
+          toast.error("Please add guarantor security comments");
+          return false;
+        }
+        break;
+      case 5:
+        if (!verificationData.nextOfKin.comment.trim()) {
+          toast.error("Please add next of kin verification comments");
+          return false;
+        }
+        break;
+      case 6:
+        if (!verificationData.document.comment.trim()) {
+          toast.error("Please add document verification comments");
+          return false;
+        }
+        break;
+      case 8:
+        if (!verificationData.finalDecision) {
+          toast.error("Please select a final decision");
+          return false;
+        }
+        if (!verificationData.overallComment.trim()) {
+          toast.error("Please add overall comments and recommendations");
+          return false;
+        }
+        break;
+      default:
+        break;
+    }
+    return true;
+  };
 
   if (loading) {
     return (
@@ -536,95 +573,6 @@ console.log("✅ New Status to save:", newStatus);
     );
   }
 
-  const DetailRow = ({ label, value }) => (
-    <div className="flex justify-between">
-      <span className="text-sm font-medium text-gray-600">{label}:</span>
-      <span className="text-sm font-semibold text-gray-900">
-        {value || "Not provided"}
-      </span>
-    </div>
-  );
-
-  const validateCurrentStep = () => {
-    switch (step) {
-      case 1: // Customer Verification
-        if (!verificationData.customer.comment.trim()) {
-          toast.error("Please add comments for customer verification");
-          return false;
-        }
-        break;
-
-      case 2: // Business Verification
-        if (!verificationData.business.comment.trim()) {
-          toast.error("Please add business verification comments");
-          return false;
-        }
-        break;
-
-      case 3: // Guarantors Verification
-        for (let i = 0; i < verificationData.guarantors.length; i++) {
-          if (!verificationData.guarantors[i]?.comment.trim()) {
-            toast.error(`Please add comments for Guarantor ${i + 1}`);
-            return false;
-          }
-        }
-        break;
-
-      case 4: // Security Verification
-        if (!verificationData.security.comment.trim()) {
-          toast.error("Please add customer security comments");
-          return false;
-        }
-        if (!verificationData.guarantorSecurity.comment.trim()) {
-          toast.error("Please add guarantor security comments");
-          return false;
-        }
-        break;
-
-      case 5: // Next of Kin Verification
-        if (!verificationData.nextOfKin.comment.trim()) {
-          toast.error("Please add next of kin verification comments");
-          return false;
-        }
-        break;
-
-      case 6: // Document Verification
-        if (!verificationData.document.comment.trim()) {
-          toast.error("Please add document verification comments");
-          return false;
-        }
-        break;
-
-      case 7: // Loan Assessment
-        if (
-          !verificationData.loan.scoredAmount ||
-          verificationData.loan.scoredAmount <= 0
-        ) {
-          toast.error("Please enter a valid scored amount");
-          return false;
-        }
-        if (!verificationData.loan.comment.trim()) {
-          toast.error("Please add loan assessment comments");
-          return false;
-        }
-        break;
-
-      case 8: // Final Decision
-        if (!verificationData.finalDecision) {
-          toast.error("Please select a final decision");
-          return false;
-        }
-        if (!verificationData.overallComment.trim()) {
-          toast.error("Please add overall comments and recommendations");
-          return false;
-        }
-        break;
-
-      default:
-        break;
-    }
-    return true;
-  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -632,11 +580,9 @@ console.log("✅ New Status to save:", newStatus);
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Customer Application Verification
-              </h1>
+              <h1 className="text-3xl font-bold text-gray-900">Customer Verification</h1>
               <p className="text-gray-600 mt-2">
-                Comprehensive verification of customer documents and information
+                Final review and verification of customer application
               </p>
             </div>
             <button
@@ -691,7 +637,7 @@ console.log("✅ New Status to save:", newStatus);
 
         {/* Step Content */}
         <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
-          {/* Step 1: Customer Information & Documents */}
+          {/* Step 1: Customer Information */}
           {step === 1 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
@@ -887,7 +833,7 @@ console.log("✅ New Status to save:", newStatus);
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-3">
-                    Manager Comments (for Relationship Officer)
+                    {userRole === 'bm' ? 'Manager Comments (for Relationship Officer)' : 'Verification Comments'}
                   </label>
                   <textarea
                     value={verificationData.customer.comment}
@@ -898,7 +844,10 @@ console.log("✅ New Status to save:", newStatus);
                         "customer"
                       )
                     }
-                    placeholder="Add instructions for the relationship officer (e.g., 'Please verify phone number', 'Update customer address', etc.)"
+                    placeholder={userRole === 'bm' 
+                      ? "Add instructions for the relationship officer (e.g., 'Please verify phone number', 'Update customer address', etc.)"
+                      : "Add comments about customer verification, ID validation, contact details accuracy, etc."
+                    }
                     className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
                     rows={4}
                     required
@@ -1086,6 +1035,7 @@ console.log("✅ New Status to save:", newStatus);
             </div>
           )}
 
+
           {/* Step 3: Guarantors */}
           {step === 3 && (
             <div className="p-8">
@@ -1127,7 +1077,7 @@ console.log("✅ New Status to save:", newStatus);
                         </span>
                       </div>
 
-                      {/* Profile Section (same as customer) */}
+                      {/* Profile Section */}
                       <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-8 mb-8 border border-indigo-100">
                         <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
                           {/* Profile Photo */}
@@ -1186,7 +1136,7 @@ console.log("✅ New Status to save:", newStatus);
                               </p>
                             </div>
 
-                            {/* Details Grid (match customer layout) */}
+                            {/* Details Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="bg-white p-6 rounded-xl shadow-sm space-y-3">
                                 <DetailRow
@@ -1245,7 +1195,7 @@ console.log("✅ New Status to save:", newStatus);
                         </div>
                       </div>
 
-                      {/* Documents (match customer) */}
+                      {/* Documents */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         <DocumentCard
                           title="ID Front"
@@ -1267,7 +1217,7 @@ console.log("✅ New Status to save:", newStatus);
                         />
                       </div>
 
-                      {/* Verification Controls (same as customer) */}
+                      {/* Verification Controls */}
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-2xl border border-blue-100">
                         <h3 className="text-lg font-semibold text-gray-900 mb-6">
                           Verification Status
@@ -1327,7 +1277,7 @@ console.log("✅ New Status to save:", newStatus);
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-800 mb-3">
-                            Manager Comments
+                            {userRole === 'branch_manager' ? 'Manager Comments' : 'Verification Comments'}
                           </label>
                           <textarea
                             value={
@@ -1341,7 +1291,10 @@ console.log("✅ New Status to save:", newStatus);
                                 index
                               )
                             }
-                            placeholder="Add instructions for the relationship officer (e.g., 'Please verify phone number', 'Update guarantor address', etc.)"
+                            placeholder={userRole === 'bm'
+                              ? "Add instructions for the relationship officer (e.g., 'Please verify phone number', 'Update guarantor address', etc.)"
+                              : "Add comments about guarantor verification, ID validation, contact details accuracy, etc."
+                            }
                             className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
                             rows={4}
                             required
@@ -1355,7 +1308,7 @@ console.log("✅ New Status to save:", newStatus);
             </div>
           )}
 
-          {/* Step 4: Security Items */}
+          {/* Step 4: Security Verification */}
           {step === 4 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
@@ -1703,9 +1656,9 @@ console.log("✅ New Status to save:", newStatus);
                           <DetailRow label="Mobile" value={nok.mobile} />
                           <DetailRow
                             label="Alternative Mobile"
-                            value={nok.alternative_number}
+                            value={nok.alternative_mobile}
                           />
-                         
+                          <DetailRow label="Email" value={nok.email} />
                         </div>
 
                         {/* Right column */}
@@ -1714,10 +1667,10 @@ console.log("✅ New Status to save:", newStatus);
                             label="Relationship"
                             value={nok.relationship}
                           />
-                          {/* <DetailRow label="Gender" value={nok.gender} /> */}
+                          <DetailRow label="Gender" value={nok.gender} />
                           <DetailRow
-                            label="Employment status"
-                            value={nok.employment_status}
+                            label="Occupation"
+                            value={nok.occupation}
                           />
                           <DetailRow label="County" value={nok.county} />
                           <DetailRow label="City/Town" value={nok.city_town} />
@@ -1770,6 +1723,7 @@ console.log("✅ New Status to save:", newStatus);
             </div>
           )}
 
+
           {/* Step 6: Documents */}
           {step === 6 && (
             <div className="p-8">
@@ -1817,14 +1771,14 @@ console.log("✅ New Status to save:", newStatus);
                             className="relative group cursor-pointer"
                             onClick={() =>
                               setSelectedImage({
-                                url: doc.document_url, // use document_url here
+                                url: doc.document_url,
                                 title:
                                   doc.document_type || `Document ${index + 1}`,
                               })
                             }
                           >
                             <img
-                              src={doc.document_url} // use document_url
+                              src={doc.document_url}
                               alt={doc.document_type || `Document ${index + 1}`}
                               className="w-full h-48 object-cover rounded-lg group-hover:scale-105 transition-transform duration-200"
                             />
@@ -1892,153 +1846,127 @@ console.log("✅ New Status to save:", newStatus);
               )}
             </div>
           )}
+      {/* Step 7: Loan Information - CSO REVIEW VERSION */}
+{step === 7 && (
+  <div className="p-8">
+    <div className="border-b border-gray-200 pb-6 mb-8">
+      <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+        <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 mr-3" />
+        Loan Assessment & Recommendation
+      </h2>
+      <p className="text-gray-600 mt-2">
+        Review loan amounts and provide your recommendation
+      </p>
+    </div>
 
-          {/* Step 7: Loan Information */}
-          {step === 7 && (
-            <div className="p-8">
-              <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                  <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 mr-3" />
-                  Loan Assessment
-                </h2>
-                <p className="text-gray-600 mt-2">
-                  Review and adjust loan amount based on verification
-                </p>
-              </div>
+    <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
+      <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+        <CurrencyDollarIcon className="h-6 w-6 text-indigo-600 mr-3" />
+        Loan Assessment Review
+      </h3>
 
-              <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                  <CurrencyDollarIcon className="h-6 w-6 text-indigo-600 mr-3" />
-                  Loan Details & Scoring
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-semibold text-blue-900">
-                        Prequalified Amount
-                      </h4>
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-bold text-lg">
-                          KSH
-                        </span>
-                      </div>
-                    </div>
-                    <p className="text-3xl font-bold text-blue-700 mb-2">
-                      KES{" "}
-                      {customer?.prequalifiedAmount?.toLocaleString("en-US") ||
-                        "0"}
-                    </p>
-
-                    <p className="text-sm text-blue-600">
-                      Initial assessment amount
-                    </p>
-                  </div>
-
-                  <div className="bg-gradient-to-br from-emerald-50 to-green-50 p-6 rounded-xl border border-emerald-100">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-semibold text-emerald-900">
-                        Final Scored Amount
-                      </h4>
-                      <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                        <CheckCircleIcon className="h-6 w-6 text-emerald-600" />
-                      </div>
-                    </div>
-                    <div className="flex items-center mb-2">
-                      <span className="text-3xl font-bold text-emerald-700 mr-3">
-                        KES
-                      </span>
-                      <input
-                        type="number"
-                        value={verificationData.loan.scoredAmount || ""}
-                        onChange={(e) =>
-                          handleVerificationChange(
-                            "scoredAmount",
-                            parseFloat(e.target.value) || 0,
-                            "loan"
-                          )
-                        }
-                        className="text-3xl font-bold text-emerald-700 bg-transparent border-b-2 border-emerald-300 focus:outline-none focus:border-emerald-500 w-full"
-                        placeholder="0"
-                        required
-                      />
-                    </div>
-                    <p className="text-sm text-emerald-600">
-                      Post-verification amount
-                    </p>
-                  </div>
-                </div>
-
-                {loanDetails && (
-                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-200 mb-6">
-                    <h4 className="font-semibold text-amber-900 mb-4">
-                      Loan Application Details
-                    </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-amber-700">
-                          Application Date
-                        </p>
-                        <p className="text-lg font-semibold text-amber-900">
-                          {new Date(
-                            loanDetails.application_date
-                          ).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-amber-700">
-                          Status
-                        </p>
-                        <p className="text-lg font-semibold text-amber-900 capitalize">
-                          {loanDetails.status}
-                        </p>
-                      </div>
-                      {loanDetails.interest_rate && (
-                        <div className="text-center">
-                          <p className="text-sm font-medium text-amber-700">
-                            Interest Rate
-                          </p>
-                          <p className="text-lg font-semibold text-amber-900">
-                            {loanDetails.interest_rate}%
-                          </p>
-                        </div>
-                      )}
-                      {loanDetails.term && (
-                        <div className="text-center">
-                          <p className="text-sm font-medium text-amber-700">
-                            Term
-                          </p>
-                          <p className="text-lg font-semibold text-amber-900">
-                            {loanDetails.term} months
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-xl border border-gray-200">
-                  <h4 className="font-semibold text-gray-900 mb-4">
-                    Loan Assessment Comments
-                  </h4>
-                  <textarea
-                    value={verificationData.loan.comment}
-                    onChange={(e) =>
-                      handleVerificationChange(
-                        "comment",
-                        e.target.value,
-                        "loan"
-                      )
-                    }
-                    placeholder="Add detailed comments about loan assessment, amount justification, risk factors, repayment capacity analysis..."
-                    className="w-full border border-gray-300 rounded-xl p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm resize-none"
-                    rows={5}
-                    required
-                  />
-                </div>
-              </div>
+      {/* Loan Amounts Display */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Prequalified Amount */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-semibold text-blue-900">
+              Prequalified Amount
+            </h4>
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-blue-600 font-bold text-xs">
+                INIT
+              </span>
             </div>
-          )}
+          </div>
+          <p className="text-3xl font-bold text-blue-700 mb-2">
+            KES {prequalifiedAmount?.toLocaleString("en-US") || "0"}
+          </p>
+          <p className="text-sm text-blue-600">
+            Initial system assessment
+          </p>
+        </div>
+
+        {/* BM Scored Amount */}
+        <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-6 rounded-xl border border-purple-100">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-semibold text-purple-900">
+              BM Scored Amount
+            </h4>
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+              <span className="text-purple-600 font-bold text-xs">
+                BM
+              </span>
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-purple-700 mb-2">
+            KES {bmScoredAmount?.toLocaleString("en-US") || "0"}
+          </p>
+          <p className="text-sm text-purple-600">
+            Branch Manager assessment
+          </p>
+        </div>
+      </div>
+
+      {/* CSO Recommendation Section */}
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-8 rounded-2xl border border-amber-200 mb-6">
+        <h3 className="text-lg font-semibold text-amber-900 mb-6 flex items-center">
+          <DocumentTextIcon className="h-6 w-6 text-amber-600 mr-3" />
+          CSO Recommendation & Insights
+        </h3>
+
+  
+
+        {/* CSO Comments Textarea */}
+        <div>
+          <label className="block text-sm font-semibold text-amber-800 mb-3">
+            Recommendation Details & Reasoning
+          </label>
+          <textarea
+            value={verificationData.loan.comment || ""}
+            onChange={(e) =>
+              handleVerificationChange(
+                "comment",
+                e.target.value,
+                "loan"
+              )
+            }
+            placeholder="Provide detailed insights about your recommended amount, including:
+• Analysis of the customer's repayment capacity
+• Assessment of security coverage
+• Risk factors considered
+• Justification for your recommended amount vs prequalified/BM amounts
+• Any special conditions or recommendations"
+            className="w-full border border-amber-300 rounded-xl p-4 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm resize-none bg-white"
+            rows={8}
+          />
+          <p className="text-sm text-amber-600 mt-2">
+            Please provide comprehensive reasoning for your loan recommendation
+          </p>
+        </div>
+      </div>
+
+      {/* Information Notice */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+        <div className="flex items-start">
+          <div className="flex-shrink-0">
+            <DocumentMagnifyingGlassIcon className="h-6 w-6 text-indigo-600" />
+          </div>
+          <div className="ml-3">
+            <h4 className="text-sm font-semibold text-indigo-900 mb-1">
+              Loan Assessment Guidance
+            </h4>
+            <p className="text-sm text-indigo-700">
+              Review the prequalified amount (system assessment) and BM scored amount (branch manager assessment). 
+              Provide your recommended amount based on comprehensive verification of all customer details, security, 
+              and repayment capacity. Your detailed reasoning will help senior management make the final decision.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
           {/* Step 8: Final Decision */}
           {step === 8 && (
@@ -2164,30 +2092,9 @@ console.log("✅ New Status to save:", newStatus);
                   </div>
 
                   {/* Amount and Summary */}
-                  <div className="lg:col-span-2">
-                    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-6 border border-indigo-200 mb-6">
-                      <h4 className="text-lg font-semibold text-indigo-900 mb-4">
-                        Recommended Loan Amount
-                      </h4>
-                      <div className="flex items-center justify-center">
-                        <span className="text-4xl font-bold text-indigo-700 mr-4">
-                          KES
-                        </span>
-                        <input
-                          type="number"
-                          value={verificationData.loan.scoredAmount || ""}
-                          onChange={(e) =>
-                            handleVerificationChange(
-                              "scoredAmount",
-                              parseFloat(e.target.value) || 0,
-                              "loan"
-                            )
-                          }
-                          className="text-4xl font-bold text-indigo-700 bg-transparent border-b-4 border-indigo-300 focus:outline-none focus:border-indigo-500 text-center w-64"
-                          placeholder="0"
-                        />
-                      </div>
-                    </div>
+
+                   <div className="lg:col-span-2">
+                   
 
                     {/* Verification Summary */}
                     <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
@@ -2255,7 +2162,8 @@ console.log("✅ New Status to save:", newStatus);
                         ))}
                       </div>
                     </div>
-                  </div>
+                  </div> 
+
                 </div>
 
                 {/* Overall Comments */}
@@ -2339,7 +2247,6 @@ console.log("✅ New Status to save:", newStatus);
             onClick={() => setSelectedImage(null)}
           >
             <div className="relative max-w-4xl max-h-full bg-white rounded-2xl overflow-hidden shadow-2xl">
-              {/* Modal Header */}
               <div className="bg-gradient-to-r from-indigo-600 to-blue-600 px-6 py-4 text-white">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">
@@ -2353,8 +2260,6 @@ console.log("✅ New Status to save:", newStatus);
                   </button>
                 </div>
               </div>
-
-              {/* Modal Image */}
               <div className="p-4 bg-gray-50">
                 <img
                   src={selectedImage.url}
@@ -2363,8 +2268,6 @@ console.log("✅ New Status to save:", newStatus);
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
-
-              {/* Modal Footer */}
               <div className="px-6 py-4 bg-gray-50 border-t">
                 <div className="flex justify-between items-center">
                   <p className="text-sm text-gray-600">
@@ -2386,4 +2289,4 @@ console.log("✅ New Status to save:", newStatus);
   );
 };
 
-export default CustomerVerificationFormbm;
+export default Verification;

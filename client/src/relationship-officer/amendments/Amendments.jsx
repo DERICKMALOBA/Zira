@@ -15,7 +15,7 @@ function Amendments() {
   const [bookLoan, setBookLoan] = useState(null);
   const { profile } = useAuth();
 
-  const fetchAmendments = async () => {
+   const fetchAmendments = async () => {
     if (!profile?.id || profile.role !== "relationship_officer") {
       setLoading(false);
       return;
@@ -29,7 +29,7 @@ function Amendments() {
         .from("customers")
         .select("*")
         .eq("created_by", profile.id)
-        .in("status", ["sent_back_by_bm", "sent_back_by_rm", "sent_back_by_cs", "pending"])
+        .in("status", ["sent_back_by_bm", "sent_back_by_ca", "sent_back_by_cso", "pending"])
         .order("updated_at", { ascending: false });
 
       if (customersError) {
@@ -49,12 +49,12 @@ function Amendments() {
       // Extract customer IDs
       const customerIds = customers.map(customer => customer.id);
 
-      // Fetch all customer verifications for these customers
+      // Fetch ALL customer verifications for these customers
       const { data: verifications, error: verificationsError } = await supabase
         .from("customer_verifications")
         .select("*")
         .in("customer_id", customerIds)
-        .order("updated_at", { ascending: false });
+        .order("created_at", { ascending: true });
 
       if (verificationsError) {
         console.error("Error fetching verifications:", verificationsError.message);
@@ -62,55 +62,93 @@ function Amendments() {
         return;
       }
 
-      console.log("Customer verifications:", verifications);
+      console.log("All verification records:", verifications);
 
-      // Combine customer data with their verifications
-      const combinedData = [];
-      
+      // Create merged data for each customer
+      const mergedData = [];
+
       customers.forEach(customer => {
-        // Get all verifications for this customer
+        // Get all verification records for this customer
         const customerVerifications = verifications.filter(v => v.customer_id === customer.id);
         
-        if (customerVerifications.length > 0) {
-          // For each verification, create a combined object
-          customerVerifications.forEach(verification => {
-            combinedData.push({
-              ...verification,
-              customers: customer, // Add customer data to match your existing structure
-              customer_data: customer // Also add as customer_data for clarity
-            });
-          });
-        } else {
-          // If no verifications exist, create an entry with just customer data
-          combinedData.push({
-            id: null, // No verification ID
+        if (customerVerifications.length === 0) {
+          // No verifications exist
+          mergedData.push({
+            id: null,
             customer_id: customer.id,
             customers: customer,
             customer_data: customer,
-            // Add default verification fields
             verification_status: null,
             verification_notes: null,
             created_at: customer.created_at,
             updated_at: customer.updated_at
           });
+        } else {
+          // Merge all verification records into one comprehensive object
+          const mergedVerification = customerVerifications.reduce((acc, verification) => {
+            // Merge strategy: Keep non-null values from all records
+            Object.keys(verification).forEach(key => {
+              if (verification[key] !== null && verification[key] !== undefined) {
+                // For timestamp fields, keep the latest
+                if (key.includes('_at') && acc[key]) {
+                  const newDate = new Date(verification[key]);
+                  const existingDate = new Date(acc[key]);
+                  if (newDate > existingDate) {
+                    acc[key] = verification[key];
+                  }
+                } else {
+                  acc[key] = verification[key];
+                }
+              }
+            });
+            return acc;
+          }, {});
+
+          // Use the latest record's ID and ensure all fields are included
+          const latestVerification = customerVerifications[customerVerifications.length - 1];
+          mergedVerification.id = latestVerification.id;
+          mergedVerification.customer_id = customer.id;
+          mergedVerification.customers = customer;
+          mergedVerification.customer_data = customer;
+          
+          // Ensure we have created_at and updated_at
+          if (!mergedVerification.created_at) {
+            mergedVerification.created_at = latestVerification.created_at;
+          }
+          if (!mergedVerification.updated_at) {
+            mergedVerification.updated_at = latestVerification.updated_at;
+          }
+
+          mergedData.push(mergedVerification);
         }
       });
 
-      console.log("Combined customer and verification data:", combinedData);
+      console.log("Merged amendments data:", mergedData);
 
-      // Keep only the latest verification per customer (if multiple exist)
-      const latestAmendments = [];
-      const seen = new Set();
+      // Debug: Check data preservation for each role
+      mergedData.forEach(item => {
+        const bmFields = Object.keys(item).filter(key => 
+          key.includes('branch_manager') && item[key] !== null
+        );
+        const csoFields = Object.keys(item).filter(key => 
+          key.includes('co_') && item[key] !== null
+        );
+        const caFields = Object.keys(item).filter(key => 
+          key.includes('credit_analyst') && item[key] !== null
+        );
 
-      for (const item of combinedData) {
-        if (!seen.has(item.customer_id)) {
-          latestAmendments.push(item);
-          seen.add(item.customer_id);
-        }
-      }
+        console.log(`Customer ${item.customer_id} (${item.customers?.status}):`, {
+          totalRecords: verifications.filter(v => v.customer_id === item.customer_id).length,
+          bmFields: bmFields.length,
+          csoFields: csoFields.length,
+          caFields: caFields.length,
+          hasBMDecision: !!item.branch_manager_final_decision,
+          hasCSODecision: !!item.co_final_decision,
+          hasCADecision: !!item.credit_analyst_final_decision
+        });
+      });
 
-      console.log("Latest amendments (final result):", latestAmendments);
-      setAmendments(latestAmendments);
+      setAmendments(mergedData);
 
     } catch (err) {
       console.error("Unexpected error fetching amendments:", err);
@@ -120,21 +158,22 @@ function Amendments() {
     }
   };
 
+
   useEffect(() => {
     if (profile) {
       fetchAmendments();
     }
   }, [profile]);
 
-  // Fetch single amendment details
+   // Enhanced fetchAmendmentDetails to show complete merged history
   const fetchAmendmentDetails = async (id) => {
     try {
-      // If id is null (no verification exists), handle differently
       if (!id) {
         console.log("No verification ID provided");
         return;
       }
 
+      // Get the specific amendment first
       const { data: amendment, error: amendmentError } = await supabase
         .from("customer_verifications")
         .select(`
@@ -162,8 +201,56 @@ function Amendments() {
         return;
       }
 
-      console.log("Amendment details:", amendment);
-      setViewAmendment(amendment);
+      // Get ALL verification records for this customer to merge
+      const { data: allVerifications, error: historyError } = await supabase
+        .from("customer_verifications")
+        .select("*")
+        .eq("customer_id", amendment.customer_id)
+        .order("created_at", { ascending: true });
+
+      if (historyError) {
+        console.error("Error fetching verification history:", historyError);
+        setViewAmendment(amendment);
+        return;
+      }
+
+      if (allVerifications && allVerifications.length > 0) {
+        // Merge all records into one comprehensive object
+        const mergedAmendment = allVerifications.reduce((acc, verification) => {
+          Object.keys(verification).forEach(key => {
+            if (verification[key] !== null && verification[key] !== undefined) {
+              // For timestamps, keep the latest
+              if (key.includes('_at') && acc[key]) {
+                const newDate = new Date(verification[key]);
+                const existingDate = new Date(acc[key]);
+                if (newDate > existingDate) {
+                  acc[key] = verification[key];
+                }
+              } else {
+                acc[key] = verification[key];
+              }
+            }
+          });
+          return acc;
+        }, {});
+
+        // Add customer data and metadata
+        mergedAmendment.id = amendment.id;
+        mergedAmendment.customer_id = amendment.customer_id;
+        mergedAmendment.customers = amendment.customers;
+        mergedAmendment.customer_data = amendment.customers;
+        mergedAmendment.verification_history = allVerifications; // Include full history for debugging
+
+        console.log("Complete merged amendment for details view:", {
+          merged: mergedAmendment,
+          history: allVerifications
+        });
+
+        setViewAmendment(mergedAmendment);
+      } else {
+        setViewAmendment(amendment);
+      }
+
     } catch (err) {
       console.error("Error in fetchAmendmentDetails:", err);
     }

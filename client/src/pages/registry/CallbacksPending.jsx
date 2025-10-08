@@ -1,531 +1,281 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from "../../hooks/userAuth";
 import { 
   MagnifyingGlassIcon, 
   EyeIcon,
-  PhoneIcon,
   CheckIcon,
-  XMarkIcon,
+  
   ClockIcon,
   UserIcon,
-  CalendarIcon,
-  ChatBubbleLeftIcon,
-  ExclamationTriangleIcon
+  PhoneIcon,
+ 
 } from '@heroicons/react/24/outline';
+import { supabase } from "../../supabaseClient";
+import ViewCustomer from './ViewCustomer';
+import Verification from './Verification';
 
-const CallbacksPending = () => {
+const CallbackPending = () => {
+  const [customers, setCustomers] = useState([]);
+  const { profile } = useAuth();
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
-  const [selectedCallback, setSelectedCallback] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+    const [selectedCustomer, setSelectedCustomer] = useState(null);
+   const [showForm, setShowForm] = useState(false);
+   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Sample pending callbacks data
-  const pendingCallbacks = [
-    {
-      id: 1,
-      callbackId: 'CB-2024-001',
-      customerName: 'John Doe',
-      customerId: 'CUST-001',
-      phoneNumber: '+254712345678',
-      reason: 'Loan application follow-up',
-      notes: 'Customer interested in business loan, needs more information about rates',
-      priority: 'high',
-      status: 'pending',
-      assignedTo: 'Agent Sarah',
-      createdDate: '2024-01-15',
-      scheduledDate: '2024-01-16',
-      callbackType: 'outbound',
-      previousAttempts: 2,
-      lastContact: '2024-01-14'
-    },
-    {
-      id: 2,
-      callbackId: 'CB-2024-002',
-      customerName: 'Jane Smith',
-      customerId: 'CUST-002',
-      phoneNumber: '+254723456789',
-      reason: 'Document submission reminder',
-      notes: 'Customer needs to submit missing ID documents for verification',
-      priority: 'medium',
-      status: 'scheduled',
-      assignedTo: 'Agent Mike',
-      createdDate: '2024-01-14',
-      scheduledDate: '2024-01-17',
-      callbackType: 'outbound',
-      previousAttempts: 1,
-      lastContact: '2024-01-13'
-    },
-    {
-      id: 3,
-      callbackId: 'CB-2024-003',
-      customerName: 'Michael Johnson',
-      customerId: 'CUST-003',
-      phoneNumber: '+254734567890',
-      reason: 'Payment reminder',
-      notes: 'Gentle reminder about upcoming loan payment due on 2024-01-20',
-      priority: 'high',
-      status: 'pending',
-      assignedTo: 'Agent Lisa',
-      createdDate: '2024-01-13',
-      scheduledDate: '2024-01-15',
-      callbackType: 'outbound',
-      previousAttempts: 0,
-      lastContact: '2024-01-10'
-    },
-    {
-      id: 4,
-      callbackId: 'CB-2024-004',
-      customerName: 'Sarah Wilson',
-      customerId: 'CUST-004',
-      phoneNumber: '+254745678901',
-      reason: 'Customer requested callback',
-      notes: 'Customer called asking about loan restructuring options',
-      priority: 'medium',
-      status: 'completed',
-      assignedTo: 'Agent David',
-      createdDate: '2024-01-12',
-      scheduledDate: '2024-01-12',
-      callbackType: 'inbound',
-      previousAttempts: 0,
-      lastContact: '2024-01-12'
+const fetchPendingCustomers = async () => {
+  if (!profile?.region) {
+    console.warn("No region in profile yet, skipping fetch");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const { data, error } = await supabase
+      .from("customers")
+      .select(`
+        *,
+        customer_verifications(*)
+      `)
+      .eq("status", "cso_review")
+     .eq("region_id", profile.region_id); 
+
+    if (error) {
+      console.error("Error fetching pending customers:", error.message);
+    } else {
+      const enriched = (data || []).map((c) => {
+        const bmVerification =
+          c.customer_verifications?.find((v) => v.role === "bm") || null;
+        return {
+          ...c,
+          bm_verification: bmVerification,
+        };
+      });
+      setCustomers(enriched);
+      setFilteredCustomers(enriched);
     }
-  ];
+  } catch (err) {
+    console.error("Error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const statusTypes = {
-    pending: 'Pending',
-    scheduled: 'Scheduled',
-    in_progress: 'In Progress',
-    completed: 'Completed',
-    cancelled: 'Cancelled'
-  };
+useEffect(() => {
+  if (profile) {
+    console.log("Profile loaded:", profile);
+    fetchPendingCustomers();
+  }
+}, [profile]);
 
-  const statusColors = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    scheduled: 'bg-blue-100 text-blue-800',
-    in_progress: 'bg-purple-100 text-purple-800',
-    completed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800'
-  };
 
-  const priorityColors = {
-    high: 'bg-red-100 text-red-800',
-    medium: 'bg-yellow-100 text-yellow-800',
-    low: 'bg-green-100 text-green-800'
-  };
 
-  const callbackTypeColors = {
-    inbound: 'bg-green-100 text-green-800',
-    outbound: 'bg-blue-100 text-blue-800'
-  };
-
-  const filteredCallbacks = pendingCallbacks.filter(callback => {
-    const matchesSearch = callback.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         callback.callbackId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         callback.customerId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         callback.phoneNumber.includes(searchTerm);
+  // Search functionality
+  useEffect(() => {
+    if (!customers || customers.length === 0) return;
     
-    const matchesStatus = statusFilter === 'all' || callback.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || callback.priority === priorityFilter;
-    
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
+    const filtered = customers.filter(customer =>
+      (customer.first_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (customer.last_name?.toLowerCase() || customer.surname?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (customer.id_number?.toString() || customer.national_id?.toString() || '').includes(searchTerm.toLowerCase()) ||
+      (customer.mobile || customer.phone_number || customer.phone || '').includes(searchTerm)
+    );
+    setFilteredCustomers(filtered);
+  }, [searchTerm, customers]);
 
-  const viewCallbackDetails = (callback) => {
-    setSelectedCallback(callback);
-    setShowModal(true);
-  };
+  const handleApprove = (customer) => {
+  setSelectedCustomer(customer);
+  setShowForm(true);
+};
 
-  const scheduleCallback = (callback) => {
-    setSelectedCallback(callback);
-    setShowScheduleModal(true);
-  };
 
-  const markAsCompleted = (callbackId) => {
-    console.log('Marking callback as completed:', callbackId);
-    // Add completion logic here
-  };
-
-  const cancelCallback = (callbackId) => {
-    console.log('Cancelling callback:', callbackId);
-    // Add cancellation logic here
-  };
-
-  const makeCall = (phoneNumber) => {
-    console.log('Calling:', phoneNumber);
-    // Add call initiation logic here
-    window.open(`tel:${phoneNumber}`, '_self');
-  };
+ const handleView= (customer) => {
+  setSelectedCustomer(customer); // pass full object not just id
+  setIsModalOpen(true);
+};
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+  <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 p-8">
+  <div className="max-w-7xl mx-auto">
+    {/* Header */}
+    <div className="mb-10">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Callbacks Pending</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage customer callback requests and schedules</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <span className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
-            {pendingCallbacks.filter(cb => cb.status === 'pending' || cb.status === 'scheduled').length} Active Callbacks
-          </span>
-        </div>
-      </div>
-
-      {/* Filters and Search */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="flex flex-col md:flex-row md:items-end gap-4">
-          {/* Search Input */}
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Search Callbacks</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search by customer name, callback ID, phone, or customer ID..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full focus:ring-indigo-500 focus:border-indigo-500"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
+         
+        
+           
           
-          {/* Status Filter */}
-          <div className="w-full md:w-48">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-
-          {/* Priority Filter */}
-          <div className="w-full md:w-48">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-            <select
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-            >
-              <option value="all">All Priorities</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-end space-x-2">
-            <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
-              Refresh
-            </button>
-          </div>
+          <p className="text-gray-600 mt-2 text-sm">
+            Customers awaiting approval ({filteredCustomers.length})
+          </p>
         </div>
       </div>
+    </div>
 
-      {/* Callbacks Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+    {/* Search Bar */}
+    <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 mb-8">
+      <div className="relative">
+        <MagnifyingGlassIcon className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search by first name, surname, ID number, or mobile..."
+          className="w-full pl-12 pr-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder-gray-400"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+    </div>
+
+    {/* Table */}
+    <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              {["ID Number", "First Name", "Surname", "Prequalified Amount", "Mobile", "Actions"].map((head) => (
+                <th
+                  key={head}
+                  className="px-6 py-4 text-left text-sm font-semibold text-gray-700 tracking-wide"
+                >
+                  {head}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {loading ? (
               <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Callback ID
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Reason
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Priority
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Scheduled Date
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <td colSpan="6" className="px-6 py-12 text-center">
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-gray-500 text-sm">Loading customers...</span>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCallbacks.map((callback) => (
-                <tr key={callback.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{callback.callbackId}</div>
-                    <div className="text-xs text-gray-500">
-                      <span className={`px-1 inline-flex text-xs leading-5 font-semibold rounded-full ${callbackTypeColors[callback.callbackType]}`}>
-                        {callback.callbackType}
-                      </span>
+            ) : (
+              filteredCustomers.map((customer) => (
+                <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
+                        <UserIcon className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div className="ml-3">
+                        <div className="font-medium text-gray-900">
+                          {customer.id_number || customer.national_id || "N/A"}
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{callback.customerName}</div>
-                    <div className="text-sm text-gray-500">ID: {callback.customerId}</div>
-                    <div className="text-xs text-gray-400">Assigned to: {callback.assignedTo}</div>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-800">
+                    {customer.Firstname || "N/A"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{callback.phoneNumber}</div>
-                    <div className="text-xs text-gray-500">
-                      Attempts: {callback.previousAttempts}
+                  <td className="px-6 py-4 text-sm font-medium text-gray-800">
+                    {customer.Surname || "N/A"}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="inline-block px-3 py-1 text-sm font-semibold text-green-700 bg-green-50 rounded-lg">
+                      {customer.prequalifiedAmount
+                        ? `KES ${Number(customer.prequalifiedAmount).toLocaleString()}`
+                        : "N/A"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center text-sm text-gray-700">
+                      <PhoneIcon className="w-4 h-4 mr-2 text-gray-400" />
+                      {customer.mobile || "N/A"}
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{callback.reason}</div>
-                    <div className="text-xs text-gray-500 line-clamp-1">{callback.notes}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[callback.status]}`}>
-                      {statusTypes[callback.status]}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${priorityColors[callback.priority]}`}>
-                      {callback.priority.charAt(0).toUpperCase() + callback.priority.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(callback.scheduledDate).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
+                    <div className="flex items-center space-x-3">
                       <button
-                        onClick={() => viewCallbackDetails(callback)}
-                        className="text-blue-600 hover:text-blue-900"
+                        onClick={() => handleView(customer)}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-full hover:bg-blue-200 transition-all"
                         title="View Details"
                       >
-                        <EyeIcon className="h-5 w-5" />
+                        <EyeIcon className="w-4 h-4 mr-1" />
+                        View
                       </button>
                       <button
-                        onClick={() => makeCall(callback.phoneNumber)}
-                        className="text-green-600 hover:text-green-900"
-                        title="Make Call"
+                        onClick={() => handleApprove(customer.id)}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-green-700 bg-green-100 rounded-full hover:bg-green-200 transition-all"
+                        title="Approve Customer"
                       >
-                        <PhoneIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => scheduleCallback(callback)}
-                        className="text-purple-600 hover:text-purple-900"
-                        title="Schedule"
-                      >
-                        <CalendarIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => markAsCompleted(callback.id)}
-                        className="text-gray-600 hover:text-gray-900"
-                        title="Mark Completed"
-                      >
-                        <CheckIcon className="h-5 w-5" />
+                        <CheckIcon className="w-4 h-4 mr-1" />
+                        Approve
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        
-        {filteredCallbacks.length === 0 && (
-          <div className="text-center py-12">
-            <PhoneIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <div className="text-gray-500">No pending callbacks found.</div>
-            <div className="text-sm text-gray-400 mt-1">All callbacks have been processed.</div>
-          </div>
-        )}
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
 
-      {/* Callback Details Modal */}
-      {showModal && selectedCallback && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex justify-between items-center pb-3 border-b">
-                <h3 className="text-xl font-semibold text-gray-900">Callback Details</h3>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium text-gray-900 flex items-center">
-                    <UserIcon className="h-5 w-5 mr-2" />
-                    Customer Information
-                  </h4>
-                  <dl className="mt-2 space-y-2">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Customer Name</dt>
-                      <dd className="text-sm text-gray-900">{selectedCallback.customerName}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Customer ID</dt>
-                      <dd className="text-sm text-gray-900">{selectedCallback.customerId}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Assigned To</dt>
-                      <dd className="text-sm text-gray-900">{selectedCallback.assignedTo}</dd>
-                    </div>
-                  </dl>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-gray-900 flex items-center">
-                    <PhoneIcon className="h-5 w-5 mr-2" />
-                    Contact Information
-                  </h4>
-                  <dl className="mt-2 space-y-2">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Phone Number</dt>
-                      <dd className="text-sm text-gray-900">{selectedCallback.phoneNumber}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Previous Attempts</dt>
-                      <dd className="text-sm text-gray-900">{selectedCallback.previousAttempts}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Last Contact</dt>
-                      <dd className="text-sm text-gray-900">
-                        {new Date(selectedCallback.lastContact).toLocaleDateString()}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-                
-                <div className="md:col-span-2">
-                  <h4 className="font-medium text-gray-900 flex items-center">
-                    <ChatBubbleLeftIcon className="h-5 w-5 mr-2" />
-                    Callback Details
-                  </h4>
-                  <dl className="mt-2 space-y-2">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Callback ID</dt>
-                      <dd className="text-sm text-gray-900">{selectedCallback.callbackId}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Reason</dt>
-                      <dd className="text-sm text-gray-900">{selectedCallback.reason}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Notes</dt>
-                      <dd className="text-sm text-gray-900 p-2 bg-gray-50 rounded-md">
-                        {selectedCallback.notes}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Type</dt>
-                      <dd className="text-sm">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${callbackTypeColors[selectedCallback.callbackType]}`}>
-                          {selectedCallback.callbackType.charAt(0).toUpperCase() + selectedCallback.callbackType.slice(1)}
-                        </span>
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-gray-900 flex items-center">
-                    <ClockIcon className="h-5 w-5 mr-2" />
-                    Timing Information
-                  </h4>
-                  <dl className="mt-2 space-y-2">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Created Date</dt>
-                      <dd className="text-sm text-gray-900">
-                        {new Date(selectedCallback.createdDate).toLocaleDateString()}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Scheduled Date</dt>
-                      <dd className="text-sm text-gray-900">
-                        {new Date(selectedCallback.scheduledDate).toLocaleDateString()}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-gray-900 flex items-center">
-                    <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
-                    Status & Priority
-                  </h4>
-                  <dl className="mt-2 space-y-2">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Status</dt>
-                      <dd className="text-sm">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColors[selectedCallback.status]}`}>
-                          {statusTypes[selectedCallback.status]}
-                        </span>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Priority</dt>
-                      <dd className="text-sm">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${priorityColors[selectedCallback.priority]}`}>
-                          {selectedCallback.priority.charAt(0).toUpperCase() + selectedCallback.priority.slice(1)}
-                        </span>
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              </div>
-              
-              {/* Action Buttons */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-                <button
-                  onClick={() => makeCall(selectedCallback.phoneNumber)}
-                  className="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors flex items-center justify-center"
-                >
-                  <PhoneIcon className="h-5 w-5 mr-2" />
-                  Make Call
-                </button>
-                <button
-                  onClick={() => scheduleCallback(selectedCallback)}
-                  className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center"
-                >
-                  <CalendarIcon className="h-5 w-5 mr-2" />
-                  Reschedule
-                </button>
-                <button
-                  onClick={() => markAsCompleted(selectedCallback.id)}
-                  className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors flex items-center justify-center"
-                >
-                  <CheckIcon className="h-5 w-5 mr-2" />
-                  Mark Completed
-                </button>
-              </div>
-              
-              <div className="mt-4 flex justify-end">
-                <button
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
-                  onClick={() => setShowModal(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
+      {!loading && filteredCustomers.length === 0 && (
+        <div className="text-center py-16">
+          <ClockIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No pending approvals</h3>
+          <p className="text-gray-500 text-sm">
+            {searchTerm
+              ? "No customers match your search criteria."
+              : "All customers have been processed."}
+          </p>
         </div>
       )}
     </div>
+  </div>
+
+  {isModalOpen && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-none shadow-2xl w-full h-full overflow-y-auto relative">
+        {/* Close button */}
+        <button
+          onClick={() => setIsModalOpen(false)}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold"
+        >
+          ✕
+        </button>
+  
+        {/* Render the ViewCustomer component */}
+        <div className="p-6">
+          <ViewCustomer
+            customer={selectedCustomer}
+            onClose={() => setIsModalOpen(false)}
+          />
+        </div>
+      </div>
+    </div>
+  )}
+
+   {/* customer Verification Form Modal */}
+        {showForm && selectedCustomer && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white w-full h-full relative rounded-none shadow-xl">
+              {/* Close button */}
+              <button
+                onClick={() => setShowForm(false)}
+                className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
+              >
+                ✕
+              </button>
+  
+              {/* Loan form takes the whole screen */}
+              <div className="p-6 h-full overflow-y-auto">
+              <Verification
+    customerId={selectedCustomer}   // ✅ Only send the id
+    onClose={() => setShowForm(false)}
+  />
+  
+              </div>
+            </div>
+          </div>
+        )}
+</div>
+
   );
 };
 
-export default CallbacksPending;
+export default CallbackPending;

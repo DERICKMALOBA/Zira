@@ -78,44 +78,52 @@ function AmendmentDetailsModal({ amendment, onClose }) {
 
         <div className="grid gap-6">
           {/* Customer Information */}
-          <div className="border-l-4 border-blue-400 pl-4">
-            <h4 className="font-medium text-gray-800 mb-3">Customer Information</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">ID Verified:</span>
-                {getStatusBadge(roleData.customer_id_verified)}
+          {(roleData.customer_id_verified !== undefined || roleData.customer_phone_verified !== undefined || roleData.customer_comment) && (
+            <div className="border-l-4 border-blue-400 pl-4">
+              <h4 className="font-medium text-gray-800 mb-3">Customer Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {roleData.customer_id_verified !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">ID Verified:</span>
+                    {getStatusBadge(roleData.customer_id_verified)}
+                  </div>
+                )}
+                {roleData.customer_phone_verified !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Phone Verified:</span>
+                    {getStatusBadge(roleData.customer_phone_verified)}
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Phone Verified:</span>
-                {getStatusBadge(roleData.customer_phone_verified)}
-              </div>
+              {roleData.customer_comment && (
+                <div className="mt-3">
+                  <p className="text-xs text-gray-500 mb-1">Comment:</p>
+                  <p className="text-sm bg-blue-50 p-2 rounded text-gray-700">
+                    {roleData.customer_comment}
+                  </p>
+                </div>
+              )}
             </div>
-            {roleData.customer_comment && (
-              <div className="mt-3">
-                <p className="text-xs text-gray-500 mb-1">Comment:</p>
-                <p className="text-sm bg-blue-50 p-2 rounded text-gray-700">
-                  {roleData.customer_comment}
-                </p>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Business Information */}
-          <div className="border-l-4 border-green-400 pl-4">
-            <h4 className="font-medium text-gray-800 mb-3">Business Information</h4>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600">Business Verified:</span>
-              {getStatusBadge(roleData.business_verified)}
-            </div>
-            {roleData.business_comment && (
-              <div className="mt-3">
-                <p className="text-xs text-gray-500 mb-1">Comment:</p>
-                <p className="text-sm bg-green-50 p-2 rounded text-gray-700">
-                  {roleData.business_comment}
-                </p>
+          {(roleData.business_verified !== undefined || roleData.business_comment) && (
+            <div className="border-l-4 border-green-400 pl-4">
+              <h4 className="font-medium text-gray-800 mb-3">Business Information</h4>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-600">Business Verified:</span>
+                {getStatusBadge(roleData.business_verified)}
               </div>
-            )}
-          </div>
+              {roleData.business_comment && (
+                <div className="mt-3">
+                  <p className="text-xs text-gray-500 mb-1">Comment:</p>
+                  <p className="text-sm bg-green-50 p-2 rounded text-gray-700">
+                    {roleData.business_comment}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Document Information */}
           {(roleData.document_verified !== undefined || roleData.document_comment) && (
@@ -137,59 +145,71 @@ function AmendmentDetailsModal({ amendment, onClose }) {
           )}
 
           {/* Guarantor Information */}
-          <div className="border-l-4 border-orange-400 pl-4">
-            <h4 className="font-medium text-gray-800 mb-3">Guarantor Information</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">ID Verified:</span>
-                {getStatusBadge(roleData.guarantor_id_verified)}
+          {(roleData.guarantor_id_verified !== undefined || roleData.guarantor_phone_verified !== undefined || roleData.guarantor_comment) && (
+            <div className="border-l-4 border-orange-400 pl-4">
+              <h4 className="font-medium text-gray-800 mb-3">Guarantor Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {roleData.guarantor_id_verified !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">ID Verified:</span>
+                    {getStatusBadge(roleData.guarantor_id_verified)}
+                  </div>
+                )}
+                {roleData.guarantor_phone_verified !== undefined && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Phone Verified:</span>
+                    {getStatusBadge(roleData.guarantor_phone_verified)}
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Phone Verified:</span>
-                {getStatusBadge(roleData.guarantor_phone_verified)}
-              </div>
+              {roleData.guarantor_comment && (
+                <div className="mt-3">
+                  <p className="text-xs text-gray-500 mb-1">Comment:</p>
+                  <p className="text-sm bg-orange-50 p-2 rounded text-gray-700">
+                    {roleData.guarantor_comment}
+                  </p>
+                </div>
+              )}
             </div>
-            {roleData.guarantor_comment && (
-              <div className="mt-3">
-                <p className="text-xs text-gray-500 mb-1">Comment:</p>
-                <p className="text-sm bg-orange-50 p-2 rounded text-gray-700">
-                  {roleData.guarantor_comment}
-                </p>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Security Information */}
-          <div className="border-l-4 border-red-400 pl-4">
-            <h4 className="font-medium text-gray-800 mb-3">Security Information</h4>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Borrower Security:</span>
-                  {getStatusBadge(roleData.borrower_security_verified)}
-                </div>
-                {roleData.borrower_security_comment && (
-                  <p className="text-sm bg-red-50 p-2 rounded text-gray-700 ml-4">
-                    <span className="text-xs text-gray-500">Comment: </span>
-                    {roleData.borrower_security_comment}
-                  </p>
+          {(roleData.borrower_security_verified !== undefined || roleData.borrower_security_comment || roleData.guarantor_security_verified !== undefined || roleData.guarantor_security_comment) && (
+            <div className="border-l-4 border-red-400 pl-4">
+              <h4 className="font-medium text-gray-800 mb-3">Security Information</h4>
+              <div className="space-y-4">
+                {(roleData.borrower_security_verified !== undefined || roleData.borrower_security_comment) && (
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">Borrower Security:</span>
+                      {getStatusBadge(roleData.borrower_security_verified)}
+                    </div>
+                    {roleData.borrower_security_comment && (
+                      <p className="text-sm bg-red-50 p-2 rounded text-gray-700 ml-4">
+                        <span className="text-xs text-gray-500">Comment: </span>
+                        {roleData.borrower_security_comment}
+                      </p>
+                    )}
+                  </div>
                 )}
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-600">Guarantor Security:</span>
-                  {getStatusBadge(roleData.guarantor_security_verified)}
-                </div>
-                {roleData.guarantor_security_comment && (
-                  <p className="text-sm bg-red-50 p-2 rounded text-gray-700 ml-4">
-                    <span className="text-xs text-gray-500">Comment: </span>
-                    {roleData.guarantor_security_comment}
-                  </p>
+                
+                {(roleData.guarantor_security_verified !== undefined || roleData.guarantor_security_comment) && (
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">Guarantor Security:</span>
+                      {getStatusBadge(roleData.guarantor_security_verified)}
+                    </div>
+                    {roleData.guarantor_security_comment && (
+                      <p className="text-sm bg-red-50 p-2 rounded text-gray-700 ml-4">
+                        <span className="text-xs text-gray-500">Comment: </span>
+                        {roleData.guarantor_security_comment}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Next of Kin */}
           {(roleData.next_of_kin_verified !== undefined || roleData.next_of_kin_comment) && (
@@ -211,31 +231,35 @@ function AmendmentDetailsModal({ amendment, onClose }) {
           )}
 
           {/* Loan Information */}
-          <div className="border-l-4 border-yellow-400 pl-4">
-            <h4 className="font-medium text-gray-800 mb-3">Loan Information</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-              <div>
-                <span className="text-sm text-gray-600">Scored Amount:</span>
-                <p className="font-medium text-gray-800">
-                  {roleData.loan_scored_amount ? `KES ${Number(roleData.loan_scored_amount).toLocaleString()}` : 'Not Set'}
-                </p>
-              </div>
-              <div>
-                <span className="text-sm text-gray-600">Final Decision:</span>
-                <div className="mt-1">
-                  {getDecisionBadge(roleData.final_decision)}
+          {(roleData.loan_scored_amount !== undefined || roleData.loan_comment) && (
+            <div className="border-l-4 border-yellow-400 pl-4">
+              <h4 className="font-medium text-gray-800 mb-3">Loan Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                {roleData.loan_scored_amount !== undefined && (
+                  <div>
+                    <span className="text-sm text-gray-600">Scored Amount:</span>
+                    <p className="font-medium text-gray-800">
+                      {roleData.loan_scored_amount ? `KES ${Number(roleData.loan_scored_amount).toLocaleString()}` : 'Not Set'}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <span className="text-sm text-gray-600">Final Decision:</span>
+                  <div className="mt-1">
+                    {getDecisionBadge(roleData.final_decision)}
+                  </div>
                 </div>
               </div>
+              {roleData.loan_comment && (
+                <div className="mt-3">
+                  <p className="text-xs text-gray-500 mb-1">Comment:</p>
+                  <p className="text-sm bg-yellow-50 p-2 rounded text-gray-700">
+                    {roleData.loan_comment}
+                  </p>
+                </div>
+              )}
             </div>
-            {roleData.loan_comment && (
-              <div className="mt-3">
-                <p className="text-xs text-gray-500 mb-1">Comment:</p>
-                <p className="text-sm bg-yellow-50 p-2 rounded text-gray-700">
-                  {roleData.loan_comment}
-                </p>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Overall Assessment */}
           {roleData.overall_comment && (
@@ -253,60 +277,78 @@ function AmendmentDetailsModal({ amendment, onClose }) {
 
   // Extract role-specific data
   const bmData = {
-    customer_id_verified: amendment.bm_customer_id_verified,
-    customer_phone_verified: amendment.bm_customer_phone_verified,
-    customer_comment: amendment.bm_customer_comment,
-    business_verified: amendment.bm_business_verified,
-    business_comment: amendment.bm_business_comment,
-    document_verified: amendment.bm_document_verified,
-    document_comment: amendment.bm_document_comment,
-    guarantor_id_verified: amendment.bm_guarantor_id_verified,
-    guarantor_phone_verified: amendment.bm_guarantor_phone_verified,
-    guarantor_comment: amendment.bm_guarantor_comment,
-    borrower_security_verified: amendment.bm_borrower_security_verified,
-    borrower_security_comment: amendment.bm_borrower_security_comment,
-    guarantor_security_verified: amendment.bm_guarantor_security_verified,
-    guarantor_security_comment: amendment.bm_guarantor_security_comment,
-    next_of_kin_verified: amendment.bm_next_of_kin_verified,
-    next_of_kin_comment: amendment.bm_next_of_kin_comment,
-    loan_scored_amount: amendment.bm_loan_scored_amount,
-    loan_comment: amendment.bm_loan_comment,
-    final_decision: amendment.bm_final_decision,
-    overall_comment: amendment.bm_overall_comment,
-    verified_at: amendment.bm_verified_at,
-    verified_by: amendment.bm_verified_by
-  };
-
-  const rmData = {
-    customer_id_verified: amendment.rm_customer_id_verified,
-    customer_phone_verified: amendment.rm_customer_phone_verified,
-    customer_comment: amendment.rm_customer_comment,
-    business_verified: amendment.rm_business_verified,
-    business_comment: amendment.rm_business_comment,
-    document_verified: amendment.rm_document_verified,
-    document_comment: amendment.rm_document_comment,
-    guarantor_id_verified: amendment.rm_guarantor_id_verified,
-    guarantor_phone_verified: amendment.rm_guarantor_phone_verified,
-    guarantor_comment: amendment.rm_guarantor_comment,
-    borrower_security_verified: amendment.rm_borrower_security_verified,
-    borrower_security_comment: amendment.rm_borrower_security_comment,
-    guarantor_security_verified: amendment.rm_guarantor_security_verified,
-    guarantor_security_comment: amendment.rm_guarantor_security_comment,
-    next_of_kin_verified: amendment.rm_next_of_kin_verified,
-    next_of_kin_comment: amendment.rm_next_of_kin_comment,
-    loan_scored_amount: amendment.rm_loan_scored_amount,
-    loan_comment: amendment.rm_loan_comment,
-    final_decision: amendment.rm_final_decision,
-    overall_comment: amendment.rm_overall_comment,
-    verified_at: amendment.rm_verified_at,
-    verified_by: amendment.rm_verified_by
+    customer_id_verified: amendment.branch_manager_customer_id_verified,
+    customer_phone_verified: amendment.branch_manager_customer_phone_verified,
+    customer_comment: amendment.branch_manager_customer_comment,
+    business_verified: amendment.branch_manager_business_verified,
+    business_comment: amendment.branch_manager_business_comment,
+    document_verified: amendment.branch_manager_document_verified,
+    document_comment: amendment.branch_manager_document_comment,
+    guarantor_id_verified: amendment.branch_manager_guarantor_id_verified,
+    guarantor_phone_verified: amendment.branch_manager_guarantor_phone_verified,
+    guarantor_comment: amendment.branch_manager_guarantor_comment,
+    borrower_security_verified: amendment.branch_manager_borrower_security_verified,
+    borrower_security_comment: amendment.branch_manager_borrower_security_comment,
+    guarantor_security_verified: amendment.branch_manager_guarantor_security_verified,
+    guarantor_security_comment: amendment.branch_manager_guarantor_security_comment,
+    next_of_kin_verified: amendment.branch_manager_next_of_kin_verified,
+    next_of_kin_comment: amendment.branch_manager_next_of_kin_comment,
+    loan_scored_amount: amendment.branch_manager_loan_scored_amount,
+    loan_comment: amendment.branch_manager_loan_comment,
+    final_decision: amendment.branch_manager_final_decision,
+    overall_comment: amendment.branch_manager_overall_comment,
+    verified_at: amendment.branch_manager_verified_at,
+    verified_by: amendment.branch_manager_verified_by
   };
 
   const coData = {
+    customer_id_verified: amendment.co_customer_id_verified,
+    customer_phone_verified: amendment.co_customer_phone_verified,
+    customer_comment: amendment.co_customer_comment,
+    business_verified: amendment.co_business_verified,
+    business_comment: amendment.co_business_comment,
+    document_verified: amendment.co_document_verified,
+    document_comment: amendment.co_document_comment,
+    guarantor_id_verified: amendment.co_guarantor_id_verified,
+    guarantor_phone_verified: amendment.co_guarantor_phone_verified,
+    guarantor_comment: amendment.co_guarantor_comment,
+    borrower_security_verified: amendment.co_borrower_security_verified,
+    borrower_security_comment: amendment.co_borrower_security_comment,
+    guarantor_security_verified: amendment.co_guarantor_security_verified,
+    guarantor_security_comment: amendment.co_guarantor_security_comment,
+    next_of_kin_verified: amendment.co_next_of_kin_verified,
+    next_of_kin_comment: amendment.co_next_of_kin_comment,
+    loan_scored_amount: amendment.co_loan_scored_amount,
+    loan_comment: amendment.co_loan_comment,
     final_decision: amendment.co_final_decision,
     overall_comment: amendment.co_overall_comment,
     verified_at: amendment.co_verified_at,
     verified_by: amendment.co_verified_by
+  };
+
+  const creditAnalystData = {
+    customer_id_verified: amendment.credit_analyst_officer_customer_id_verified,
+    customer_phone_verified: amendment.credit_analyst_officer_customer_phone_verified,
+    customer_comment: amendment.credit_analyst_officer_customer_comment,
+    business_verified: amendment.credit_analyst_officer_business_verified,
+    business_comment: amendment.credit_analyst_officer_business_comment,
+    document_verified: amendment.credit_analyst_officer_document_verified,
+    document_comment: amendment.credit_analyst_document_comment,
+    guarantor_id_verified: amendment.credit_analyst_officer_guarantor_id_verified,
+    guarantor_phone_verified: amendment.credit_analyst_officer_guarantor_phone_verified,
+    guarantor_comment: amendment.credit_analyst_officer_guarantor_comment,
+    borrower_security_verified: amendment.credit_analyst_officer_borrower_security_verified,
+    borrower_security_comment: amendment.credit_analyst_officer_borrower_security_comment,
+    guarantor_security_verified: amendment.credit_analyst_officer_guarantor_security_verified,
+    guarantor_security_comment: amendment.credit_analyst_officer_guarantor_security_comment,
+    next_of_kin_verified: amendment.credit_analyst_officer_next_of_kin_verified,
+    next_of_kin_comment: amendment.credit_analyst_officer_next_of_kin_comment,
+    loan_scored_amount: amendment.credit_analyst_officer_loan_scored_amount,
+    loan_comment: amendment.credit_analyst_officer_loan_comment,
+    final_decision: amendment.credit_analyst_officer_final_decision,
+    overall_comment: amendment.credit_analyst_officer_overall_comment,
+    verified_at: amendment.credit_analyst_officer_verified_at,
+    verified_by: amendment.credit_analyst_officer_verified_by
   };
 
   return (
@@ -333,11 +375,11 @@ function AmendmentDetailsModal({ amendment, onClose }) {
           {/* Branch Manager Verification */}
           {renderVerificationSection('bm', bmData, 'Branch Manager')}
           
-          {/* Regional Manager Verification */}
-          {renderVerificationSection('rm', rmData, 'Regional Manager')}
+          {/* Customer Service Officer Verification */}
+          {renderVerificationSection('co', coData, 'Customer Service Officer')}
           
-          {/* Credit Officer Verification */}
-          {renderVerificationSection('co', coData, 'Credit Officer')}
+          {/* Credit Analyst Officer Verification */}
+          {renderVerificationSection('credit_analyst', creditAnalystData, 'Credit Analyst Officer')}
         </div>
 
         {/* Footer */}

@@ -12,12 +12,11 @@ function LoanApplication() {
   const { profile } = useAuth();
   const [lastFetchTime, setLastFetchTime] = useState(0);
 
-  // Memoize the fetch function with useCallback
+  // Fetch approved customers only once in 5 minutes
   const fetchApprovedCustomers = useCallback(async () => {
-    // Prevent fetching if data was recently fetched (5 minute cache)
     const now = Date.now();
-    if (now - lastFetchTime < 300000 && customers.length > 0) { // 5 minutes
-      return;
+    if (now - lastFetchTime < 300000) {
+      return; // skip if fetched within 5 min
     }
 
     if (!profile?.id || profile.role !== "relationship_officer") {
@@ -45,9 +44,16 @@ function LoanApplication() {
 
       if (error) throw error;
 
-      // Fetch last loan status for each customer
+      if (!customersData || customersData.length === 0) {
+        setCustomers([]);
+        setFilteredCustomers([]);
+        setLastFetchTime(now);
+        return;
+      }
+
+      // Fetch last loan + scored amounts for each customer
       const customersWithLoanStatus = await Promise.all(
-        (customersData || []).map(async (cust) => {
+        customersData.map(async (cust) => {
           const { data: lastLoan } = await supabase
             .from("loans")
             .select("status")
@@ -58,18 +64,18 @@ function LoanApplication() {
 
           const { data: bmRow } = await supabase
             .from("customer_verifications")
-            .select("bm_loan_scored_amount")
+            .select("branch_manager_loan_scored_amount")
             .eq("customer_id", cust.id)
-            .not("bm_loan_scored_amount", "is", null)
+            .not("branch_manager_loan_scored_amount", "is", null)
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
 
           const { data: rmRow } = await supabase
             .from("customer_verifications")
-            .select("rm_loan_scored_amount")
+            .select("credit_analyst_officer_loan_scored_amount")
             .eq("customer_id", cust.id)
-            .not("rm_loan_scored_amount", "is", null)
+            .not("credit_analyst_officer_loan_scored_amount", "is", null)
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();
@@ -77,15 +83,15 @@ function LoanApplication() {
           return {
             ...cust,
             lastLoanStatus: lastLoan?.status || null,
-            bmScoredAmount: bmRow?.bm_loan_scored_amount || 0,
-            rmScoredAmount: rmRow?.rm_loan_scored_amount || 0,
+            bmScoredAmount: bmRow?.branch_manager_loan_scored_amount || 0,
+            caScoredAmount: rmRow?.credit_analyst_officer_loan_scored_amount || 0,
           };
         })
       );
 
       setCustomers(customersWithLoanStatus);
       setFilteredCustomers(customersWithLoanStatus);
-      setLastFetchTime(Date.now()); // Update last fetch time
+      setLastFetchTime(now);
     } catch (err) {
       console.error("Unexpected error fetching approved customers:", err);
       setCustomers([]);
@@ -93,36 +99,47 @@ function LoanApplication() {
     } finally {
       setLoading(false);
     }
-  }, [profile, lastFetchTime, customers.length]);
+  }, [profile, lastFetchTime]);
 
-  // Fetch only when profile is available and hasn't been fetched recently
+  // Fetch once when profile is ready
   useEffect(() => {
-    if (profile && profile.id && profile.role === "relationship_officer") {
+    if (profile?.id && profile.role === "relationship_officer") {
       fetchApprovedCustomers();
     }
   }, [profile, fetchApprovedCustomers]);
 
- useEffect(() => {
+  // Apply search filter
+  useEffect(() => {
     if (!searchTerm) {
       setFilteredCustomers(customers);
       return;
     }
 
     const term = searchTerm.toLowerCase();
-    const filtered = customers.filter(customer => 
-      customer.id_number?.toString().toLowerCase().includes(term) ||
-      customer.mobile?.toString().toLowerCase().includes(term) ||
-      `${customer.Firstname} ${customer.Surname}`.toLowerCase().includes(term)
+    setFilteredCustomers(
+      customers.filter(customer =>
+        customer.id_number?.toString().toLowerCase().includes(term) ||
+        customer.mobile?.toString().toLowerCase().includes(term) ||
+        `${customer.Firstname} ${customer.Surname}`.toLowerCase().includes(term)
+      )
     );
-    
-    setFilteredCustomers(filtered);
   }, [searchTerm, customers]);
 
-  if (loading) return (
-    <div className="flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+
+  if (!customers.length) {
+    return (
+      <div className="text-center py-10 text-gray-600">
+        No approved customers available for loan booking.
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -207,8 +224,8 @@ function LoanApplication() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
                       Ksh{" "}
-                      {application.rmScoredAmount
-                        ? Number(application.rmScoredAmount).toLocaleString()
+                      {application.caScoredAmount
+                        ? Number(application.caScoredAmount).toLocaleString()
                         : application.bmScoredAmount
                         ? Number(application.bmScoredAmount).toLocaleString()
                         : "N/A"}

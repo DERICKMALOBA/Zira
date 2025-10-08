@@ -32,11 +32,11 @@ const LoanBookingForm = ({ customerData, onComplete }) => {
     Surname,
     mobile,
     bmScoredAmount,
-    rmScoredAmount,
+    caScoredAmount,
   } = customerData || {};
 
   //  RM takes precedence → use RM if available, else BM
-  const approved_amount = rmScoredAmount ?? bmScoredAmount ?? 0;
+  const approved_amount = caScoredAmount ?? bmScoredAmount ?? 0;
 
   const handleClose = () => onComplete();
 
@@ -99,7 +99,7 @@ const LoanBookingForm = ({ customerData, onComplete }) => {
     if (error) return;
 
     if (!loans || loans.length === 0) {
-      setCustomerType("New Customer");
+      setCustomerType("New Loan");
       setIsNewCustomer(true);
     } else {
       const hasApprovedLoan = loans.some(
@@ -384,7 +384,7 @@ const handleBookLoan = async () => {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 font-medium">Customer Type:</span>
+                    <span className="text-gray-600 font-medium">Loan Type:</span>
                     <span className={`font-semibold ${isNewCustomer ? 'text-green-600' : 'text-blue-600'}`}>
                       {customerType}
                     </span>

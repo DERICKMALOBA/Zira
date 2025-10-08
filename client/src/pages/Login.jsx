@@ -121,16 +121,16 @@ export default function Login() {
           navigate("/officer");
           break;
         case "branch_manager":
-          navigate("/dashboard/bm");
+          navigate("/dashboard");
           break;
         case "regional_manager":
-          navigate("/dashboard/rm");
+          navigate("/dashboard");
           break;
         case "credit_analyst_officer":
-          navigate("/dashboard/ca");
+          navigate("/dashboard");
           break;
         case "customer_service_officer":
-          navigate("/dashboard/cs");
+          navigate("/dashboard");
           break;
           case "admin": 
     navigate("/dashboard/admin");

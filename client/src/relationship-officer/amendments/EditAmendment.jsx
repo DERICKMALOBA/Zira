@@ -583,8 +583,8 @@ function EditAmendment({ customerId, onClose }) {
       // Transition rules for RO amendment
       if (currentCustomer.status === "sent_back_by_bm") {
         newStatus = "bm_review_amend";
-      } else if (currentCustomer.status === "sent_back_by_rm") {
-        newStatus = "rm_review_amend";
+      } else if (currentCustomer.status === "sent_back_by_ca") {
+        newStatus = "ca_review_amend";
       } else if (currentCustomer.status === "sent_back_by_cso") {
         newStatus = "cso_review_amend";
       }

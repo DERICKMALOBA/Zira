@@ -1,6 +1,6 @@
 // src/components/ViewLoan.jsx
 import { useState, useEffect } from 'react';
-import { supabase } from "../../../supabaseClient";
+import { supabase } from "../../supabaseClient";
 import {
   UserIcon,
   CurrencyDollarIcon,
@@ -18,7 +18,7 @@ import {
   XCircleIcon,
 } from "@heroicons/react/24/outline";
 
-const ViewLoanca = ({ loan, onClose }) => {
+const ViewLoan = ({ loan, onClose }) => {
   const [loanDetails, setLoanDetails] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [bookedByUser, setBookedByUser] = useState(null);
@@ -239,9 +239,9 @@ const ViewLoanca = ({ loan, onClose }) => {
                 </div>
               
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">Customer Type:</span>
-                  <span className={`font-semibold ${loanDetails.is_new_customer ? 'text-green-600' : 'text-blue-600'}`}>
-                    {loanDetails.is_new_customer ? 'New Customer' : 'Returning Customer'}
+                  <span className="text-gray-600 font-medium">Loan Type:</span>
+                  <span className={`font-semibold ${loanDetails.is_new_loan ? 'text-green-600' : 'text-blue-600'}`}>
+                    {loanDetails.is_new_loan ? 'New loan' : 'Returning Loan'}
                   </span>
                 </div>
               </div>
@@ -272,12 +272,12 @@ const ViewLoanca = ({ loan, onClose }) => {
                     {loanDetails.duration_weeks} weeks
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
+                {/* <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Interest Rate:</span>
                   <span className="text-gray-900 font-semibold">
                     {loanDetails.interest_rate}%
                   </span>
-                </div>
+                </div> */}
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Processing Fee:</span>
                   <span className="text-gray-900 font-semibold">
@@ -451,9 +451,8 @@ const ViewLoanca = ({ loan, onClose }) => {
                       <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Week</th>
                       <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Due Date</th>
                       <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Principal</th>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Interest</th>
                       <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Fees</th>
-                      <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Total</th>
+                      <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Installments</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -472,9 +471,7 @@ const ViewLoanca = ({ loan, onClose }) => {
                         <td className="px-6 py-4 text-sm text-right font-semibold text-gray-900">
                           KES {payment.principal.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 text-sm text-right font-semibold text-blue-600">
-                          KES {payment.interest.toLocaleString()}
-                        </td>
+                      
                         <td className="px-6 py-4 text-sm text-right font-semibold text-amber-600">
                           KES {(payment.processing_fee + payment.registration_fee).toLocaleString()}
                         </td>
@@ -494,4 +491,4 @@ const ViewLoanca = ({ loan, onClose }) => {
   );
 };
 
-export default ViewLoanca;
+export default ViewLoan;

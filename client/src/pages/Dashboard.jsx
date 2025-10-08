@@ -1,363 +1,961 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
-import { useAuth } from "../hooks/userAuth";
+import  { useState, useEffect } from "react";
+import { supabase } from "../supabaseClient";
 
 const Dashboard = () => {
+  const [userRegion, setUserRegion] = useState(null);
+  const [userBranch, setUserBranch] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [branchesMap, setBranchesMap] = useState({});
+  const [regionsMap, setRegionsMap] = useState({});
+
   const [stats, setStats] = useState([
-    { 
-      title: 'Total Loans', 
-      value: '0', 
+    {
+      title: "Total Loans",
+      value: "0",
+      change: "+0%",
+      trend: "up",
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-      ), 
-      color: 'bg-blue-500', 
-      loading: true 
+      ),
+      color: "from-gray-500 to-gray-600",
+      loading: true,
     },
-    { 
-      title: 'Active Customers', 
-      value: '0', 
+    {
+      title: "Active Customers",
+      value: "0",
+      change: "+0%",
+      trend: "up",
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
-      ), 
-      color: 'bg-green-500', 
-      loading: true 
+      ),
+      color: "from-emerald-500 to-emerald-600",
+      loading: true,
     },
-    { 
-      title: 'Pending Approvals', 
-      value: '0', 
+    {
+      title: "Pending Approvals",
+      value: "0",
+      change: "+0%",
+      trend: "up",
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-      ), 
-      color: 'bg-yellow-500', 
-      loading: true 
+      ),
+      color: "from-amber-500 to-amber-600",
+      loading: true,
     },
-    { 
-      title: 'Portfolio Value', 
-      value: 'Ksh 0', 
+    {
+      title: "Portfolio Value",
+      value: "Ksh 0",
+      change: "+0%",
+      trend: "up",
       icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
-      ), 
-      color: 'bg-purple-500', 
-      loading: true 
+      ),
+      color: "from-purple-500 to-purple-600",
+      loading: true,
     },
   ]);
-  
+
   const [recentActivity, setRecentActivity] = useState([]);
   const [performanceMetrics, setPerformanceMetrics] = useState({
     portfolioGrowth: 0,
     defaultRate: 0,
-    approvalRate: 0
+    approvalRate: 0,
   });
+  const [branches, setBranches] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { profile, loading: authLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState("overview");
 
-  const fetchDashboardData = async (regionId) => {
+  // Tab configuration with role-based filtering
+  const allTabs = [
+    {
+      id: "overview",
+      name: "Overview",
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="bg-gray-600">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+    },
+    {
+      id: "branches",
+      name: "Branches",
+      showForRoles: ["regional_manager", "credit_service_officer", "credit_analyst_officer"],
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      ),
+    },
+    {
+      id: "customers",
+      name: "Customers",
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+    },
+    {
+      id: "loans",
+      name: "Loans",
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+  ];
+
+  // Filter tabs based on user role
+  const tabs = allTabs.filter(tab => {
+    if (!tab.showForRoles) return true;
+    return tab.showForRoles.includes(userRole);
+  });
+
+
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
+      if (user) {
+        const { data: userData, error: userDataError } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (userDataError) throw userDataError;
+
+        // Fetch profile with branch and region names using joins
+        const { data: profileData, error } = await supabase
+          .from("profiles")
+          .select(`
+            region_id,
+            branch_id,
+            branches!inner(name),
+            regions!inner(name)
+          `)
+          .eq("id", user.id)
+          .single();
+
+        if (error) throw error;
+
+        setUserRole(userData?.role);
+        setUserRegion(profileData?.regions?.name || profileData?.region_id);
+        setUserBranch(profileData?.branches?.name || profileData?.branch_id);
+        
+        console.log("Branch:", profileData?.branches?.name);
+        console.log("Region:", profileData?.regions?.name);
+        
+
+        return {
+          role: userData?.role,
+          regionId: profileData?.region_id,
+          branchId: profileData?.branch_id,
+          regionName: profileData?.regions?.name,
+          branchName: profileData?.branches?.name,
+        };
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+    return null;
+  };
+  
+
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      console.log('=== DASHBOARD DATA FETCH START ===');
-      console.log('Fetching dashboard data for region:', regionId);
+      const profile = await fetchUserProfile();
 
-      // Initialize variables
-      let totalLoans = 0;
-      let activeCustomers = 0;
-      let pendingApprovals = 0;
-      let portfolioValue = 0;
+      if (!profile) {
+        setLoading(false);
+        return;
+      }
 
-      // 1. TOTAL LOANS
-      console.log('1. Fetching total loans...');
-      try {
-        const { count: loansCount, error: loansError } = await supabase
+      const { role, regionId, branchId, regionName, branchName } = profile;
+
+      // Set the actual names instead of IDs
+      if (regionName) setUserRegion(regionName);
+      if (branchName) setUserBranch(branchName);
+
+      // Fetch all branches and regions for mapping
+      const { data: allBranches } = await supabase
+        .from("branches")
+        .select("id, name");
+      
+      const { data: allRegions } = await supabase
+        .from("regions")
+        .select("id, name");
+
+      // Create lookup maps
+      const branchLookup = {};
+      const regionLookup = {};
+
+      if (allBranches) {
+        allBranches.forEach(branch => {
+          branchLookup[branch.id] = branch.name;
+        });
+      }
+
+      if (allRegions) {
+        allRegions.forEach(region => {
+          regionLookup[region.id] = region.name;
+        });
+      }
+
+      setBranchesMap(branchLookup);
+      setRegionsMap(regionLookup);
+let customersQuery = supabase.from("customers").select("*");
+let loansQuery = supabase.from("loans").select("*");
+let branchesQuery;
+
+if (role === "branch_manager") {
+  customersQuery = customersQuery.eq("branch_id", branchId);
+  loansQuery = loansQuery.eq("branch_id", branchId);
+  branchesQuery = supabase
+    .from("branches")
+    .select("id, name, location, contact_email, contact_phone, status")
+    .eq("id", branchId);
+} else {
+  customersQuery = customersQuery.eq("region_id", regionId);
+  loansQuery = loansQuery.eq("region_id", regionId);
+
+  //  fetch all branches in the region
+  branchesQuery = supabase
+    .from("branches")
+    .select("id, name, location, contact_email, contact_phone, status")
+    .eq("region_id", regionId);
+}
+
+      const [
+  { data: customersData },
+  { data: loansData },
+  { data: branchesData }
+] = await Promise.all([customersQuery, loansQuery, branchesQuery]);
+
+// Save branches directly
+setBranches(branchesData || []);
+
+// Count how many branches in region
+if (branchesData) {
+  console.log("Branches in region:", branchesData.length);
+  branchesData.forEach(b => {
+    console.log("Branch:", b.name, "Location:", b.location, "Contact:", b.contact_email);
+  });
+}
+
+
+      let totalLoansCount = 0;
+      let activeCustomersCount = 0;
+      let pendingApprovalsCount = 0;
+
+      if (role === "branch_manager") {
+        const { count: loansCount } = await supabase
           .from("loans")
-          .select("*", { count: "exact" })
+          .select("*", { count: "exact", head: true })
+          .eq("branch_id", branchId);
+
+        const { count: customersCount } = await supabase
+          .from("customers")
+          .select("*", { count: "exact", head: true })
+          .eq("branch_id", branchId);
+
+        const { count: approvalsCount } = await supabase
+          .from("customers")
+          .select("*", { count: "exact", head: true })
+          .eq("branch_id", branchId)
+          .eq("status", "bm_review");
+
+        totalLoansCount = loansCount || 0;
+        activeCustomersCount = customersCount || 0;
+        pendingApprovalsCount = approvalsCount || 0;
+      } else {
+        const { count: loansCount } = await supabase
+          .from("loans")
+          .select("*", { count: "exact", head: true })
           .eq("region_id", regionId);
 
-        if (loansError) {
-          console.error('❌ Total loans error:', loansError);
-        } else {
-          totalLoans = loansCount || 0;
-          console.log('✅ Total loans:', totalLoans);
-        }
-      } catch (err) {
-        console.error('❌ Total loans exception:', err);
-      }
-
-      // 2. ACTIVE CUSTOMERS
-      console.log('2. Fetching active customers...');
-      try {
-        const { count: customersCount, error: customersError } = await supabase
+        const { count: customersCount } = await supabase
           .from("customers")
-          .select("*", { count: "exact" })
+          .select("*", { count: "exact", head: true })
           .eq("region_id", regionId);
 
-        if (customersError) {
-          console.error('❌ Active customers error:', customersError);
-        } else {
-          activeCustomers = customersCount || 0;
-          console.log('✅ Active customers:', activeCustomers);
-        }
-      } catch (err) {
-        console.error('❌ Active customers exception:', err);
-      }
-
-      // 3. PENDING APPROVALS - ONLY status = 'rm_review'
-      console.log('3. Fetching pending approvals (status = rm_review)...');
-      try {
-        const { count: pendingCount, error: pendingError } = await supabase
+        const { count: approvalsCount } = await supabase
           .from("customers")
-          .select("*", { count: "exact" })
+          .select("*", { count: "exact", head: true })
           .eq("region_id", regionId)
           .eq("status", "rm_review");
 
-        if (pendingError) {
-          console.error('❌ Pending approvals count error:', pendingError);
-          console.log('Trying fallback method...');
-          
-          // Fallback: get actual data and count manually
-          const { data: pendingCustomers, error: fallbackError } = await supabase
-            .from("customers")
-            .select("id, status")
-            .eq("region_id", regionId)
-            .eq("status", "rm_review");
-          
-          if (fallbackError) {
-            console.error('❌ Pending approvals fallback error:', fallbackError);
-            pendingApprovals = 0;
-          } else {
-            pendingApprovals = pendingCustomers ? pendingCustomers.length : 0;
-            console.log('✅ Pending approvals (fallback):', pendingApprovals);
-          }
-        } else {
-          pendingApprovals = pendingCount || 0;
-          console.log('✅ Pending approvals:', pendingApprovals);
-        }
-      } catch (err) {
-        console.error('❌ Pending approvals exception:', err);
-        pendingApprovals = 0;
+        totalLoansCount = loansCount || 0;
+        activeCustomersCount = customersCount || 0;
+        pendingApprovalsCount = approvalsCount || 0;
       }
 
-      // 4. PORTFOLIO VALUE
-      console.log('4. Fetching portfolio data...');
-      try {
-        const { data: loansData, error: loansDataError } = await supabase
-          .from("loans")
-          .select("scored_amount, status")
-          .eq("region_id", regionId);
+      let portfolioValue = 0;
+      let approvedLoans = 0;
+      let defaultedLoans = 0;
 
-        if (loansDataError) {
-          console.error('❌ Portfolio data error:', loansDataError);
-        } else if (loansData) {
-          portfolioValue = loansData.reduce((sum, loan) => sum + (loan.scored_amount || 0), 0);
-          console.log('✅ Portfolio value:', portfolioValue);
-        }
-      } catch (err) {
-        console.error('❌ Portfolio data exception:', err);
+      if (loansData) {
+        portfolioValue = loansData.reduce((sum, loan) => sum + (loan.scored_amount || 0), 0);
+        approvedLoans = loansData.filter(loan => loan.status === "booked").length;
+        defaultedLoans = loansData.filter(loan => loan.status === "defaulted").length;
       }
 
-      // 5. RECENT ACTIVITY
-      console.log('5. Fetching recent activity...');
-      let formattedActivity = [];
-      try {
-        const { data: activityData, error: activityError } = await supabase
-          .from("loans")
-          .select(`
-            id,
-            status,
-            created_at,
-            customers:customer_id (
-              Firstname,
-              Surname
-            )
-          `)
-          .eq("region_id", regionId)
-          .order("created_at", { ascending: false })
-          .limit(5);
+      let activityQuery = supabase
+        .from("loans")
+        .select(`*, customers:customer_id (Firstname, Surname)`)
+        .order("created_at", { ascending: false })
+        .limit(5);
 
-        if (activityError) {
-          console.error('❌ Recent activity error:', activityError);
-        } else if (activityData) {
-          formattedActivity = activityData.map((item) => ({
-            id: item.id,
-            type: item.status === "approved" ? "approval" : item.status === "disbursed" ? "disbursement" : "application",
-            message:
-              item.status === "approved"
-                ? `Loan approved for ${item.customers?.Firstname || 'Unknown'} ${item.customers?.Surname || ''}`
-                : item.status === "disbursed"
-                ? `Loan disbursed to ${item.customers?.Firstname || 'Unknown'} ${item.customers?.Surname || ''}`
-                : `Loan application from ${item.customers?.Firstname || 'Unknown'} ${item.customers?.Surname || ''}`,
-            time: new Date(item.created_at).toLocaleDateString(),
-            icon: stats[2].icon,
-            iconBg: 'bg-yellow-100 text-yellow-600'
-          }));
-          console.log('✅ Recent activity:', formattedActivity.length, 'items');
-        }
-      } catch (err) {
-        console.error('❌ Recent activity exception:', err);
+      if (role === "branch_manager") {
+        activityQuery = activityQuery.eq("branch_id", branchId);
+      } else {
+        activityQuery = activityQuery.eq("region_id", regionId);
       }
 
-      // UPDATE UI
-      console.log('6. Updating UI...');
-      setStats(prevStats => [
-        { ...prevStats[0], value: totalLoans.toLocaleString(), loading: false },
-        { ...prevStats[1], value: activeCustomers.toLocaleString(), loading: false },
-        { ...prevStats[2], value: pendingApprovals.toLocaleString(), loading: false },
-        { ...prevStats[3], value: `Ksh ${portfolioValue.toLocaleString()}`, loading: false },
+      const { data: activityData } = await activityQuery;
+
+      setBranches(branchesData || []);
+      setCustomers(customersData || []);
+      setLoans(loansData || []);
+
+      setStats([
+        { ...stats[0], value: totalLoansCount.toLocaleString(), loading: false },
+        { ...stats[1], value: activeCustomersCount.toLocaleString(),  loading: false },
+        { ...stats[2], value: pendingApprovalsCount.toLocaleString(),  trend: "down", loading: false },
+        { ...stats[3], value: `Ksh ${portfolioValue.toLocaleString()}`, loading: false },
       ]);
 
-      // Calculate performance metrics
-      const portfolioGrowth = totalLoans > 0 ? Math.round((activeCustomers / totalLoans) * 100) : 0;
-      const defaultRate = 0;
-      const approvalRate = totalLoans > 0 ? Math.round(((totalLoans - pendingApprovals) / totalLoans) * 100) : 0;
-      
+      const portfolioGrowth = totalLoansCount > 0 ? Math.round((approvedLoans / totalLoansCount) * 100) : 0;
+      const defaultRate = totalLoansCount > 0 ? Math.round((defaultedLoans / totalLoansCount) * 100) : 0;
+      const approvalRate = totalLoansCount > 0 ? Math.round((approvedLoans / totalLoansCount) * 100) : 0;
+
       setPerformanceMetrics({ portfolioGrowth, defaultRate, approvalRate });
-      setRecentActivity(formattedActivity);
 
-      console.log('=== DASHBOARD DATA FETCH COMPLETE ===');
-      console.log('Final stats:', { totalLoans, activeCustomers, pendingApprovals, portfolioValue });
-
+      if (activityData) {
+        const formattedActivity = activityData.map(item => ({
+          id: item.id,
+          type: item.status === "approved" ? "approval" : item.status === "disbursed" ? "disbursement" : "application",
+          message: item.status === "approved" 
+            ? `Loan approved for ${item.customers?.Firstname} ${item.customers?.Surname}`
+            : item.status === "disbursed"
+            ? `Loan disbursed to ${item.customers?.Firstname} ${item.customers?.Surname}`
+            : `Loan application from ${item.customers?.Firstname} ${item.customers?.Surname}`,
+          time: new Date(item.created_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          amount: `Ksh ${item.scored_amount?.toLocaleString() || "0"}`,
+          icon: item.status === "approved" ? (
+            <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ) : item.status === "disbursed" ? (
+            <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          ) : (
+            <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          ),
+          iconBg: item.status === "approved" ? "bg-emerald-100" : item.status === "disbursed" ? "bg-blue-100" : "bg-amber-100",
+        }));
+        setRecentActivity(formattedActivity);
+      }
     } catch (err) {
-      console.error("❌ DASHBOARD FETCH ERROR:", err);
-      setStats(prevStats => prevStats.map(stat => ({ ...stat, value: 'Error', loading: false })));
+      console.error("Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    console.log('=== USEEFFECT TRIGGERED ===');
-    console.log('Profile:', profile);
-    console.log('Auth loading:', authLoading);
-    
-    if (profile?.region_id && !authLoading) {
-      console.log('✅ Profile has region_id, fetching data...');
-      fetchDashboardData(profile.region_id);
-    } else if (!authLoading) {
-      console.log('❌ No region_id found in profile');
-      setStats(prevStats => prevStats.map(stat => ({ ...stat, loading: false })));
-      setLoading(false);
-    }
-  }, [profile, authLoading]);
+    fetchDashboardData();
+  }, []);
 
-  if (authLoading) {
+  const getBranchName = (branchId) => branchesMap[branchId] || "N/A";
+  const getRegionName = (regionId) => regionsMap[regionId] || "N/A";
+
+  const getDisplayTitle = () => {
+    if (userRole === "branch_manager") {
+      return `Branch: ${userBranch || getBranchName(userBranch)}`;
+    }
+    return `Region: ${userRegion || getRegionName(userRegion)}`;
+  };
+
+  const renderBranchesTable = () => (
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="  text-gray-600 mb-1">
+              {userRole === "branch_manager" ? "Branch Details" : "Regional Branches"}
+            </h3>
+            <p className="text-sm text-gray-600">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                {branches.length} {userRole === "branch_manager" ? "Branch" : "Active Branches"}
+              </span>
+              <span className="ml-2 text-gray-500">{getDisplayTitle()}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Address</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Code</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {branches.map((branch) => (
+              <tr key={branch.id} className="hover:bg-gray-50 transition-colors duration-200">
+                <td className="px-6 py-4">
+                  <div className="text-sm font-semibold text-gray-900">{branch.name}</div>
+                  <div className="text-sm text-gray-500">{branch.address}</div>
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  {branch.code || "N/A"}
+                </td>
+               
+              </tr>
+            ))}
+            {branches.length === 0 && (
+              <tr>
+                <td colSpan="3" className="px-6 py-8 text-center text-gray-500">No branches found</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderCustomersTable = () => (
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-8 py-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl  text-gray-600 mb-1">
+              {userRole === "branch_manager" ? "Branch Customers" : "Regional Customers"}
+            </h3>
+            <p className="text-sm text-gray-600">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                {customers.length} Total Customers
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact Info</th>
+              {userRole !== "branch_manager" && (
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Branch</th>
+              )}
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {customers.map((customer) => (
+              <tr key={customer.id} className="hover:bg-gray-50 transition-colors duration-200">
+                <td className="px-6 py-4">
+                  <div className="flex items-center">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-gray-400 to-gray-500 flex items-center justify-center text-white font-semibold text-sm">
+                      {customer.Firstname?.[0]}{customer.Surname?.[0]}
+                    </div>
+                    <div className="ml-4">
+                      <div className="text-sm  text-gray-900">
+                        {customer.Firstname} {customer.Surname}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm text-gray-900">{customer.email}</div>
+                  <div className="text-sm text-gray-500">{customer.mobile}</div>
+                </td>
+                {userRole !== "branch_manager" && (
+                  <td className="px-6 py-4 text-sm text-gray-500">{getBranchName(customer.branch_id)}</td>
+                )}
+                <td className="px-6 py-4">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                    {customer.status || "unknown"}
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {customers.length === 0 && (
+              <tr>
+                <td colSpan={userRole === "branch_manager" ? "3" : "4"} className="px-6 py-8 text-center text-gray-500">
+                  No customers found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderLoansTable = () => (
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-8 py-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-gray-600 mb-1">
+              {userRole === "branch_manager" ? "Branch Loans" : "Regional Loans"}
+            </h3>
+            <p className="text-sm text-gray-600">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                {loans.length} Total Loans
+              </span>
+              <span className="ml-2 text-gray-500">{getDisplayTitle()}</span>
+            </p>
+          </div>
+          <div className="text-3xl text-purple-600">
+            <svg
+              className="h-8 w-8"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Loan ID
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Amount
+              </th>
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              {userRole !== "branch_manager" && (
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Branch
+                </th>
+              )}
+              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {loans.map((loan) => (
+              <tr
+                key={loan.id}
+                className="hover:bg-gray-50 transition-colors duration-200"
+              >
+                <td className="px-6 py-4">
+                  <div className="text-sm font-mono font-semibold text-gray-600">
+                    #{loan.id ? String(loan.id).slice(-8) : "N/A"}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="text-sm font-semibold text-gray-600">
+                    Ksh {loan.scored_amount?.toLocaleString() || "0"}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      loan.status === "booked"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : loan.status === "pending"
+                        ? "bg-amber-100 text-amber-800"
+                        : loan.status === "defaulted"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
+                  >
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                        loan.status === "booked"
+                          ? "bg-emerald-500"
+                          : loan.status === "pending"
+                          ? "bg-amber-500"
+                          : loan.status === "defaulted"
+                          ? "bg-red-500"
+                          : "bg-gray-500"
+                      }`}
+                    ></div>
+                    {loan.status || "unknown"}
+                  </span>
+                </td>
+                {userRole !== "branch_manager" && (
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {getBranchName(loan.branch_id)}
+                  </td>
+                )}
+                <td className="px-6 py-4 text-sm text-gray-500">
+                  {loan.created_at
+                    ? new Date(loan.created_at).toLocaleDateString()
+                    : "N/A"}
+                </td>
+              </tr>
+            ))}
+            {loans.length === 0 && (
+              <tr>
+                <td colSpan={userRole === "branch_manager" ? "4" : "5"} className="px-6 py-8 text-center text-gray-500">
+                  <div className="text-purple-600 mb-4 mx-auto w-16 h-16">
+                    <svg
+                      className="w-full h-full"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <p>No loans found</p>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  if (loading && !userRegion && !userBranch) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-lg">Loading dashboard...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="text-center">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
+            <div
+              className="animate-pulse absolute inset-0 rounded-full h-16 w-16 border-4 border-transparent border-t-purple-400 mx-auto"
+              style={{ animationDelay: "0.5s" }}
+            ></div>
+          </div>
+          <p className="mt-6 text-lg text-gray-600 font-medium">
+            Loading dashboard...
+          </p>
+          <p className="text-sm text-gray-500">Fetching your data</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Region ID: {profile?.region_id || 'Not assigned'}</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat, index) => (
-          <div key={index} className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className={`rounded-full p-3 ${stat.color} text-white mr-4`}>
-                {stat.icon}
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                {stat.loading ? (
-                  <div className="h-8 w-16 bg-gray-200 animate-pulse rounded"></div>
-                ) : (
-                  <p className="text-2xl font-semibold text-gray-900">{stat.value}</p>
-                )}
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
+      <div className="p-8">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+             
+              <p className="text-gray-600 flex items-center">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 mr-3">
+                  {userRole?.replace(/_/g, ' ').toUpperCase() || "USER"}
+                </span>
+                <span>{getDisplayTitle()}</span>
+              </p>
             </div>
+        
           </div>
-        ))}
-      </div>
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h2>
-          {loading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="flex items-center">
-                  <div className="bg-gray-200 rounded-full p-2 mr-3 animate-pulse h-9 w-9"></div>
-                  <div className="flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+        {/* Navigation Tabs */}
+        <div className="mb-8">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-2">
+            <nav className="flex space-x-2">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center px-6 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
+                    activeTab === tab.id
+                      ? "bg-gradient-to-r from-gray-600 to-gray-600 text-white shadow-lg transform scale-105"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`}
+                >
+                  <span className="mr-2">{tab.icon}</span>
+                  {tab.name}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === "overview" && (
+          <div className="space-y-8">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+              {stats.map((stat, index) => (
+                <div key={index} className="group">
+                  <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <div
+                        className={`p-3 rounded-xl bg-gradient-to-r ${stat.color} text-white shadow-lg`}
+                      >
+                        {stat.icon}
+                      </div>
+                      <div
+                        className={`flex items-center text-sm font-semibold ${
+                          stat.trend === "up"
+                            ? "text-emerald-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        <svg
+                          className={`h-4 w-4 mr-1 ${
+                            stat.trend === "up" ? "rotate-0" : "rotate-180"
+                          }`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 17l9.2-9.2M17 17V7H7"
+                          />
+                        </svg>
+                        {stat.change}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 mb-1">
+                        {stat.title}
+                      </p>
+                      {stat.loading ? (
+                        <div className="h-8 w-24 bg-gray-200 animate-pulse rounded-lg"></div>
+                      ) : (
+                        <p className="text-3xl  text-gray-900">
+                          {stat.value}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <ul className="space-y-3">
-              {recentActivity.map((activity, index) => (
-                <li key={activity.id || index} className="flex items-center">
-                  <div className={`rounded-full p-2 mr-3 ${activity.iconBg}`}>
-                    {activity.icon}
+
+            {/* Activity and Performance */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              {/* Recent Activity */}
+              <div className="xl:col-span-2">
+                <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-gray-600">
+                      Recent Activity
+                    </h2>
+                    <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                      View All
+                    </button>
+                  </div>
+                  {loading ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="flex items-center p-4 bg-gray-50 rounded-xl animate-pulse"
+                        >
+                          <div className="bg-gray-200 rounded-xl p-3 mr-4 h-12 w-12"></div>
+                          <div className="flex-1">
+                            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {recentActivity.map((activity, index) => (
+                        <div
+                          key={activity.id}
+                          className="flex items-center p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl hover:shadow-md transition-all duration-200"
+                        >
+                          <div
+                            className={`rounded-xl p-3 mr-4 ${activity.iconBg} shadow-sm`}
+                          >
+                            {activity.icon}
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-gray-600 mb-1">
+                              {activity.message}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-gray-500">
+                                {activity.time}
+                              </p>
+                              <p className="text-sm font-bold text-gray-700">
+                                {activity.amount}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {recentActivity.length === 0 && (
+                        <div className="text-center py-12">
+                          <div className="text-blue-600 mb-4 mx-auto w-16 h-16">
+                            <svg
+                              className="w-full h-full"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                              />
+                            </svg>
+                          </div>
+                          <p className="text-gray-500 font-medium">
+                            No recent activity
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Performance Overview */}
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+                <h2 className="text-xl font-bold text-gray-600 mb-6">
+                  Performance Metrics
+                </h2>
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-gray-600">
+                        Portfolio Growth
+                      </p>
+                      <span className="text-sm font-bold text-emerald-600">
+                        +{performanceMetrics.portfolioGrowth}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-3 rounded-full transition-all duration-1000 ease-out shadow-sm"
+                        style={{
+                          width: `${performanceMetrics.portfolioGrowth}%`,
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-gray-600">
+                        Approval Rate
+                      </p>
+                      <span className="text-sm font-bold text-blue-600">
+                        {performanceMetrics.approvalRate}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-1000 ease-out shadow-sm"
+                        style={{ width: `${performanceMetrics.approvalRate}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-gray-600">
+                        Default Rate
+                      </p>
+                      <span className="text-sm font-bold text-red-600">
+                        {performanceMetrics.defaultRate}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                      <div
+                        className="bg-gradient-to-r from-red-500 to-red-600 h-3 rounded-full transition-all duration-1000 ease-out shadow-sm"
+                        style={{ width: `${performanceMetrics.defaultRate}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "branches" && (
+          <div className="space-y-6">
+            {renderBranchesTable()}
+
+            {/* Branch Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center">
+                  <div className="bg-blue-100 p-3 rounded-lg mr-4">
+                    <svg
+                      className="h-6 w-6 text-blue-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                      />
+                    </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{activity.message}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
+                    <p className="text-sm text-gray-600">Total Branches</p>
+                    <p className="text-2xl font-bold text-gray-600">
+                      {branches.length}
+                    </p>
                   </div>
-                </li>
-              ))}
-              {recentActivity.length === 0 && (
-                <li className="text-center text-gray-500 py-4">
-                  No recent activity
-                </li>
-              )}
-            </ul>
-          )}
-        </div>
-        
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Performance Overview</h2>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Portfolio growth</p>
-              <div className="flex items-center">
-                <div className="w-full bg-gray-200 rounded-full h-2 mr-3">
-                  <div 
-                    className="bg-green-500 h-2 rounded-full" 
-                    style={{ width: `${Math.min(performanceMetrics.portfolioGrowth, 100)}%` }}
-                  ></div>
                 </div>
-                <span className="text-sm font-medium text-green-600">+{performanceMetrics.portfolioGrowth}%</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Default rate</p>
-              <div className="flex items-center">
-                <div className="w-full bg-gray-200 rounded-full h-2 mr-3">
-                  <div 
-                    className="bg-red-500 h-2 rounded-full" 
-                    style={{ width: `${Math.min(performanceMetrics.defaultRate, 100)}%` }}
-                  ></div>
-                </div>
-                <span className="text-sm font-medium text-red-600">{performanceMetrics.defaultRate}%</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Approval rate</p>
-              <div className="flex items-center">
-                <div className="w-full bg-gray-200 rounded-full h-2 mr-3">
-                  <div 
-                    className="bg-blue-500 h-2 rounded-full" 
-                    style={{ width: `${Math.min(performanceMetrics.approvalRate, 100)}%` }}
-                  ></div>
-                </div>
-                <span className="text-sm font-medium text-blue-600">{performanceMetrics.approvalRate}%</span>
               </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {activeTab === "customers" && renderCustomersTable()}
+        {activeTab === "loans" && renderLoansTable()}
       </div>
     </div>
   );

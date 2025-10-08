@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from "../.../../../../supabaseClient";
+import { useAuth } from "../../hooks/userAuth";
+import  { useState, useEffect } from 'react';
+import { supabase } from "../../supabaseClient";
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -12,11 +13,13 @@ import {
   ClipboardDocumentCheckIcon,
   ClockIcon,
   ExclamationTriangleIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  LockClosedIcon
 } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
 
 const DisbursedLoans = () => {
+  const { profile, loading: authLoading } = useAuth();
   const [loans, setLoans] = useState([]);
   const [selectedLoan, setSelectedLoan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,9 +29,14 @@ const DisbursedLoans = () => {
   const [approvalTrail, setApprovalTrail] = useState([]);
   const [repaymentHistory, setRepaymentHistory] = useState([]);
 
+  // Check if user is branch manager
+  const isBranchManager = profile?.role === "branch_manager";
+
   useEffect(() => {
-    fetchDisbursedLoans();
-  }, []);
+    if (profile) {
+      fetchDisbursedLoans();
+    }
+  }, [profile]);
 
   useEffect(() => {
     if (selectedLoan) {
@@ -39,14 +47,41 @@ const DisbursedLoans = () => {
   const fetchDisbursedLoans = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+
+      let query = supabase
         .from("loans")
         .select(`
           *,
-          customers (*)
+          customers (
+            *,
+            branches (
+              id,
+              name,
+              region_id
+            )
+          )
         `)
-        .eq('status', 'disbursed')
-        .order('disbursed_at', { ascending: false });
+        .eq("status", "disbursed")
+        .order("disbursed_at", { ascending: false });
+
+      // Filter by branch for branch managers
+      if (isBranchManager && profile?.branch_id) {
+        query = query.eq('branch_id', profile.branch_id);
+      }
+      // Filter by region for regional level roles
+      else if (profile?.region_id && !isBranchManager) {
+        const { data: branchesInRegion } = await supabase
+          .from("branches")
+          .select("id")
+          .eq("region_id", profile.region_id);
+        
+        const branchIds = branchesInRegion?.map(b => b.id) || [];
+        if (branchIds.length > 0) {
+          query = query.in("branch_id", branchIds);
+        }
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -66,7 +101,14 @@ const DisbursedLoans = () => {
         .from("loans")
         .select(`
           *,
-          customers (*)
+          customers (
+            *,
+            branches (
+              id,
+              name,
+              region_id
+            )
+          )
         `)
         .eq('id', loanId)
         .single();
@@ -261,7 +303,7 @@ const DisbursedLoans = () => {
     return { paid, pending, overdue, total: repaymentSchedule.length };
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
@@ -281,15 +323,19 @@ const DisbursedLoans = () => {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Disbursed Loans
+              <h1 className="text-sm font-bold bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
+                Disbursed Loans 
               </h1>
-              <p className="text-gray-600 mt-2">
-                Active loans that have been disbursed to customers
+              <p className="text-sm text-gray-500 mt-1">
+                Role: {profile?.role?.replace(/_/g, " ").toUpperCase()} 
+               
               </p>
             </div>
-            <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg font-semibold">
-              {loans.length} Active Loans
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-blue-100 border border-indigo-200">
+              <BanknotesIcon className="h-5 w-5 text-indigo-600" />
+              <span className="font-medium text-indigo-700">
+                {loans.length} Active Loans
+              </span>
             </div>
           </div>
         </div>
@@ -298,14 +344,18 @@ const DisbursedLoans = () => {
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
             <BanknotesIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Disbursed Loans</h3>
-            <p className="text-gray-600">No loans have been disbursed yet.</p>
+            <p className="text-gray-600">
+              {isBranchManager 
+                ? "No loans have been disbursed in your branch yet."
+                : "No loans have been disbursed in your region yet."}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Loans List */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-lg border border-indigo-100">
-                <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-6 rounded-t-2xl">
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+                <div className="bg-gray-600 text-gray-200 p-6">
                   <h2 className="text-xl font-bold flex items-center">
                     <BanknotesIcon className="h-6 w-6 mr-2" />
                     Active Loans
@@ -315,8 +365,8 @@ const DisbursedLoans = () => {
                   {loans.map((loan) => (
                     <div
                       key={loan.id}
-                      className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-indigo-50 transition-colors ${
-                        selectedLoan?.id === loan.id ? 'bg-indigo-100 border-l-4 border-l-indigo-500' : ''
+                      className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
+                        selectedLoan?.id === loan.id ? 'bg-indigo-50 border-l-4 border-l-indigo-500' : ''
                       }`}
                       onClick={() => setSelectedLoan(loan)}
                     >
@@ -329,12 +379,13 @@ const DisbursedLoans = () => {
                       </p>
                       <p className="text-sm text-gray-600">ID: {loan.customers?.id_number}</p>
                       <p className="text-sm text-gray-600">PHONE: {loan.customers?.mobile}</p>
+                      <p className="text-sm text-gray-600">Branch: {loan.customers?.branches?.name || 'N/A'}</p>
                       <div className="flex justify-between items-center mt-2">
                         <span className="text-indigo-600 font-bold">
                           KES {loan.scored_amount?.toLocaleString()}
                         </span>
                         <span className="text-sm text-gray-500">
-                          Disbursed: {new Date(loan.disbursed_at).toLocaleDateString('en-GB')}
+                          {new Date(loan.disbursed_at).toLocaleDateString('en-GB')}
                         </span>
                       </div>
                     </div>
@@ -348,7 +399,7 @@ const DisbursedLoans = () => {
               {selectedLoan ? (
                 <div className="space-y-6">
                   {/* Loan Performance Summary */}
-                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-indigo-100">
+                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
                     <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
                       <ChartBarIcon className="h-6 w-6 text-indigo-600 mr-3" />
                       Loan Performance
@@ -370,7 +421,7 @@ const DisbursedLoans = () => {
                   </div>
 
                   {/* Loan Summary Info */}
-                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-indigo-100">
+                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
                     <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
                       <DocumentTextIcon className="h-6 w-6 text-indigo-600 mr-3" />
                       Loan Summary Information
@@ -399,6 +450,12 @@ const DisbursedLoans = () => {
                           <span className="text-gray-600 font-medium">Product Type:</span>
                           <span className="text-purple-600 font-semibold">
                             {loanDetails?.product_name}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 font-medium">Branch:</span>
+                          <span className="text-gray-900 font-semibold">
+                            {customer?.branches?.name || 'N/A'}
                           </span>
                         </div>
                       </div>
@@ -432,7 +489,7 @@ const DisbursedLoans = () => {
                   </div>
 
                   {/* Repayment Schedule with Status */}
-                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-indigo-100">
+                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
                     <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
                       <CalendarIcon className="h-6 w-6 text-green-600 mr-3" />
                       Repayment Schedule & Status
@@ -472,7 +529,7 @@ const DisbursedLoans = () => {
                   </div>
 
                   {/* Loan History */}
-                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-indigo-100">
+                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
                     <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
                       <IdentificationIcon className="h-6 w-6 text-blue-600 mr-3" />
                       Loan History & Audit Trail
