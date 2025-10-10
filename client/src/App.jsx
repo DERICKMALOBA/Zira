@@ -75,6 +75,11 @@ import CallbacksPending from "./pages/registry/CallbacksPending";
 import AllCustomers from "./pages/registry/AllCustomers";
 import DisbursedLoans from "./pages/loaning/DisbursementLoans";
 import DisbursedLoansAdmin from "./pages/admin/loans/DisbursedLoansAdmin";
+import PromiseToPayList from "./pages/ptp/PromiseToPay";
+import FinancialReports from "./pages/reports/FinancialReports";
+import LoanReports from "./pages/reports/LoanReports";
+import OfficerReports from "./pages/reports/OfficerReports";
+import PTPReports from "./pages/reports/PTPReports";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -414,6 +419,42 @@ function App() {
                     }
                   />
 
+                     <Route
+                    path="/reports/financial"
+                    element={
+                      <ProtectedRoute>
+                        <FinancialReports userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                     <Route
+                    path="/reports/loans"
+                    element={
+                      <ProtectedRoute>
+                        <LoanReports userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                     <Route
+                    path="/reports/officers"
+                    element={
+                      <ProtectedRoute>
+                        <OfficerReports userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                     <Route
+                    path="/reports/ptp"
+                    element={
+                      <ProtectedRoute>
+                        <PTPReports userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+
                   {/* Loaning */}
                   <Route
                     path="/loaning/all"
@@ -460,6 +501,16 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <ApproveLoanbm userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
+                    <Route
+                    path="/promise-to-pay"
+                    element={
+                      <ProtectedRoute>
+                        <PromiseToPayList userRole={role} />
                       </ProtectedRoute>
                     }
                   />

@@ -26,6 +26,8 @@ import {
   ClipboardList,
   CheckCircle,
   PieChart,
+  Handshake,
+  DollarSign,
   TrendingUp
 } from 'lucide-react';
 import { useAuth } from "../hooks/userAuth"; 
@@ -109,17 +111,56 @@ const SharedSidebar = ({ sidebarOpen, setSidebarOpen }) => {
   ],
 }
 ,
-    {
-      name: 'Reports',
-      href: '/reports',
-      icon: BarChart3,
-      color: 'text-cyan-400',
-      bgColor: 'bg-cyan-400/10',
-      children: [
-        { name: 'Call Center Reports', href: '/reports/call-center-reports', icon: PieChart },
-        { name: 'HQ Reports', href: '/reports/hq-reports', icon: TrendingUp },
-      ],
-    },
+  {
+    name: 'Reports',
+    href: '/reports',
+    icon: BarChart3,
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-400/10',
+    children: [
+      // { 
+      //   name: 'Call Center Reports', 
+      //   href: '/reports/call-center-reports', 
+      //   icon: PieChart,
+      //   description: 'Call center performance and activity reports'
+      // },
+      // { 
+      //   name: 'HQ Reports', 
+      //   href: '/reports/hq-reports', 
+      //   icon: TrendingUp,
+      //   description: 'Headquarters management reports'
+      // },
+      { 
+        name: 'Loan Reports', 
+        href: '/reports/loans', 
+        icon: FileText,
+        description: 'Comprehensive loan portfolio analysis'
+      },
+      { 
+        name: 'PTP Reports', 
+        href: '/reports/ptp', 
+        icon: Handshake,
+        description: 'Promise to pay tracking and performance'
+      },
+      { 
+        name: 'Officer Reports', 
+        href: '/reports/officers', 
+        icon: Users,
+        description: 'Officer performance and productivity metrics'
+      },
+      { 
+        name: 'Financial Reports', 
+        href: '/reports/financial', 
+        icon: DollarSign,
+        description: 'Financial overview and profitability analysis'
+      },
+    ],
+  },
+    //  { 
+    //   name: 'Promise to Pay', 
+    //   href: '/promise-to-pay', 
+    //   icon: FileText // or any other icon you like
+    // },
   ];
 
   return (

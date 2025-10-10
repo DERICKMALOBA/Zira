@@ -11,12 +11,12 @@ export const checkUniqueValue = async (tables, column, value) => {
 
     if (error) {
       console.error("Error checking uniqueness:", error);
-      return false; // treat as not unique if error occurs
+      return false;
     }
 
     if (data && data.length > 0) {
-      return false; // value already exists
+      return false; 
     }
   }
-  return true; // value is unique across all tables
+  return true;
 };

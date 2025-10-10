@@ -17,6 +17,7 @@ import {
   LockClosedIcon
 } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
+import PromiseToPayForm from "../ptp/PromiseToPayForm";
 
 const DisbursedLoans = () => {
   const { profile, loading: authLoading } = useAuth();
@@ -28,6 +29,7 @@ const DisbursedLoans = () => {
   const [repaymentSchedule, setRepaymentSchedule] = useState([]);
   const [approvalTrail, setApprovalTrail] = useState([]);
   const [repaymentHistory, setRepaymentHistory] = useState([]);
+  const [showPTPForm, setShowPTPForm] = useState(false);
 
   // Check if user is branch manager
   const isBranchManager = profile?.role === "branch_manager";
@@ -486,47 +488,63 @@ const DisbursedLoans = () => {
                         </div>
                       </div>
                     </div>
+
+                    <div className="flex justify-end mt-6">
+ 
+</div>
+
                   </div>
 
-                  {/* Repayment Schedule with Status */}
-                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
-                      <CalendarIcon className="h-6 w-6 text-green-600 mr-3" />
-                      Repayment Schedule & Status
-                    </h3>
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Week</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Due Date</th>
-                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Amount Due</th>
-                            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Paid Amount</th>
-                            <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {repaymentSchedule.map((payment, index) => (
-                            <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                              <td className="px-4 py-3 text-sm font-medium text-gray-900">{payment.week}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900">
-                                {new Date(payment.due_date).toLocaleDateString('en-GB')}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
-                                KES {payment.total.toLocaleString()}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-right font-semibold text-green-600">
-                                {payment.paid_amount > 0 ? `KES ${payment.paid_amount.toLocaleString()}` : '-'}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-center">
-                                {getPaymentStatusBadge(payment.status)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  {/* Repayment Schedule */}
+<div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+  <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
+    <CalendarIcon className="h-6 w-6 text-green-600 mr-3" />
+    Repayment Schedule & Status
+  </h3>
+  <div className="overflow-x-auto">
+    <table className="min-w-full">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Week</th>
+          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Due Date</th>
+          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Amount Due</th>
+          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Paid Amount</th>
+          <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Status</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-gray-200">
+        {repaymentSchedule.map((payment, index) => (
+          <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+            <td className="px-4 py-3 text-sm font-medium text-gray-900">{payment.week}</td>
+            <td className="px-4 py-3 text-sm text-gray-900">
+              {new Date(payment.due_date).toLocaleDateString('en-GB')}
+            </td>
+            <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
+              KES {payment.total.toLocaleString()}
+            </td>
+            <td className="px-4 py-3 text-sm text-right font-semibold text-green-600">
+              {payment.paid_amount > 0 ? `KES ${payment.paid_amount.toLocaleString()}` : '-'}
+            </td>
+            <td className="px-4 py-3 text-sm text-center">
+              {getPaymentStatusBadge(payment.status)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {/* Button aligned right */}
+  <div className="flex justify-end mt-4">
+    <button
+      onClick={() => setShowPTPForm(true)}
+      className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition"
+    >
+      + Add Promise To Pay
+    </button>
+  </div>
+</div>
+
 
                   {/* Loan History */}
                   <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
@@ -578,6 +596,15 @@ const DisbursedLoans = () => {
           </div>
         )}
       </div>
+      {showPTPForm && selectedLoan && (
+  <PromiseToPayForm 
+    loan={selectedLoan} 
+    customer={customer} 
+    createdBy={profile?.id}
+    onClose={() => setShowPTPForm(false)}
+  />
+)}
+
     </div>
   );
 };

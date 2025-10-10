@@ -230,7 +230,7 @@ const LoanPendingDisbursement = () => {
       const { error } = await supabase
         .from("loans")
         .update({
-          status: 'disbursed',
+          status: 'ready_for_disbursement',
           disbursed_at: new Date().toISOString()
         })
         .eq("id", loanId);

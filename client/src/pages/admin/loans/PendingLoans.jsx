@@ -288,11 +288,11 @@ const PendingLoans = () => {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
+              <h1 className="text-sm font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
                 Loans Pending Disbursement
               </h1>
               <p className="text-gray-600 mt-2">
-                Loans approved and ready for disbursement (Status: CA Review)
+                Loans approved and ready for disbursement
               </p>
             </div>
             <div className="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg font-semibold">
