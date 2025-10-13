@@ -1,5 +1,5 @@
 import { useAuth } from "../../hooks/userAuth";
-import  { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from "../../supabaseClient";
 import {
   CheckCircleIcon,
@@ -14,7 +14,8 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   BanknotesIcon,
-  LockClosedIcon
+  LockClosedIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
 import PromiseToPayForm from "../ptp/PromiseToPayForm";
@@ -30,6 +31,7 @@ const DisbursedLoans = () => {
   const [approvalTrail, setApprovalTrail] = useState([]);
   const [repaymentHistory, setRepaymentHistory] = useState([]);
   const [showPTPForm, setShowPTPForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Check if user is branch manager
   const isBranchManager = profile?.role === "branch_manager";
@@ -95,6 +97,37 @@ const DisbursedLoans = () => {
       setLoading(false);
     }
   };
+
+
+ // Filter loans based on search term
+const filteredLoans = loans.filter((loan) => {
+  if (!searchTerm) return true;
+
+  const search = searchTerm.toLowerCase();
+
+  const loanId = loan.id?.toString().toLowerCase() || "";
+  const firstName = loan.customers?.Firstname?.toString().toLowerCase() || "";
+  const surname = loan.customers?.Surname?.toString().toLowerCase() || "";
+  const fullName = `${firstName} ${surname}`;
+  const idNumber = loan.customers?.id_number
+    ? loan.customers.id_number.toString().toLowerCase()
+    : "";
+  const mobile = loan.customers?.mobile
+    ? loan.customers.mobile.toString().toLowerCase()
+    : "";
+  const branch = loan.customers?.branches?.name?.toString().toLowerCase() || "";
+
+  return (
+    loanId.includes(search) ||
+    firstName.includes(search) ||
+    surname.includes(search) ||
+    fullName.includes(search) ||
+    idNumber.includes(search) ||
+    mobile.includes(search) ||
+    branch.includes(search)
+  );
+});
+
 
   const fetchLoanFullDetails = async (loanId) => {
     try {
@@ -288,7 +321,7 @@ const DisbursedLoans = () => {
     const IconComponent = config.icon;
 
     return (
-      <span className={`${config.color} px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1`}>
+      <span className={`${config.color} px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1 justify-center`}>
         <IconComponent className="h-3 w-3" />
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
@@ -322,34 +355,51 @@ const DisbursedLoans = () => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
+        <div className=" mb-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-sm font-bold bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
-                Disbursed Loans 
+              <h1 className="text-gray-800 text-base font-semibold">
+                Disbursed Loans
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Role: {profile?.role?.replace(/_/g, " ").toUpperCase()} 
-               
+              <p className="text-gray-600 mt-1 text-sm">
+                Active loan portfolio ({filteredLoans.length})
               </p>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-blue-100 border border-indigo-200">
-              <BanknotesIcon className="h-5 w-5 text-indigo-600" />
-              <span className="font-medium text-indigo-700">
-                {loans.length} Active Loans
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100">
+              <BanknotesIcon className="h-4 w-4 text-indigo-600" />
+              <span className="text-sm font-medium text-indigo-700">
+                {filteredLoans.length} Active
               </span>
             </div>
           </div>
         </div>
 
-        {loans.length === 0 ? (
+        {/* Search Bar */}
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 mb-8">
+          <div className="relative">
+            <MagnifyingGlassIcon className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by loan ID, customer name, ID number, mobile, or branch..."
+              className="w-full pl-12 pr-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder-gray-400"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {filteredLoans.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
             <BanknotesIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Disbursed Loans</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              {searchTerm ? "No loans found" : "No Disbursed Loans"}
+            </h3>
             <p className="text-gray-600">
-              {isBranchManager 
-                ? "No loans have been disbursed in your branch yet."
-                : "No loans have been disbursed in your region yet."}
+              {searchTerm 
+                ? "No loans match your search criteria."
+                : isBranchManager 
+                  ? "No loans have been disbursed in your branch yet."
+                  : "No loans have been disbursed in your region yet."}
             </p>
           </div>
         ) : (
@@ -358,13 +408,13 @@ const DisbursedLoans = () => {
             <div className="lg:col-span-1">
               <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
                 <div className="bg-gray-600 text-gray-200 p-6">
-                  <h2 className="text-xl font-bold flex items-center">
-                    <BanknotesIcon className="h-6 w-6 mr-2" />
+                  <h2 className="text-lg font-bold flex items-center">
+                    <BanknotesIcon className="h-5 w-5 mr-2" />
                     Active Loans
                   </h2>
                 </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {loans.map((loan) => (
+                <div className="max-h-[600px] overflow-y-auto">
+                  {filteredLoans.map((loan) => (
                     <div
                       key={loan.id}
                       className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
@@ -373,20 +423,20 @@ const DisbursedLoans = () => {
                       onClick={() => setSelectedLoan(loan)}
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-gray-900">Loan #{loan.id}</span>
+                        <span className="font-mono text-sm font-semibold text-indigo-600">#{loan.id}</span>
                         {getStatusBadge(loan.status)}
                       </div>
-                      <p className="text-gray-900 font-medium">
+                      <p className="text-gray-900 font-medium text-sm">
                         {loan.customers?.Firstname} {loan.customers?.Surname}
                       </p>
-                      <p className="text-sm text-gray-600">ID: {loan.customers?.id_number}</p>
-                      <p className="text-sm text-gray-600">PHONE: {loan.customers?.mobile}</p>
-                      <p className="text-sm text-gray-600">Branch: {loan.customers?.branches?.name || 'N/A'}</p>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-indigo-600 font-bold">
+                      <p className="text-xs text-gray-600 mt-1">ID: {loan.customers?.id_number}</p>
+                      <p className="text-xs text-gray-600">Mobile: {loan.customers?.mobile}</p>
+                      <p className="text-xs text-gray-600">Branch: {loan.customers?.branches?.name || 'N/A'}</p>
+                      <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
+                        <span className="text-indigo-600 font-bold text-sm">
                           KES {loan.scored_amount?.toLocaleString()}
                         </span>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-xs text-gray-500">
                           {new Date(loan.disbursed_at).toLocaleDateString('en-GB')}
                         </span>
                       </div>
@@ -402,182 +452,174 @@ const DisbursedLoans = () => {
                 <div className="space-y-6">
                   {/* Loan Performance Summary */}
                   <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
-                      <ChartBarIcon className="h-6 w-6 text-indigo-600 mr-3" />
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center mb-4">
+                      <ChartBarIcon className="h-5 w-5 text-indigo-600 mr-2" />
                       Loan Performance
                     </h3>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
                         <div className="text-2xl font-bold text-green-600">{performance.paid}</div>
-                        <div className="text-sm text-green-800 font-medium">Paid</div>
+                        <div className="text-xs text-green-800 font-medium mt-1">Paid</div>
                       </div>
                       <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                         <div className="text-2xl font-bold text-yellow-600">{performance.pending}</div>
-                        <div className="text-sm text-yellow-800 font-medium">Pending</div>
+                        <div className="text-xs text-yellow-800 font-medium mt-1">Pending</div>
                       </div>
                       <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
                         <div className="text-2xl font-bold text-red-600">{performance.overdue}</div>
-                        <div className="text-sm text-red-800 font-medium">Overdue</div>
+                        <div className="text-xs text-red-800 font-medium mt-1">Overdue</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Loan Summary Info */}
                   <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
-                      <DocumentTextIcon className="h-6 w-6 text-indigo-600 mr-3" />
-                      Loan Summary Information
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center mb-4">
+                      <DocumentTextIcon className="h-5 w-5 text-indigo-600 mr-2" />
+                      Loan Summary
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div className="flex justify-between">
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm">
                           <span className="text-gray-600 font-medium">Loan ID:</span>
                           <span className="text-indigo-600 font-mono font-semibold">
                             #{loanDetails?.id}
                           </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 font-medium">Customer Name:</span>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 font-medium">Customer:</span>
                           <span className="text-gray-900 font-semibold">
                             {customer?.Firstname} {customer?.Surname}
                           </span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between text-sm">
                           <span className="text-gray-600 font-medium">ID Number:</span>
                           <span className="text-gray-900 font-semibold">
                             {customer?.id_number}
                           </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 font-medium">Product Type:</span>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 font-medium">Product:</span>
                           <span className="text-purple-600 font-semibold">
                             {loanDetails?.product_name}
                           </span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between text-sm">
                           <span className="text-gray-600 font-medium">Branch:</span>
                           <span className="text-gray-900 font-semibold">
                             {customer?.branches?.name || 'N/A'}
                           </span>
                         </div>
                       </div>
-                      <div className="space-y-4">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 font-medium">Disbursed Amount:</span>
-                          <span className="text-emerald-600 font-bold text-lg">
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 font-medium">Amount:</span>
+                          <span className="text-emerald-600 font-bold">
                             KES {loanDetails?.scored_amount?.toLocaleString()}
                           </span>
                         </div>
-                        <div className="flex justify-between">
+                        <div className="flex justify-between text-sm">
                           <span className="text-gray-600 font-medium">Duration:</span>
                           <span className="text-gray-900 font-semibold">
                             {loanDetails?.duration_weeks} weeks
                           </span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 font-medium">Weekly Repayment:</span>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600 font-medium">Weekly Payment:</span>
                           <span className="text-blue-600 font-semibold">
                             KES {loanDetails?.weekly_payment?.toLocaleString()}
                           </span>
                         </div>
-                        <div className="flex justify-between border-t pt-2">
-                          <span className="text-gray-600 font-medium">Disbursement Date:</span>
+                        <div className="flex justify-between text-sm border-t pt-2">
+                          <span className="text-gray-600 font-medium">Disbursed:</span>
                           <span className="text-indigo-600 font-semibold">
                             {new Date(loanDetails?.disbursed_at).toLocaleDateString('en-GB')}
                           </span>
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex justify-end mt-6">
- 
-</div>
-
                   </div>
 
                   {/* Repayment Schedule */}
-<div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-  <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
-    <CalendarIcon className="h-6 w-6 text-green-600 mr-3" />
-    Repayment Schedule & Status
-  </h3>
-  <div className="overflow-x-auto">
-    <table className="min-w-full">
-      <thead className="bg-gray-50">
-        <tr>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Week</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Due Date</th>
-          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Amount Due</th>
-          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Paid Amount</th>
-          <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Status</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-200">
-        {repaymentSchedule.map((payment, index) => (
-          <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-            <td className="px-4 py-3 text-sm font-medium text-gray-900">{payment.week}</td>
-            <td className="px-4 py-3 text-sm text-gray-900">
-              {new Date(payment.due_date).toLocaleDateString('en-GB')}
-            </td>
-            <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900">
-              KES {payment.total.toLocaleString()}
-            </td>
-            <td className="px-4 py-3 text-sm text-right font-semibold text-green-600">
-              {payment.paid_amount > 0 ? `KES ${payment.paid_amount.toLocaleString()}` : '-'}
-            </td>
-            <td className="px-4 py-3 text-sm text-center">
-              {getPaymentStatusBadge(payment.status)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-
-  {/* Button aligned right */}
-  <div className="flex justify-end mt-4">
-    <button
-      onClick={() => setShowPTPForm(true)}
-      className="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition"
-    >
-      + Add Promise To Pay
-    </button>
-  </div>
-</div>
-
+                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                        <CalendarIcon className="h-5 w-5 text-green-600 mr-2" />
+                        Repayment Schedule
+                      </h3>
+                      <button
+                        onClick={() => setShowPTPForm(true)}
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-all"
+                      >
+                        + Add Promise to Pay
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Week</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-900">Due Date</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-900">Amount Due</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold text-gray-900">Paid</th>
+                            <th className="px-4 py-3 text-center text-xs font-semibold text-gray-900">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {repaymentSchedule.map((payment, index) => (
+                            <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                              <td className="px-4 py-3 text-xs font-medium text-gray-900">{payment.week}</td>
+                              <td className="px-4 py-3 text-xs text-gray-900">
+                                {new Date(payment.due_date).toLocaleDateString('en-GB')}
+                              </td>
+                              <td className="px-4 py-3 text-xs text-right font-semibold text-gray-900">
+                                KES {payment.total.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 text-xs text-right font-semibold text-green-600">
+                                {payment.paid_amount > 0 ? `KES ${payment.paid_amount.toLocaleString()}` : '-'}
+                              </td>
+                              <td className="px-4 py-3 text-xs text-center">
+                                {getPaymentStatusBadge(payment.status)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
 
                   {/* Loan History */}
                   <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
-                      <IdentificationIcon className="h-6 w-6 text-blue-600 mr-3" />
-                      Loan History & Audit Trail
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center mb-4">
+                      <IdentificationIcon className="h-5 w-5 text-blue-600 mr-2" />
+                      Audit Trail
                     </h3>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {approvalTrail.map((step, index) => (
-                        <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                          <div className={`w-3 h-3 rounded-full mt-2 ${
+                        <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${
                             step.decision === 'approved' ? 'bg-green-500' : 
                             step.decision === 'rejected' ? 'bg-red-500' : 
                             step.action === 'Funds Disbursed' ? 'bg-emerald-500' : 'bg-blue-500'
                           }`}></div>
                           <div className="flex-1">
                             <div className="flex justify-between items-center">
-                              <span className="font-semibold text-gray-900">{step.role}</span>
-                              <span className="text-sm text-gray-500">
+                              <span className="text-sm font-semibold text-gray-900">{step.role}</span>
+                              <span className="text-xs text-gray-500">
                                 {new Date(step.timestamp).toLocaleDateString('en-GB')}
                               </span>
                             </div>
-                            <p className="text-gray-700">{step.name}</p>
-                            {step.branch && <p className="text-sm text-gray-600">Branch: {step.branch}</p>}
+                            <p className="text-xs text-gray-700 mt-1">{step.name}</p>
+                            {step.branch && <p className="text-xs text-gray-600">Branch: {step.branch}</p>}
                             {step.decision && (
-                              <p className={`text-sm font-medium ${
+                              <p className={`text-xs font-medium mt-1 ${
                                 step.decision === 'approved' ? 'text-green-600' : 'text-red-600'
                               }`}>
-                                Decision: {step.decision.toUpperCase()}
+                                {step.decision.toUpperCase()}
                               </p>
                             )}
                             {step.comment && (
-                              <p className="text-sm text-gray-600 mt-1">Comment: {step.comment}</p>
+                              <p className="text-xs text-gray-600 mt-1">{step.comment}</p>
                             )}
                           </div>
                         </div>
@@ -597,19 +639,17 @@ const DisbursedLoans = () => {
         )}
       </div>
       {showPTPForm && selectedLoan && (
-  <PromiseToPayForm 
-    loan={selectedLoan} 
-    customer={customer} 
-    createdBy={profile?.id}
-    onClose={() => setShowPTPForm(false)}
-  />
-)}
-
+        <PromiseToPayForm 
+          loan={selectedLoan} 
+          customer={customer} 
+          createdBy={profile?.id}
+          onClose={() => setShowPTPForm(false)}
+        />
+      )}
     </div>
   );
 };
 
-// Add the missing ChartBarIcon component
 const ChartBarIcon = (props) => (
   <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />

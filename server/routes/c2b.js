@@ -57,7 +57,7 @@ c2b.post("/confirmation", async (req, res) => {
     let remainingAmount = totalPaidAmount;
     const appliedPayments = []; // Track all applied payments for rollback if needed
 
-    console.log(`💰 Processing payment: ${TransAmount} for Loan ${loanId}`);
+    console.log(` Processing payment: ${TransAmount} for Loan ${loanId}`);
 
     // Get all pending or partial installments upfront
     const { data: installmentsToPay, error: fetchError } = await supabaseAdmin
@@ -70,7 +70,7 @@ c2b.post("/confirmation", async (req, res) => {
     if (fetchError) throw fetchError;
 
     if (!installmentsToPay || installmentsToPay.length === 0) {
-      console.log(`⚠️ No pending installments found for Loan ${loanId}`);
+      console.log(` No pending installments found for Loan ${loanId}`);
       // Still record the transaction but mark as "pending"
       await supabaseAdmin.from("mpesa_c2b_transactions").insert([
         {

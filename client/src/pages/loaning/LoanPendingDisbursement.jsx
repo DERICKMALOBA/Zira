@@ -1,4 +1,4 @@
-import  { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from "../../supabaseClient";
 import { useAuth } from "../../hooks/userAuth";
 import {
@@ -13,7 +13,8 @@ import {
   ClipboardDocumentCheckIcon,
   ClockIcon,
   ExclamationTriangleIcon,
-  LockClosedIcon
+  LockClosedIcon,
+  MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
 
@@ -26,6 +27,7 @@ const LoanPendingDisbursement = () => {
   const [customer, setCustomer] = useState(null);
   const [repaymentSchedule, setRepaymentSchedule] = useState([]);
   const [approvalTrail, setApprovalTrail] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Check if user is credit analyst officer
   const isCreditAnalyst = profile?.role === "credit_analyst_officer";
@@ -90,6 +92,28 @@ const LoanPendingDisbursement = () => {
       setLoading(false);
     }
   };
+
+  // Filter loans based on search term
+  const filteredLoans = loans.filter((loan) => {
+    if (!searchTerm) return true;
+    
+    const search = searchTerm.toLowerCase();
+    const loanId = loan.id?.toString().toLowerCase() || "";
+    const firstName = loan.customers?.Firstname?.toLowerCase() || "";
+    const surname = loan.customers?.Surname?.toLowerCase() || "";
+    const fullName = `${firstName} ${surname}`;
+    const idNumber = loan.customers?.id_number?.toLowerCase() || "";
+    const mobile = loan.customers?.mobile?.toLowerCase() || "";
+    
+    return (
+      loanId.includes(search) ||
+      firstName.includes(search) ||
+      surname.includes(search) ||
+      fullName.includes(search) ||
+      idNumber.includes(search) ||
+      mobile.includes(search)
+    );
+  });
 
   const fetchLoanFullDetails = async (loanId) => {
     try {
@@ -261,34 +285,49 @@ const LoanPendingDisbursement = () => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
+        <div className=" mb-4 ">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-sm font-bold bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
                 Loans Pending Disbursement
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Role: {profile?.role?.replace(/_/g, " ").toUpperCase()} 
-               
-              </p>
+            
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-blue-100 border border-indigo-200">
-              <ClockIcon className="h-5 w-5 text-indigo-600" />
+              <ClockIcon className="h-4 w-4 text-indigo-600" />
               <span className="font-medium text-indigo-700">
-                {loans.length} Pending
+                {filteredLoans.length} Pending
               </span>
             </div>
           </div>
         </div>
 
-        {loans.length === 0 ? (
+        {/* Search Bar */}
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 mb-8">
+          <div className="relative">
+            <MagnifyingGlassIcon className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by loan ID, customer name, ID number, or mobile..."
+              className="w-full pl-12 pr-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all placeholder-gray-400"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {filteredLoans.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
             <CheckCircleIcon className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Pending Disbursements</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              {searchTerm ? "No loans found" : "No Pending Disbursements"}
+            </h3>
             <p className="text-gray-600">
-              {isCreditAnalyst 
-                ? "All loans have been disbursed. Great work!"
-                : "There are no loans pending disbursement in your area."}
+              {searchTerm 
+                ? "No loans match your search criteria."
+                : isCreditAnalyst 
+                  ? "All loans have been disbursed. Great work!"
+                  : "There are no loans pending disbursement in your area."}
             </p>
           </div>
         ) : (
@@ -303,7 +342,7 @@ const LoanPendingDisbursement = () => {
                   </h2>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
-                  {loans.map((loan) => (
+                  {filteredLoans.map((loan) => (
                     <div
                       key={loan.id}
                       className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${

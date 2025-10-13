@@ -154,22 +154,13 @@ const ApprovalPending = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-10">
+        <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
              
               <p className="text-gray-600 mt-2 text-sm">
                 {getHeaderText()} ({filteredCustomers.length})
-                {userRole === 'bm' && userBranchId && (
-                  <span className="ml-2 text-gray-500">
-                    • Branch ID: {userBranchId}
-                  </span>
-                )}
-                {userRole && (
-                  <span className="ml-2 text-gray-500">
-                    • Role: {userRole.toUpperCase()}
-                  </span>
-                )}
+               
               </p>
             </div>
           </div>

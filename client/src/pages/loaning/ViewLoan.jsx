@@ -183,7 +183,7 @@ const ViewLoan = ({ loan, onClose }) => {
         <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
+              <h2 className="text-xl  bg-gradient-to-r from-green-700 to-green-700 bg-clip-text text-transparent">
                 Loan Details - #{loanDetails.id}
               </h2>
               <p className="text-gray-600 mt-1">
@@ -211,14 +211,14 @@ const ViewLoan = ({ loan, onClose }) => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Customer Information */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-600 flex items-center mb-4">
                 <UserIcon className="h-6 w-6 text-blue-600 mr-3" />
                 Customer Information
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Full Name:</span>
-                  <span className="text-gray-900 font-semibold text-right">
+                  <span className="text-gray-600 font-semibold text-right">
                     {customer.Firstname} {customer.Surname}
                   </span>
                 </div>
@@ -233,7 +233,7 @@ const ViewLoan = ({ loan, onClose }) => {
                     <PhoneIcon className="h-4 w-4 mr-1" />
                     Mobile:
                   </span>
-                  <span className="text-gray-900 font-semibold">
+                  <span className="text-gray-600 font-semibold">
                     {customer.mobile}
                   </span>
                 </div>
@@ -249,7 +249,7 @@ const ViewLoan = ({ loan, onClose }) => {
 
             {/* Loan Details */}
             <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-6 border border-emerald-200">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-600 flex items-center mb-4">
                 <CurrencyDollarIcon className="h-6 w-6 text-emerald-600 mr-3" />
                 Loan Details
               </h3>
@@ -268,7 +268,7 @@ const ViewLoan = ({ loan, onClose }) => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Duration:</span>
-                  <span className="text-gray-900 font-semibold">
+                  <span className="text-gray-600 font-semibold">
                     {loanDetails.duration_weeks} weeks
                   </span>
                 </div>
@@ -280,14 +280,14 @@ const ViewLoan = ({ loan, onClose }) => {
                 </div> */}
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 font-medium">Processing Fee:</span>
-                  <span className="text-gray-900 font-semibold">
+                  <span className="text-gray-600 font-semibold">
                     KES {loanDetails.processing_fee?.toLocaleString()}
                   </span>
                 </div>
                 {loanDetails.registration_fee > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 font-medium">Registration Fee:</span>
-                    <span className="text-gray-900 font-semibold">
+                    <span className="text-gray-600 font-semibold">
                       KES {loanDetails.registration_fee?.toLocaleString()}
                     </span>
                   </div>
@@ -309,7 +309,7 @@ const ViewLoan = ({ loan, onClose }) => {
 
             {/* Booked By Information */}
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-600 flex items-center mb-4">
                 <IdentificationIcon className="h-6 w-6 text-purple-600 mr-3" />
                 Booked By
               </h3>
@@ -317,13 +317,13 @@ const ViewLoan = ({ loan, onClose }) => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 font-medium">Name:</span>
-                    <span className="text-gray-900 font-semibold">
+                    <span className="text-gray-600 font-semibold">
                       {bookedByUser.full_name}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 font-medium">Email:</span>
-                    <span className="text-gray-900 font-semibold text-right text-sm">
+                    <span className="text-gray-600 font-semibold text-right text-sm">
                       {bookedByUser.email}
                     </span>
                   </div>
@@ -346,14 +346,14 @@ const ViewLoan = ({ loan, onClose }) => {
 
           {/* Timeline */}
           <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-6 border border-gray-200">
-            <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-600 flex items-center mb-4">
               <CalendarIcon className="h-6 w-6 text-gray-600 mr-3" />
               Loan Timeline
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="text-center">
                 <div className="text-sm text-gray-500 mb-1">Created</div>
-                <div className="text-sm font-semibold text-gray-900">
+                <div className="text-sm font-semibold text-gray-600">
                   {new Date(loanDetails.created_at).toLocaleDateString('en-GB')}
                 </div>
                 <div className="text-xs text-gray-500">
@@ -414,7 +414,7 @@ const ViewLoan = ({ loan, onClose }) => {
           {/* Comments Section */}
           {(loanDetails.bm_comment || loanDetails.rm_comment) && (
             <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-200">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-600 flex items-center mb-4">
                 <ChatBubbleLeftRightIcon className="h-6 w-6 text-amber-600 mr-3" />
                 Manager Comments
               </h3>
@@ -438,7 +438,7 @@ const ViewLoan = ({ loan, onClose }) => {
           {/* Repayment Schedule */}
           {repaymentSchedule.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-4">
+              <div className="bg-gradient-to-r from-gray-600 to-gray-600 text-white p-4">
                 <h3 className="text-xl font-bold flex items-center">
                   <DocumentTextIcon className="h-6 w-6 mr-3" />
                   Repayment Schedule

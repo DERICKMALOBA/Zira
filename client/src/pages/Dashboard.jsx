@@ -680,7 +680,7 @@ if (branchesData) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50">
       <div className="p-8">
         {/* Header Section */}
-        <div className="mb-8">
+        {/* <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
              
@@ -693,7 +693,7 @@ if (branchesData) {
             </div>
         
           </div>
-        </div>
+        </div> */}
 
         {/* Navigation Tabs */}
         <div className="mb-8">
@@ -705,7 +705,7 @@ if (branchesData) {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center px-6 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
                     activeTab === tab.id
-                      ? "bg-gradient-to-r from-gray-600 to-gray-600 text-white shadow-lg transform scale-105"
+                      ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg transform scale-105"
                       : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                   }`}
                 >
