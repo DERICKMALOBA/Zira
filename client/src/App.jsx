@@ -69,7 +69,6 @@ import LoanPendingRm from "./pages/loaning/LoanPendingRm";
 import LoanPendingBm from "./pages/loaning/LoanPendingBm";
 import LoanPendingDisbursement from "./pages/loaning/LoanPendingDisbursement";
 import ApproveLoanbm from "./pages/loaning/ApproveLoan";
-import Reports from "./pages/reports/Reports";
 import HQReports from "./pages/reports/HQReports";
 import CallbacksPending from "./pages/registry/CallbacksPending";
 import AllCustomers from "./pages/registry/AllCustomers";
@@ -80,6 +79,24 @@ import FinancialReports from "./pages/reports/FinancialReports";
 import LoanReports from "./pages/reports/LoanReports";
 import OfficerReports from "./pages/reports/OfficerReports";
 import PTPReports from "./pages/reports/PTPReports";
+import CustomerDrafts from "./pages/drafts/CustomerDrafts";
+import LoanDrafts from "./pages/drafts/LoanDrafts";
+import OtherDrafts from "./pages/drafts/OtherDrafts";
+import Reports from "./pages/reports/Reports";
+import SuspensePaymentsReport from "./pages/reports/SuspensePaymentsReport";
+import LoanArrearsReport from "./pages/reports/LoanArrearsReport";
+import InactiveCustomers from "./pages/reports/InactiveCustomers";
+import TraceMpesaTransaction from "./pages/reports/TraceMpesaTransaction;";
+import LoanListing from "./pages/reports/LoanListing";
+import PendingDisbursementReport from "./pages/reports/LoansPendingDisbursementReport";
+import OutstandingLoanBalanceReport from "./pages/reports/OutstandingLoanBalanceReport";
+import NonPerformingLoansReport from "./pages/reports/NonPerformingLoansReport";
+import LoanOfficerPerformanceReport from "./pages/reports/LoanOfficerPerformanceReport";
+import MpesaRepaymentReports from "./pages/reports/MpesaRepaymentReports";
+import CustomerListing from "./pages/reports/CustomerListing";
+import LoanDueReport from "./pages/reports/LoanDueReport";
+import DisbursementLoansReport from "./pages/reports/DisbursementLoansReport";
+import CustomerAccountModal from "./pages/reports/CustomerAccountModal";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -171,6 +188,14 @@ function App() {
         return "/dashboard";
     }
   };
+
+
+  const ReportWrapper = ({ component: Component, userRole }) => (
+  <div className="mb-4">
+    <Component userRole={userRole} />
+  </div>
+);
+
 
   return (
     <Router>
@@ -429,10 +454,10 @@ function App() {
                   />
 
                      <Route
-                    path="/reports/loans"
+                    path="/reports/all"
                     element={
                       <ProtectedRoute>
-                        <LoanReports userRole={role} />
+                        <Reports userRole={role} />
                       </ProtectedRoute>
                     }
                   />
@@ -446,11 +471,40 @@ function App() {
                     }
                   />
 
+                  
+
                      <Route
                     path="/reports/ptp"
                     element={
                       <ProtectedRoute>
                         <PTPReports userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
+                     <Route
+                    path="/drafts/customers"
+                    element={
+                      <ProtectedRoute>
+                        <CustomerDrafts userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                     <Route
+                    path="/drafts/loans"
+                    element={
+                      <ProtectedRoute>
+                        <LoanDrafts userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                     <Route
+                    path="/drafts/others"
+                    element={
+                      <ProtectedRoute>
+                        <OtherDrafts userRole={role} />
                       </ProtectedRoute>
                     }
                   />
@@ -522,6 +576,143 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
+
+
+
+                  <Route
+  path="/reports/disbursement-loans"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={DisbursementLoansReport} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+ 
+                  <Route
+  path="/reports/customer-account-statement"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={CustomerAccountModal} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/loan-due"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={LoanDueReport} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/customer-listing"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={CustomerListing} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/mpesa-repayment"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={MpesaRepaymentReports} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/loan-officer-performance"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={LoanOfficerPerformanceReport} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/non-performing-loans"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={NonPerformingLoansReport} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/outstanding-balance"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={OutstandingLoanBalanceReport} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/pending-disbursement"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={PendingDisbursementReport} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/loan-listing"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={LoanListing} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/trace-mpesa"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={TraceMpesaTransaction} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/inactive-customers"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={InactiveCustomers} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/loan-arrears"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={LoanArrearsReport} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/advanced-mpesa"
+  element={
+    <ProtectedRoute>
+    
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/reports/suspense-payments"
+  element={
+    <ProtectedRoute>
+      <ReportWrapper component={SuspensePaymentsReport} userRole={role} />
+    </ProtectedRoute>
+  }
+/>
                 </>
               )}
 

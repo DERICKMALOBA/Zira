@@ -7,12 +7,12 @@ import {
   UserIcon,
   PhoneIcon,
 } from '@heroicons/react/24/outline';
-import { supabase } from "../../supabaseClient";
-import { useAuth } from "../../hooks/userAuth";
-import CustomerVerificationForm from './CustomerVerification';
+import { supabase } from "../../supabaseClient.js";
+import { useAuth } from "../../hooks/userAuth.js";
+import CustomerVerificationForm from './CustomerVerification.jsx';
 import CustomerDetailsModal from '../../relationship-officer/components/CustomerDetailsModal.jsx';
 
-const ApprovalPending = () => {
+const CustomerDrafts = () => {
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,7 +37,7 @@ const ApprovalPending = () => {
       let query = supabase
         .from("customers")
         .select("*")
-         .neq("form_status", "draft")
+          .eq("form_status", "draft")
         .order("created_at", { ascending: false });
 
       // Set status filter based on role
@@ -319,4 +319,4 @@ const ApprovalPending = () => {
   );
 };
 
-export default ApprovalPending;
+export default CustomerDrafts;

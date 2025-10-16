@@ -587,7 +587,7 @@ const PTPReports = () => {
           </div>
 
           {/* Financial Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-600">Total Promised Amount</p>
@@ -605,10 +605,10 @@ const PTPReports = () => {
                 </p>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-lg shadow-sm border">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Promise Status Breakdown</h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -648,7 +648,7 @@ const PTPReports = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
+          </div> */}
 
           {/* PTP Details Table */}
           <div className="bg-white rounded-lg shadow-sm border overflow-hidden">

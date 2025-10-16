@@ -1,64 +1,305 @@
-// src/pages/ReportsPage.jsx
-import React from 'react'
-import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
-import LoanReports from './LoanReports'
-import PTPReports from './PTPReports'
-import OfficerReports from './OfficerReports'
-import FinancialReports from './FinancialReports'
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, FileText, Search, X } from 'lucide-react';
+import CustomerAccountModal from './CustomerAccountModal';
+import LoanDisbursementReport from './DisbursementLoansReport';
+import LoanDueReport from './LoanDueReport';
+import CustomerListing from './CustomerListing';
+import MpesaRepaymentReports from './MpesaRepaymentReports';
+import LoanOfficerPerformanceReport from './LoanOfficerPerformanceReport';
+import NonPerformingLoansReport from './NonPerformingLoansReport';
+import OutstandingLoanBalanceReport from './OutstandingLoanBalanceReport';
+import PendingDisbursementReport from './LoansPendingDisbursementReport';
+import LoanListing from './LoanListing';
+import SuspensePaymentsReport from './SuspensePaymentsReport';
+import TraceMpesaTransaction from './TraceMpesaTransaction;';
+import LoanArrearsReport from './LoanArrearsReport';
+import InactiveCustomers from './InactiveCustomers';
 
-const ReportsPage = () => {
-  const location = useLocation()
-  
-  const tabs = [
-    { name: 'Loan Reports', href: '/reports/loans', icon: '📊' },
-    { name: 'PTP Reports', href: '/reports/ptp', icon: '🤝' },
-    { name: 'Officer Reports', href: '/reports/officers', icon: '👥' },
-    { name: 'Financial Reports', href: '/reports/financial', icon: '💰' },
-  ]
+const Reports = () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
+  const reportsPerPage = 10;
+
+  const allReports = [
+    {
+      id: 1,
+      name: "Customer Account Statement",
+      description: "Detailed statement of customer transactions, balances, and account activity",
+      component: CustomerAccountModal,
+      route: '/reports/customer-account-statement'
+    },
+    {
+      id: 2,
+      name: "Disbursement Loans",
+      description: "Report of all loans that have been disbursed to customers",
+      component: LoanDisbursementReport,
+      route: '/reports/disbursement-loans'
+    },
+    {
+      id: 3,
+      name: "Loan Due Report",
+      description: "List of loans with upcoming or overdue payment dates",
+      component: LoanDueReport,
+      route: '/reports/loan-due'
+    },
+    {
+      id: 4,
+      name: "Customer Listing",
+      description: "Comprehensive list of all registered customers with their details",
+      component: CustomerListing,
+      route: '/reports/customer-listing'
+    },
+    {
+      id: 5,
+      name: "M-Pesa Repayment Reports",
+      description: "Track all loan repayments made through M-Pesa mobile money",
+      component: MpesaRepaymentReports,
+      route: '/reports/mpesa-repayment'
+    },
+    {
+      id: 6,
+      name: "Loan Officer Performance",
+      description: "Performance metrics and statistics for each loan officer",
+      component: LoanOfficerPerformanceReport,
+      route: '/reports/loan-officer-performance'
+    },
+    {
+      id: 7,
+      name: "Non-Performance Loan",
+      description: "Report on loans that are not performing or are in default",
+      component: NonPerformingLoansReport,
+      route: '/reports/non-performing-loans'
+    },
+    {
+      id: 8,
+      name: "Outstanding Loan Balance",
+      description: "Summary of all outstanding loan balances across all customers",
+      component: OutstandingLoanBalanceReport,
+      route: '/reports/outstanding-balance'
+    },
+    {
+      id: 9,
+      name: "Loan Pending Disbursement",
+      description: "Approved loans awaiting disbursement to customers",
+      component: PendingDisbursementReport,
+      route: '/reports/pending-disbursement'
+    },
+    {
+      id: 10,
+      name: "Loan Listing",
+      description: "Complete listing of all loans in the system with key details",
+      component: LoanListing,
+      route: '/reports/loan-listing'
+    },
+    {
+      id: 11,
+      name: "Trace M-Pesa Transaction",
+      description: "Search and track specific M-Pesa transactions by reference",
+      component: TraceMpesaTransaction,
+      route: '/reports/trace-mpesa'
+    },
+    {
+      id: 12,
+      name: "Inactive Customers",
+      description: "List of customers with no recent activity or transactions",
+      component: InactiveCustomers,
+      route: '/reports/inactive-customers'
+    },
+    {
+      id: 13,
+      name: "Loan Arrears Report",
+      description: "Detailed report of loans in arrears with aging analysis",
+      component: LoanArrearsReport,
+      route: '/reports/loan-arrears'
+    },
+    {
+      id: 14,
+      name: "Advanced M-Pesa Tracking",
+      description: "Advanced M-Pesa transaction tracking and reconciliation",
+      component: null,
+      route: '/reports/advanced-mpesa'
+    },
+    {
+      id: 15,
+      name: "Suspense Payment Report",
+      description: "View and manage unallocated or pending M-Pesa payments",
+      component: SuspensePaymentsReport,
+      route: '/reports/suspense-payments'
+    }
+  ];
+
+  const filteredReports = allReports.filter(report =>
+    report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredReports.length / reportsPerPage);
+  const startIdx = (currentPage - 1) * reportsPerPage;
+  const endIdx = startIdx + reportsPerPage;
+  const currentReports = filteredReports.slice(startIdx, endIdx);
+
+  const handleViewReport = (report) => {
+    navigate(report.route);
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Reports Dashboard</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Generate and export comprehensive reports for your loan management system
-          </p>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-4">
+          <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
+          <p className="text-gray-600">Generate and view comprehensive loan management reports</p>
         </div>
-        
-        <div className="bg-white shadow rounded-lg">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px overflow-x-auto">
-              {tabs.map((tab) => (
-                <Link
-                  key={tab.name}
-                  to={tab.href}
-                  className={`flex items-center whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm transition-colors ${
-                    location.pathname === tab.href
-                      ? 'border-indigo-500 text-indigo-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search reports by name or description..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          {searchTerm && (
+            <p className="mt-2 text-sm text-gray-600">
+              Found {filteredReports.length} report{filteredReports.length !== 1 ? 's' : ''} matching "{searchTerm}"
+            </p>
+          )}
+        </div>
+
+        {/* Reports Table */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          {filteredReports.length > 0 ? (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-100 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Report Name</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Description</th>
+                      <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {currentReports.map((report) => (
+                      <tr key={report.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                            <span className="font-medium text-gray-900">{report.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 text-sm">
+                          {report.description}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-center">
+                            <button
+                              onClick={() => handleViewReport(report)}
+                              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            >
+                              <FileText className="w-4 h-4" />
+                              View
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    Showing <span className="font-medium">{startIdx + 1}</span> to{' '}
+                    <span className="font-medium">{Math.min(endIdx, filteredReports.length)}</span> of{' '}
+                    <span className="font-medium">{filteredReports.length}</span> 
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={goToPrevPage}
+                      disabled={currentPage === 1}
+                      className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                        currentPage === 1
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                      }`}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </button>
+
+                    <div className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm">
+                      Page <span className="font-medium">{currentPage}</span> of{' '}
+                      <span className="font-medium">{totalPages}</span>
+                    </div>
+
+                    <button
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+                        currentPage === totalPages
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+                      }`}
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <FileText className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-4 text-lg font-medium text-gray-900">No reports found</h3>
+              <p className="mt-2 text-gray-500">
+                {searchTerm 
+                  ? `No reports found matching "${searchTerm}". Try adjusting your search terms.`
+                  : 'No reports available.'}
+              </p>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  <span className="mr-2">{tab.icon}</span>
-                  {tab.name}
-                </Link>
-              ))}
-            </nav>
-          </div>
-          
-          <div className="p-6">
-            <Routes>
-              <Route path="loans" element={<LoanReports />} />
-              <Route path="ptp" element={<PTPReports />} />
-              <Route path="officers" element={<OfficerReports />} />
-              <Route path="financial" element={<FinancialReports />} />
-              <Route path="*" element={<Navigate to="loans" replace />} />
-            </Routes>
-          </div>
+                  Clear search
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ReportsPage
+export default Reports;

@@ -4,6 +4,7 @@ import { NavLink } from 'react-router-dom';
 import {
   Home,
   Calculator,
+  FileSpreadsheet,
   Settings,
   Users,
   FileText,
@@ -50,6 +51,7 @@ const SharedSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       color: 'text-blue-400',
       bgColor: 'bg-blue-400/10'
     },
+
     {
       name: 'Accounting',
       href: '/accounting',
@@ -96,6 +98,7 @@ const SharedSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       ],
     },
    {
+
   name: 'Loaning',
   href: '/loaning',
   icon: FileText,
@@ -108,6 +111,31 @@ const SharedSidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { name: 'Loan Pending Disbursement', href: '/loaning/pending-disbursement', icon: FileText },
     { name: 'Disbursement Loans', href: '/loaning/disbursement-loans', icon: FileText },
     { name: 'Rejected Loans', href: '/loaning/rejected-loans', icon: FileText },
+  ],
+}
+,
+{
+  name: 'Drafts',
+  href: '/drafts',
+  icon: FileText, // lucide-react icon (you can change)
+  color: 'text-yellow-400',
+  bgColor: 'bg-yellow-400/10',
+  children: [
+    {
+      name: 'Customer Verification Drafts',
+      href: '/drafts/customers',
+      icon: UserCheck, // good for customer
+    },
+    {
+      name: 'Loan Verification Drafts',
+      href: '/drafts/loans',
+      icon: FileSpreadsheet, // good for loans
+    },
+    {
+      name: 'Other Drafts',
+      href: '/drafts/others',
+      icon: FolderOpen, // optional general section
+    },
   ],
 }
 ,
@@ -131,8 +159,8 @@ const SharedSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       //   description: 'Headquarters management reports'
       // },
       { 
-        name: 'Loan Reports', 
-        href: '/reports/loans', 
+        name: ' Reports', 
+        href: '/reports/all', 
         icon: FileText,
         description: 'Comprehensive loan portfolio analysis'
       },
@@ -142,18 +170,18 @@ const SharedSidebar = ({ sidebarOpen, setSidebarOpen }) => {
         icon: Handshake,
         description: 'Promise to pay tracking and performance'
       },
-      { 
-        name: 'Officer Reports', 
-        href: '/reports/officers', 
-        icon: Users,
-        description: 'Officer performance and productivity metrics'
-      },
-      { 
-        name: 'Financial Reports', 
-        href: '/reports/financial', 
-        icon: DollarSign,
-        description: 'Financial overview and profitability analysis'
-      },
+      // { 
+      //   name: 'Officer Reports', 
+      //   href: '/reports/officers', 
+      //   icon: Users,
+      //   description: 'Officer performance and productivity metrics'
+      // },
+      // { 
+      //   name: 'Financial Reports', 
+      //   href: '/reports/financial', 
+      //   icon: DollarSign,
+      //   description: 'Financial overview and profitability analysis'
+      // },
     ],
   },
     //  { 
