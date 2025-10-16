@@ -101,7 +101,7 @@ const FormField = memo(
 );
 
 
-const AddCustomer = ({ profile, onClose }) => {
+const CustomerDraft = ({ profile, onClose }) => {
   const [activeSection, setActiveSection] = useState("personal");
   const [securityItems, setSecurityItems] = useState([
     { item: "", description: "", identification: "", value: "" },
@@ -2682,4 +2682,4 @@ const validateNextOfKinDetails = async () => {
   );
 };
 
-export default AddCustomer;
+export default CustomerDraft;
