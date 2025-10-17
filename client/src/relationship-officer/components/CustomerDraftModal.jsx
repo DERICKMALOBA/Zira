@@ -1,4 +1,8 @@
-import { useState, useEffect, memo } from "react";
+import { useState, memo, useEffect,useCallback } from "react"; 
+import "react-toastify/dist/ReactToastify.css";
+import { supabase } from "../../supabaseClient";
+import { toast } from "react-toastify";
+import { Upload, Camera, XIcon } from "lucide-react";
 import {
   UserCircleIcon,
   BuildingOffice2Icon,
@@ -8,24 +12,16 @@ import {
   IdentificationIcon,
   DocumentTextIcon,
   XCircleIcon,
+   PhotoIcon,
   ArrowUpTrayIcon,
   CameraIcon,
   XMarkIcon,
   CheckCircleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  HomeIcon,
-  DevicePhoneMobileIcon,
-  PhotoIcon,
   PlusIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-
-import { Upload, Camera, XIcon } from "lucide-react";
-
-import { supabase } from "../../supabaseClient";
-import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 
 const FormField = memo(
   ({
@@ -42,57 +38,78 @@ const FormField = memo(
     disabled = false,
     errors = {},
     handleNestedChange,
-  }) => (
-    <div className={className}>
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      {options ? (
-        <select
-          name={name}
-          value={value || ""}
-          onChange={section ? (e) => handleNestedChange(e, section) : onChange}
-          className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-            errors[name] ? "border-red-500" : ""
-          }`}
-          required={required}
-          disabled={disabled}
-        >
-          <option value="">{placeholder || `Select ${label}`}</option>
-          {options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type={type}
-          name={name}
-          value={value || ""}
-          onChange={section ? (e) => handleNestedChange(e, section) : onChange}
-          placeholder={placeholder}
-          className={`w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-            errors[name] ? "border-red-500" : ""
-          }`}
-          required={required}
-          disabled={disabled}
-        />
-      )}
-      {errors[name] && (
-        <span className="text-red-500 text-xs mt-1">{errors[name]}</span>
-      )}
-    </div>
-  )
+  }) => {
+    let errorMessage = '';
+    
+    if (section) {
+      errorMessage = errors?.[section]?.[name];
+    } else {
+      errorMessage = errors?.[name];
+    }
+
+    return (
+      <div className={className}>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+
+        {options ? (
+          <select
+            name={name}
+            value={value || ""}
+            onChange={section ? (e) => handleNestedChange(e, section) : onChange}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+              errorMessage ? "border-red-500" : "border-gray-300"
+            }`}
+            required={required}
+            disabled={disabled}
+          >
+            <option value="">{placeholder || `Select ${label}`}</option>
+            {options.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type={type}
+            name={name}
+            value={value || ""}
+            onChange={section ? (e) => handleNestedChange(e, section) : onChange}
+            placeholder={placeholder}
+            className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
+              errorMessage ? "border-red-500" : "border-gray-300"
+            }`}
+            required={required}
+            disabled={disabled}
+          />
+        )}
+
+        {errorMessage && (
+          <span className="text-red-500 text-xs mt-1">{errorMessage}</span>
+        )}
+      </div>
+    );
+  }
 );
 
-function EditAmendment({ customerId, onClose }) {
+FormField.displayName = 'FormField';
+
+const CustomerDraft = ({ profile, onClose, customerId }) => { 
   const [activeSection, setActiveSection] = useState("personal");
-  const [securityItems, setSecurityItems] = useState([]);
-  const [guarantorSecurityItems, setGuarantorSecurityItems] = useState([]);
+  const [securityItems, setSecurityItems] = useState([
+    { item: "", description: "", identification: "", value: "" },
+  ]);
+  const [guarantorSecurityItems, setGuarantorSecurityItems] = useState([
+    { item: "", description: "", identification: "", value: "" },
+  ]);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); 
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+
+  // Initialize formData with empty values
 
   const [formData, setFormData] = useState({
     prefix: "",
@@ -120,7 +137,6 @@ function EditAmendment({ customerId, onClose }) {
     landmark: "",
     hasLocalAuthorityLicense: "",
     prequalifiedAmount: "",
-    status: "pending",
 
     guarantor: {
       prefix: "",
@@ -133,6 +149,7 @@ function EditAmendment({ customerId, onClose }) {
       residenceStatus: "",
       gender: "",
       mobile: "",
+      alternativeMobile: "",
       postalAddress: "",
       code: "",
       occupation: "",
@@ -153,6 +170,9 @@ function EditAmendment({ customerId, onClose }) {
       cityTown: "",
     },
   });
+  
+
+
 
   // File upload state
   const [passportFile, setPassportFile] = useState(null);
@@ -165,13 +185,12 @@ function EditAmendment({ customerId, onClose }) {
   const [guarantorIdFrontFile, setGuarantorIdFrontFile] = useState(null);
   const [guarantorIdBackFile, setGuarantorIdBackFile] = useState(null);
   const [guarantorSecurityImages, setGuarantorSecurityImages] = useState([]);
-  const [previews, setPreviews] = useState({});
-
-  // Document verification states
   const [officerClientImage1, setOfficerClientImage1] = useState(null);
   const [officerClientImage2, setOfficerClientImage2] = useState(null);
   const [bothOfficersImage, setBothOfficersImage] = useState(null);
-  const [existingImages, setExistingImages] = useState({
+  const [previews, setPreviews] = useState({});
+
+    const [existingImages, setExistingImages] = useState({
     passport: null,
     idFront: null,
     idBack: null,
@@ -187,329 +206,285 @@ function EditAmendment({ customerId, onClose }) {
     bothOfficers: null,
   });
 
+  // ========= LOAD EXISTING DRAFT/CUSTOMER DATA =========
   useEffect(() => {
-    console.log("EditAmendment component mounted with customerId:", customerId);
     if (customerId) {
-      fetchCustomerData();
+      loadCustomerData(customerId);
     }
   }, [customerId]);
+
+const loadCustomerData = async (id) => {
+  try {
+    setIsLoading(true);
+    console.log("Loading full customer data for ID:", id);
+
+    // 1️⃣ Fetch customer
+    const { data: customer, error: customerError } = await supabase
+      .from("customers")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (customerError) throw customerError;
+    console.log("Customer data loaded:", customer);
+
+    // 2️⃣ Parallel fetch of related tables
+    const [
+      { data: guarantor },
+      { data: nextOfKin },
+      { data: securityItemsData },
+      { data: businessImagesData },
+      { data: documentsData },
+    ] = await Promise.all([
+      supabase.from("guarantors").select("*").eq("customer_id", id).single(),
+      supabase.from("next_of_kin").select("*").eq("customer_id", id).single(),
+      supabase
+        .from("security_items")
+        .select("*, security_item_images(image_url)")
+        .eq("customer_id", id),
+      supabase.from("business_images").select("*").eq("customer_id", id),
+      supabase
+        .from("documents")
+        .select("id, document_type, document_url")
+        .eq("customer_id", id),
+    ]);
+
+    // 3️⃣ Fetch guarantor security if guarantor exists
+    let guarantorSecurityData = [];
+    if (guarantor?.id) {
+      const { data } = await supabase
+        .from("guarantor_security")
+        .select("*, guarantor_security_images(image_url)")
+        .eq("guarantor_id", guarantor.id);
+      guarantorSecurityData = data || [];
+    }
+
+    // 4️⃣ Build form data
+    const updatedFormData = {
+      prefix: customer?.prefix || "",
+      Firstname: customer?.Firstname || "",
+      Middlename: customer?.Middlename || "",
+      Surname: customer?.Surname || "",
+      maritalStatus: customer?.marital_status || "",
+      residenceStatus: customer?.residence_status || "",
+      mobile: customer?.mobile || "",
+      alternativeMobile: customer?.alternative_mobile || "",
+      occupation: customer?.occupation || "",
+      dateOfBirth: customer?.date_of_birth?.split("T")[0] || "",
+      gender: customer?.gender || "",
+      idNumber: customer?.id_number?.toString() || "",
+      postalAddress: customer?.postal_address || "",
+      code: customer?.code?.toString() || "",
+      town: customer?.town || "",
+      county: customer?.county || "",
+      businessName: customer?.business_name || "",
+      businessType: customer?.business_type || "",
+      yearEstablished: customer?.year_established || "",
+      businessLocation: customer?.business_location || "",
+      daily_Sales: customer?.daily_Sales?.toString() || "",
+      road: customer?.road || "",
+      landmark: customer?.landmark || "",
+      hasLocalAuthorityLicense: customer?.has_local_authority_license ? "Yes" : "No",
+      prequalifiedAmount: customer?.prequalifiedAmount?.toString() || "",
+      status: customer?.status || "pending",
+
+      guarantor: guarantor
+        ? {
+            prefix: guarantor.prefix || "",
+            Firstname: guarantor.Firstname || "",
+            Surname: guarantor.Surname || "",
+            idNumber: guarantor.id_number?.toString() || "",
+            maritalStatus: guarantor.marital_status || "",
+            Middlename: guarantor.Middlename || "",
+            dateOfBirth: guarantor.date_of_birth?.split("T")[0] || "",
+            residenceStatus: guarantor.residence_status || "",
+            gender: guarantor.gender || "",
+            mobile: guarantor.mobile || "",
+            postalAddress: guarantor.postal_address || "",
+            code: guarantor.code?.toString() || "",
+            occupation: guarantor.occupation || "",
+            relationship: guarantor.relationship || "",
+            county: guarantor.county || "",
+            cityTown: guarantor.city_town || "",
+          }
+        : {},
+
+      nextOfKin: nextOfKin
+        ? {
+            Firstname: nextOfKin.Firstname || "",
+            Surname: nextOfKin.Surname || "",
+            Middlename: nextOfKin.Middlename || "",
+            idNumber: nextOfKin.id_number?.toString() || "",
+            relationship: nextOfKin.relationship || "",
+            mobile: nextOfKin.mobile || "",
+            alternativeNumber: nextOfKin.alternative_number || "",
+            employmentStatus: nextOfKin.employment_status || "",
+            county: nextOfKin.county || "",
+            cityTown: nextOfKin.city_town || "",
+          }
+        : {},
+
+      documents:
+        documentsData?.length > 0
+          ? documentsData.map((doc) => ({
+              id: doc.id,
+              document_type: doc.document_type || "",
+              document_url: doc.document_url || "",
+            }))
+          : [],
+    };
+
+    setFormData(updatedFormData);
+    console.log("Form data set:", updatedFormData);
+
+    // 5️⃣ Security items
+    const processedSecurityItems =
+      securityItemsData?.map((item) => ({
+        id: item.id,
+        item: item.item || "",
+        description: item.description || "",
+        identification: item.identification || "",
+        value: item.value?.toString() || "",
+      })) || [];
+    setSecurityItems(processedSecurityItems);
+
+    const securityImages = securityItemsData?.map((item) =>
+      item.security_item_images
+        ? item.security_item_images.map((img) => img.image_url)
+        : []
+    );
+    setSecurityItemImages(securityImages || []);
+
+    // 6️⃣ Guarantor security items
+    const processedGuarantorSecurity =
+      guarantorSecurityData?.map((item) => ({
+        id: item.id,
+        item: item.item || "",
+        description: item.description || "",
+        identification: item.identification || "",
+        value: item.estimated_market_value?.toString() || "",
+      })) || [];
+    setGuarantorSecurityItems(processedGuarantorSecurity);
+
+    const guarantorSecurityImages = guarantorSecurityData?.map((item) =>
+      item.guarantor_security_images
+        ? item.guarantor_security_images.map((img) => img.image_url)
+        : []
+    );
+    setGuarantorSecurityImages(guarantorSecurityImages || []);
+
+    // 7️⃣ Image previews
+    const imageData = {
+      passport: customer?.passport_url || null,
+      idFront: customer?.id_front_url || null,
+      idBack: customer?.id_back_url || null,
+      house: customer?.house_image_url || null,
+      business: businessImagesData?.map((img) => img.image_url) || [],
+      security: securityImages?.flat() || [],
+      guarantorPassport: guarantor?.passport_url || null,
+      guarantorIdFront: guarantor?.id_front_url || null,
+      guarantorIdBack: guarantor?.id_back_url || null,
+      guarantorSecurity: guarantorSecurityImages?.flat() || [],
+      officerClient1:
+        documentsData?.find(
+          (doc) => doc.document_type === "First Officer and Client Image"
+        )?.document_url || null,
+      officerClient2:
+        documentsData?.find(
+          (doc) => doc.document_type === "Second Officer and Client Image"
+        )?.document_url || null,
+      bothOfficers:
+        documentsData?.find(
+          (doc) => doc.document_type === "Both Officers Image"
+        )?.document_url || null,
+    };
+
+    setPreviews(imageData);
+    console.log("Images set:", imageData);
+
+    toast.success("Customer data loaded successfully!", {
+      position: "top-right",
+      autoClose: 2000,
+    });
+  } catch (error) {
+    console.error("Error loading customer data:", error);
+    toast.error("Failed to load customer data. Please try again.", {
+      position: "top-right",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
   
+  // Navigation sections with proper icons
+  const sections = [
+    { id: "personal", label: "Personal Info", icon: UserCircleIcon },
+    { id: "business", label: "Business Info", icon: BuildingOffice2Icon },
+    {
+      id: "borrowerSecurity",
+      label: "Borrower Security",
+      icon: ShieldCheckIcon,
+    },
+    { id: "loan", label: "Loan Details", icon: CurrencyDollarIcon },
+    { id: "guarantor", label: "Guarantor", icon: UserGroupIcon },
+    {
+      id: "guarantorSecurity",
+      label: "Guarantor Security",
+      icon: ShieldCheckIcon,
+    },
+    { id: "nextOfKin", label: "Next of Kin", icon: UserGroupIcon },
+    { id: "documents", label: "Documents", icon: DocumentTextIcon },
+  ];
 
-  const fetchCustomerData = async () => {
-    console.log(" Starting to fetch customer data for ID:", customerId);
-    setLoading(true);
+  const handleChange = useCallback((e) => {
+  const { name, value } = e.target;
 
-    try {
-      // Fetch customer details
-      const { data: customer, error: customerError } = await supabase
-        .from("customers")
-        .select("*")
-        .eq("id", customerId)
-        .single();
-
-      if (customerError) {
-        console.error(" Customer fetch error:", customerError);
-        throw customerError;
-      }
-      console.log("Customer data fetched:", customer);
-
-      // First fetch: guarantor, nextOfKin, securityItems, loan, businessImages
-      console.log("Fetching related data...");
-      const [
-        { data: guarantor },
-        { data: nextOfKin },
-        { data: securityItemsData },
-        { data: businessImagesData },
-        { data: documentsData},
-      ] = await Promise.all([
-        supabase
-          .from("guarantors")
-          .select("*")
-          .eq("customer_id", customerId)
-          .single(),
-        supabase
-          .from("next_of_kin")
-          .select("*")
-          .eq("customer_id", customerId)
-          .single(),
-        supabase
-          .from("security_items")
-          .select("*, security_item_images(image_url)")
-          .eq("customer_id", customerId),
-        supabase
-          .from("business_images")
-          .select("*")
-          .eq("customer_id", customerId),
-        supabase
-          .from("documents")
-          .select("id, document_type, document_url")
-          .eq("customer_id", customerId),
-      ]);
-
-      // Then fetch guarantor security if guarantor exists
-      let guarantorSecurityData = [];
-      if (guarantor?.id) {
-        const { data } = await supabase
-          .from("guarantor_security")
-          .select("*, guarantor_security_images(image_url)")
-          .eq("guarantor_id", guarantor.id);
-
-        guarantorSecurityData = data || [];
-      }
-
-      console.log(
-        " Guarantor security data:",
-        guarantorSecurityData
-      );
-
-      console.log(
-        " Business images data:",
-        businessImagesData
-      );
-      console.log(
-        "Documents data:",
-        documentsData
-      );
-
-      // Build form data
-      const updatedFormData = {
-        prefix: customer?.prefix || "",
-        Firstname: customer?.Firstname || "",
-        Middlename: customer?.Middlename || "",
-        Surname: customer?.Surname || "",
-        maritalStatus: customer?.marital_status || "",
-        residenceStatus: customer?.residence_status || "",
-        mobile: customer?.mobile || "",
-        alternativeMobile: customer?.alternative_mobile || "",
-        occupation: customer?.occupation || "",
-        dateOfBirth: customer?.date_of_birth || "",
-        gender: customer?.gender || "",
-        idNumber: customer?.id_number || "",
-        postalAddress: customer?.postal_address || "",
-        code: customer?.code || "",
-        town: customer?.town || "",
-        county: customer?.county || "",
-        businessName: customer?.business_name || "",
-        businessType: customer?.business_type || "",
-        yearEstablished: customer?.year_established || "",
-        businessLocation: customer?.business_location || "",
-        daily_Sales: customer?.daily_Sales || "",
-        road: customer?.road || "",
-        landmark: customer?.landmark || "",
-        hasLocalAuthorityLicense: customer?.has_local_authority_license
-          ? "Yes"
-          : "No",
-        status: customer?.status || "pending",
-        prequalifiedAmount: customer.prequalifiedAmount,
-
-        guarantor: guarantor
-          ? {
-              prefix: guarantor.prefix || "",
-              Firstname: guarantor.Firstname || "",
-              Surname: guarantor.Surname || "",
-              idNumber: guarantor.id_number || "",
-              maritalStatus: guarantor.marital_status || "",
-              Middlename: guarantor.Middlename || "",
-              dateOfBirth: guarantor.date_of_birth || "",
-              residenceStatus: guarantor.residence_status || "",
-              gender: guarantor.gender || "",
-              mobile: guarantor.mobile || "",
-              postalAddress: guarantor.postal_address || "",
-              code: guarantor.code || "",
-              occupation: guarantor.occupation || "",
-              relationship: guarantor.relationship || "",
-              county: guarantor.county || "",
-              cityTown: guarantor.city_town || "",
-            }
-          : {
-              prefix: "",
-              Firstname: "",
-              Surname: "",
-              idNumber: "",
-              maritalStatus: "",
-              Middlename: "",
-              dateOfBirth: "",
-              residenceStatus: "",
-              gender: "",
-              mobile: "",
-              postalAddress: "",
-              code: "",
-              occupation: "",
-              relationship: "",
-              county: "",
-              cityTown: "",
-            },
-
-        nextOfKin: nextOfKin
-          ? {
-              Firstname: nextOfKin.Firstname || "",
-              Surname: nextOfKin.Surname || "",
-              Middlename: nextOfKin.Middlename || "",
-              idNumber: nextOfKin.id_number || "",
-              relationship: nextOfKin.relationship || "",
-              mobile: nextOfKin.mobile || "",
-              alternativeNumber: nextOfKin.alternative_number || "",
-              employmentStatus: nextOfKin.employment_status || "",
-              county: nextOfKin.county || "",
-              cityTown: nextOfKin.city_town || "",
-            }
-          : {
-              Firstname: "",
-              Surname: "",
-              Middlename: "",
-              idNumber: "",
-              relationship: "",
-              mobile: "",
-              alternativeNumber: "",
-              employmentStatus: "",
-              county: "",
-              cityTown: "",
-            },
-
-        documents:
-          documentsData?.length > 0
-            ? documentsData.map((doc) => ({
-                id: doc.id,
-                document_type: doc.document_type || "",
-                document_url: doc.document_url || "",
-              }))
-            : [],
-      };
-
-      setFormData(updatedFormData);
-      console.log("Form data set:", updatedFormData);
-
-      // Security items
-      if (securityItemsData && securityItemsData.length > 0) {
-        console.log(" Processing security items...");
-        const processedSecurityItems = securityItemsData.map((item) => ({
-          id: item.id,
-          item: item.item || "",
-          description: item.description || "",
-          identification: item.identification || "",
-          value: item.value || "",
-        }));
-        setSecurityItems(processedSecurityItems);
-
-        const securityImages = securityItemsData.map((item) =>
-          item.security_item_images
-            ? item.security_item_images.map((img) => img.image_url)
-            : []
-        );
-        setSecurityItemImages(securityImages);
-      } else {
-        console.log("ℹ No security items found");
-        setSecurityItems([]);
-        setSecurityItemImages([]);
-      }
-
-      // Guarantor security
-      if (guarantorSecurityData && guarantorSecurityData.length > 0) {
-        console.log(" Processing guarantor security items...");
-        const processedGuarantorSecurity = guarantorSecurityData.map(
-          (item) => ({
-            id: item.id,
-            item: item.item || "",
-            description: item.description || "",
-            identification: item.identification || "",
-            value: item.estimated_market_value || "",
-          })
-        );
-        setGuarantorSecurityItems(processedGuarantorSecurity);
-
-        const guarantorSecurityImages = guarantorSecurityData.map((item) =>
-          item.guarantor_security_images
-            ? item.guarantor_security_images.map((img) => img.image_url)
-            : []
-        );
-        setGuarantorSecurityImages(guarantorSecurityImages);
-      } else {
-        console.log("ℹNo guarantor security items found");
-        setGuarantorSecurityItems([]);
-        setGuarantorSecurityImages([]);
-      }
-
-      // Existing images
-      const imageData = {
-        passport: customer?.passport_url || null,
-        idFront: customer?.id_front_url || null,
-        idBack: customer?.id_back_url || null,
-        house: customer?.house_image_url || null,
-        business: businessImagesData
-          ? businessImagesData.map((img) => img.image_url)
-          : [],
-        security: securityItemsData
-          ? securityItemsData.flatMap((item) =>
-              item.security_item_images
-                ? item.security_item_images.map((img) => img.image_url)
-                : []
-            )
-          : [],
-        guarantorPassport: guarantor?.passport_url || null,
-        guarantorIdFront: guarantor?.id_front_url || null,
-        guarantorIdBack: guarantor?.id_back_url || null,
-        guarantorSecurity: guarantorSecurityData
-          ? guarantorSecurityData.flatMap((item) =>
-              item.guarantor_security_images
-                ? item.guarantor_security_images.map((img) => img.image_url)
-                : []
-            )
-          : [],
-        officerClient1:
-          documentsData?.find(
-            (doc) => doc.document_type === "First Officer and Client Image"
-          )?.document_url || null,
-        officerClient2:
-          documentsData?.find(
-            (doc) => doc.document_type === "Second Officer and Client Image"
-          )?.document_url || null,
-        bothOfficers:
-          documentsData?.find(
-            (doc) => doc.document_type === "Both Officers Image"
-          )?.document_url || null,
-      };
-
-      setExistingImages(imageData);
-      console.log(" Existing images set:", imageData);
-
-      // Clear any errors
-      setErrors({});
-      console.log(" Customer data fetch completed successfully");
-    } catch (error) {
-      console.error(" Error fetching customer data:", error);
-      toast.error("Failed to load customer data: " + error.message);
-      setErrors({ fetch: error.message });
-    } finally {
-      setLoading(false);
-      console.log(" Fetch customer data process completed");
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  // Handle "yearEstablished" to ensure it always sends valid date format
+  if (name === "yearEstablished") {
+    // Ensure it's a valid YYYY-MM-DD string
+    const formattedDate = value && value.length === 4
+      ? `${value}-01-01` // if user ever types only year manually
+      : value;
+    setFormData((prev) => ({ ...prev, [name]: formattedDate }));
+  } else {
     setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: null }));
-    }
-  };
+  }
 
-  const handleNestedChange = (e, section) => {
+  if (errors[name]) {
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[name];
+      return newErrors;
+    });
+  }
+}, [errors]);
+
+
+  const handleNestedChange = useCallback((e, section) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [section]: { ...prev[section], [name]: value },
     }));
     if (errors[`${section}.${name}`]) {
-      setErrors((prev) => ({ ...prev, [`${section}.${name}`]: null }));
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[`${section}.${name}`];
+        return newErrors;
+      });
     }
-  };
+  }, [errors]);
 
-  const handleSecurityChange = (e, index) => {
+  const handleSecurityChange = useCallback((e, index) => {
     const { name, value } = e.target;
-    const newItems = [...securityItems];
-    newItems[index][name] = value;
-    setSecurityItems(newItems);
-  };
+    setSecurityItems((prev) => {
+      const newItems = [...prev];
+      newItems[index] = { ...newItems[index], [name]: value };
+      return newItems;
+    });
+  }, []);
 
   const addSecurityItem = () => {
     const newItem = {
@@ -571,24 +546,15 @@ function EditAmendment({ customerId, onClose }) {
         return parseFloat(value);
       };
 
-      const { data: currentCustomer, error: fetchError } = await supabase
+      const { data, error: fetchError } = await supabase
         .from("customers")
         .select("status")
         .eq("id", customerId)
         .single();
 
       if (fetchError) throw fetchError;
-
-      let newStatus = currentCustomer.status;
-
-      // Transition rules for RO amendment
-      if (currentCustomer.status === "sent_back_by_bm") {
-        newStatus = "bm_review_amend";
-      } else if (currentCustomer.status === "sent_back_by_ca") {
-        newStatus = "ca_review_amend";
-      } else if (currentCustomer.status === "sent_back_by_cso") {
-        newStatus = "cso_review_amend";
-      }
+      const newStatus = "bm_review";
+const newFormStatus = "submitted";
 
       // Update customer status
       const { error: updateError } = await supabase
@@ -606,6 +572,7 @@ function EditAmendment({ customerId, onClose }) {
           Firstname: formData.Firstname || null,
           Middlename: formData.Middlename || null,
           Surname: formData.Surname || null,
+          mobile: formData.mobile || null,
           marital_status: formData.maritalStatus || null,
           residence_status: formData.residenceStatus || null,
           occupation: formData.occupation || null,
@@ -618,7 +585,9 @@ function EditAmendment({ customerId, onClose }) {
           county: formData.county || null,
           business_name: formData.businessName || null,
           business_type: formData.businessType || null,
-          year_established: formData.yearEstablished || null,
+year_established: formData.yearEstablished
+  ? new Date(formData.yearEstablished).toISOString().split("T")[0]
+  : null,
           business_location: formData.businessLocation || null,
           daily_Sales: safeParseFloat(formData.daily_Sales),
           road: formData.road || null,
@@ -626,7 +595,9 @@ function EditAmendment({ customerId, onClose }) {
           has_local_authority_license:
             formData.hasLocalAuthorityLicense === "Yes",
           edited_at: new Date().toISOString(),
-          status: newStatus,
+                status: newStatus,                // ✅ Change status to bm_review
+        form_status: newFormStatus,       // ✅ Change form_status to submitted if draft
+        prequalifiedAmount: safeParseFloat(formData.prequalifiedAmount) || null, 
         })
         .eq("id", customerId);
 
@@ -692,89 +663,99 @@ function EditAmendment({ customerId, onClose }) {
         if (imageError) throw imageError;
       }
 
-      // 4. Update guarantor details - FIRST GET EXISTING GUARANTOR ID
-      let existingGuarantorId = null;
+// 4. Update or insert guarantor details
+let guarantorId = null;
 
-      const { data: existingGuarantor } = await supabase
-        .from("guarantors")
-        .select("id")
-        .eq("customer_id", customerId)
-        .single();
+const { data: existingGuarantor } = await supabase
+  .from("guarantors")
+  .select("id")
+  .eq("customer_id", customerId)
+  .single();
 
-      if (existingGuarantor) {
-        existingGuarantorId = existingGuarantor.id;
+if (existingGuarantor) {
+  guarantorId = existingGuarantor.id;
+} else {
+  const { data: insertedGuarantor, error: insertError } = await supabase
+    .from("guarantors")
+    .insert({ customer_id: customerId })
+    .select()
+    .single();
+  if (insertError) throw insertError;
+  guarantorId = insertedGuarantor.id;
+}
 
-        // Upload guarantor images
-        const guarantorPassportUrl = await uploadFile(
-          guarantorPassportFile,
-          "guarantor",
-          "passport"
-        );
-        const guarantorIdFrontUrl = await uploadFile(
-          guarantorIdFrontFile,
-          "guarantor",
-          "id_front"
-        );
-        const guarantorIdBackUrl = await uploadFile(
-          guarantorIdBackFile,
-          "guarantor",
-          "id_back"
-        );
+// Upload guarantor images
+const guarantorPassportUrl = await uploadFile(guarantorPassportFile, "guarantor", "passport");
+const guarantorIdFrontUrl = await uploadFile(guarantorIdFrontFile, "guarantor", "id_front");
+const guarantorIdBackUrl = await uploadFile(guarantorIdBackFile, "guarantor", "id_back");
 
-        const { error: guarantorError } = await supabase
-          .from("guarantors")
-          .update({
-            prefix: formData.guarantor.prefix || null,
-            Firstname: formData.guarantor.Firstname || null,
-            Surname: formData.guarantor.Surname || null,
-            Middlename: formData.guarantor.Middlename || null,
-            id_number: safeParseInt(formData.guarantor.idNumber),
-            marital_status: formData.guarantor.maritalStatus || null,
-            date_of_birth: formData.guarantor.dateOfBirth || null,
-            residence_status: formData.guarantor.residenceStatus || null,
-            gender: formData.guarantor.gender || null,
-            mobile: formData.guarantor.mobile || null,
-            postal_address: formData.guarantor.postalAddress || null,
-            code: safeParseInt(formData.guarantor.code),
-            occupation: formData.guarantor.occupation || null,
-            relationship: formData.guarantor.relationship || null,
-            county: formData.guarantor.county || null,
-            city_town: formData.guarantor.cityTown || null,
-            ...(guarantorPassportUrl && { passport_url: guarantorPassportUrl }),
-            ...(guarantorIdFrontUrl && { id_front_url: guarantorIdFrontUrl }),
-            ...(guarantorIdBackUrl && { id_back_url: guarantorIdBackUrl }),
-          })
-          .eq("id", existingGuarantorId);
+// Update guarantor record
+const { error: guarantorError } = await supabase
+  .from("guarantors")
+  .update({
+    prefix: formData.guarantor.prefix || null,
+    Firstname: formData.guarantor.Firstname || null,
+    Surname: formData.guarantor.Surname || null,
+    Middlename: formData.guarantor.Middlename || null,
+    id_number: safeParseInt(formData.guarantor.idNumber),
+    marital_status: formData.guarantor.maritalStatus || null,
+    date_of_birth: formData.guarantor.dateOfBirth || null,
+    residence_status: formData.guarantor.residenceStatus || null,
+    gender: formData.guarantor.gender || null,
+    mobile: formData.guarantor.mobile || null,
+    postal_address: formData.guarantor.postalAddress || null,
+    code: safeParseInt(formData.guarantor.code),
+    occupation: formData.guarantor.occupation || null,
+    relationship: formData.guarantor.relationship || null,
+    county: formData.guarantor.county || null,
+    city_town: formData.guarantor.cityTown || null,
+    ...(guarantorPassportUrl && { passport_url: guarantorPassportUrl }),
+    ...(guarantorIdFrontUrl && { id_front_url: guarantorIdFrontUrl }),
+    ...(guarantorIdBackUrl && { id_back_url: guarantorIdBackUrl }),
+  })
+  .eq("id", guarantorId);
 
-        if (guarantorError) throw guarantorError;
-      }
+if (guarantorError) throw guarantorError;
 
-      // 5. Update next of kin details
-      const { data: existingNextOfKin } = await supabase
-        .from("next_of_kin")
-        .select("id")
-        .eq("customer_id", customerId)
-        .single();
 
-      if (existingNextOfKin && formData.nextOfKin) {
-        const { error: nextOfKinError } = await supabase
-          .from("next_of_kin")
-          .update({
-            Firstname: formData.nextOfKin.Firstname || null,
-            Surname: formData.nextOfKin.Surname || null,
-            Middlename: formData.nextOfKin.Middlename || null,
-            id_number: safeParseInt(formData.nextOfKin.idNumber),
-            relationship: formData.nextOfKin.relationship || null,
-            mobile: formData.nextOfKin.mobile || null,
-            alternative_number: formData.nextOfKin.alternativeNumber || null,
-            employment_status: formData.nextOfKin.employmentStatus || null,
-            county: formData.nextOfKin.county || null,
-            city_town: formData.nextOfKin.cityTown || null,
-          })
-          .eq("id", existingNextOfKin.id);
+// 5. Update or insert next of kin details
+let nextOfKinId = null;
 
-        if (nextOfKinError) throw nextOfKinError;
-      }
+const { data: existingNextOfKin } = await supabase
+  .from("next_of_kin")
+  .select("id")
+  .eq("customer_id", customerId)
+  .single();
+
+if (existingNextOfKin) {
+  nextOfKinId = existingNextOfKin.id;
+} else {
+  const { data: insertedNextOfKin, error: insertError } = await supabase
+    .from("next_of_kin")
+    .insert({ customer_id: customerId })
+    .select()
+    .single();
+  if (insertError) throw insertError;
+  nextOfKinId = insertedNextOfKin.id;
+}
+
+const { error: nextOfKinError } = await supabase
+  .from("next_of_kin")
+  .update({
+    Firstname: formData.nextOfKin.Firstname || null,
+    Surname: formData.nextOfKin.Surname || null,
+    Middlename: formData.nextOfKin.Middlename || null,
+    id_number: safeParseInt(formData.nextOfKin.idNumber),
+    relationship: formData.nextOfKin.relationship || null,
+    mobile: formData.nextOfKin.mobile || null,
+    alternative_number: formData.nextOfKin.alternativeNumber || null,
+    employment_status: formData.nextOfKin.employmentStatus || null,
+    county: formData.nextOfKin.county || null,
+    city_town: formData.nextOfKin.cityTown || null,
+  })
+  .eq("id", nextOfKinId);
+
+if (nextOfKinError) throw nextOfKinError;
 
       // 6. Handle business images
       if (businessImages.length > 0) {
@@ -847,54 +828,48 @@ function EditAmendment({ customerId, onClose }) {
         }
       }
 
-      // 8. Handle guarantor security items (only if guarantor exists)
-      if (existingGuarantorId) {
-        await supabase
-          .from("guarantor_security")
-          .delete()
-          .eq("guarantor_id", existingGuarantorId);
+    // 8. Handle guarantor security items
+if (guarantorId) {
+  await supabase.from("guarantor_security").delete().eq("guarantor_id", guarantorId);
 
-        for (const [index, item] of guarantorSecurityItems.entries()) {
-          const { data: securityItem, error: securityError } = await supabase
-            .from("guarantor_security")
+  for (const [index, item] of guarantorSecurityItems.entries()) {
+    const { data: securityItem, error: securityError } = await supabase
+      .from("guarantor_security")
+      .insert({
+        guarantor_id: guarantorId,
+        item: item.item || null,
+        description: item.description || null,
+        identification: item.identification || null,
+        estimated_market_value: safeParseFloat(item.value),
+      })
+      .select()
+      .single();
+
+    if (securityError) throw securityError;
+
+    // Save guarantor security images
+    if (guarantorSecurityImages[index] && guarantorSecurityImages[index].length > 0) {
+      for (const image of guarantorSecurityImages[index]) {
+        const securityImageUrl = await uploadFile(
+          image,
+          "guarantor_security",
+          `item_${securityItem.id}`
+        );
+
+        if (securityImageUrl) {
+          const { error: imageError } = await supabase
+            .from("guarantor_security_images")
             .insert({
-              guarantor_id: existingGuarantorId,
-              item: item.item || null,
-              description: item.description || null,
-              identification: item.identification || null,
-              estimated_market_value: safeParseFloat(item.value),
-            })
-            .select()
-            .single();
+              guarantor_security_id: securityItem.id,
+              image_url: securityImageUrl,
+            });
 
-          if (securityError) throw securityError;
-
-          // Handle guarantor security item images
-          if (
-            guarantorSecurityImages[index] &&
-            guarantorSecurityImages[index].length > 0
-          ) {
-            for (const image of guarantorSecurityImages[index]) {
-              const securityImageUrl = await uploadFile(
-                image,
-                "guarantor_security",
-                `item_${securityItem.id}`
-              );
-
-              if (securityImageUrl) {
-                const { error: imageError } = await supabase
-                  .from("guarantor_security_images")
-                  .insert({
-                    guarantor_security_id: securityItem.id,
-                    image_url: securityImageUrl,
-                  });
-
-                if (imageError) throw imageError;
-              }
-            }
-          }
+          if (imageError) throw imageError;
         }
       }
+    }
+  }
+}
 
       // 9. Handle document verification images
       const documentUpload = async (file, documentType) => {
@@ -955,62 +930,219 @@ function EditAmendment({ customerId, onClose }) {
     }
   };
 
-  if (loading) {
+  const handleSaveDraft = async () => {
+  setIsSavingDraft(true);
+
+  try {
+    // Determine if this is an update (existing form) or a new draft
+    const existingCustomerId = formData?.id || null;
+
+    // Upload available files (optional)
+    let passportUrl = formData.passport_url || null;
+    let idFrontUrl = formData.id_front_url || null;
+    let idBackUrl = formData.id_back_url || null;
+    let houseImageUrl = formData.house_image_url || null;
+
+    if (passportFile)
+      passportUrl = await handleFileUpload(
+        passportFile,
+        `personal/${Date.now()}_passport_${passportFile.name}`,
+        "customers"
+      );
+
+    if (idFrontFile)
+      idFrontUrl = await handleFileUpload(
+        idFrontFile,
+        `personal/${Date.now()}_id_front_${idFrontFile.name}`,
+        "customers"
+      );
+
+    if (idBackFile)
+      idBackUrl = await handleFileUpload(
+        idBackFile,
+        `personal/${Date.now()}_id_back_${idBackFile.name}`,
+        "customers"
+      );
+
+    if (houseImageFile)
+      houseImageUrl = await handleFileUpload(
+        houseImageFile,
+        `personal/${Date.now()}_house_${houseImageFile.name}`,
+        "customers"
+      );
+
+    // --- Prepare the payload ---
+    const customerPayload = {
+      prefix: formData.prefix || null,
+      Firstname: formData.Firstname || null,
+      Surname: formData.Surname || null,
+      Middlename: formData.Middlename || null,
+      marital_status: formData.maritalStatus || null,
+      residence_status: formData.residenceStatus || null,
+      mobile: formData.mobile || null,
+      alternative_mobile: formData.alternativeMobile || null,
+      occupation: formData.occupation || null,
+      date_of_birth: formData.dateOfBirth || null,
+      gender: formData.gender || null,
+      id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
+      postal_address: formData.postalAddress || null,
+      code: formData.code ? parseInt(formData.code) : null,
+      town: formData.town || null,
+      county: formData.county || null,
+      business_name: formData.businessName || null,
+      business_type: formData.businessType || null,
+      daily_Sales: formData.daily_Sales
+        ? parseFloat(formData.daily_Sales)
+        : null,
+      year_established: formData.yearEstablished
+        ? parseInt(formData.yearEstablished)
+        : null,
+      business_location: formData.businessLocation || null,
+      road: formData.road || null,
+      landmark: formData.landmark || null,
+      has_local_authority_license:
+        formData.hasLocalAuthorityLicense === "Yes",
+      prequalifiedAmount: formData.prequalifiedAmount
+        ? parseFloat(formData.prequalifiedAmount)
+        : null,
+      passport_url: passportUrl,
+      id_front_url: idFrontUrl,
+      id_back_url: idBackUrl,
+      house_image_url: houseImageUrl,
+      form_status: "draft",
+      status: "pending",
+      created_by: profile?.id,
+      branch_id: profile?.branch_id,
+      region_id: profile?.region_id,
+      updated_at: new Date().toISOString(),
+    };
+
+    let draftResult;
+
+    if (existingCustomerId) {
+      // Update existing record
+      draftResult = await supabase
+        .from("customers")
+        .update(customerPayload)
+        .eq("id", existingCustomerId)
+        .select("id")
+        .single();
+    } else {
+      // Insert new record
+      draftResult = await supabase
+        .from("customers")
+        .insert([{ ...customerPayload, created_at: new Date().toISOString() }])
+        .select("id")
+        .single();
+    }
+
+    if (draftResult.error) throw draftResult.error;
+    const customerId = draftResult.data.id;
+
+    // --- Save related data ---
+    const nextOfKin = formData.nextOfKin || {};
+    if (Object.values(nextOfKin).some((val) => val))
+      await supabase.from("next_of_kin").upsert(
+        {
+          customer_id: customerId,
+          ...nextOfKin,
+          created_by: profile?.id,
+          branch_id: profile?.branch_id,
+          region_id: profile?.region_id,
+        },
+        { onConflict: "customer_id" }
+      );
+
+    const guarantor = formData.guarantor || {};
+    if (Object.values(guarantor).some((val) => val))
+      await supabase.from("guarantors").upsert(
+        {
+          customer_id: customerId,
+          ...guarantor,
+          created_by: profile?.id,
+          branch_id: profile?.branch_id,
+          region_id: profile?.region_id,
+        },
+        { onConflict: "customer_id" }
+      );
+
+    if (securityItems.length > 0) {
+      const itemsToInsert = securityItems.map((s) => ({
+        customer_id: customerId,
+        item: s.item || null,
+        description: s.description || null,
+        identification: s.identification || null,
+        value: s.value ? parseFloat(s.value) : null,
+        created_by: profile?.id,
+        branch_id: profile?.branch_id,
+        region_id: profile?.region_id,
+      }));
+      await supabase.from("security_items").insert(itemsToInsert);
+    }
+
+    toast.success("Draft saved successfully!", {
+      position: "top-right",
+      autoClose: 3000,
+    });
+  } catch (error) {
+    console.error("Error saving draft:", error);
+    toast.error("Failed to save draft. Please try again.", {
+      position: "top-right",
+      autoClose: 3000,
+    });
+  } finally {
+    setIsSavingDraft(false);
+  }
+};
+
+  // Add loading indicator to your JSX
+  if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600 mb-4"></div>
-          <p className="text-gray-600 font-medium">Loading customer data...</p>
+      <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex justify-center items-center">
+        <div className="bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+          <p className="text-gray-600">Loading customer data...</p>
         </div>
       </div>
     );
   }
 
-  // Navigation sections
-  const sections = [
-    { id: "personal", label: "Personal Info", icon: UserCircleIcon },
-    { id: "business", label: "Business Info", icon: BuildingOffice2Icon },
-    {
-      id: "borrowerSecurity",
-      label: "Borrower Security",
-      icon: ShieldCheckIcon,
-    },
-    { id: "loan", label: "Loan Details", icon: CurrencyDollarIcon },
-    { id: "guarantor", label: "Guarantor", icon: UserGroupIcon },
-    {
-      id: "guarantorSecurity",
-      label: "Guarantor Security",
-      icon: ShieldCheckIcon,
-    },
-    { id: "nextOfKin", label: "Next of Kin", icon: UserGroupIcon },
-    { id: "documents", label: "Documents", icon: DocumentTextIcon },
-  ];
+
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex justify-center items-start overflow-auto">
+      <div className="bg-white w-full max-w-7xl mx-4 my-8 rounded-xl shadow-lg p-8">
+        {/* Header - Show if editing existing draft */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Edit Customer Information
+                {customerId ? "Edit Customer Draft" : "New Customer Application"}
               </h1>
               <p className="text-gray-600 mt-2">
-                Update and modify customer application details
+                {customerId 
+                  ? "Editing existing customer draft" 
+                  : "Complete customer onboarding and loan application"
+                }
               </p>
+              {customerId && (
+                <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
+                  <CheckCircleIcon className="h-4 w-4" />
+                  <span>Existing draft loaded</span>
+                </div>
+              )}
             </div>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isSavingDraft}
             >
               <XCircleIcon className="h-8 w-8" />
             </button>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+          {/* Navigation Tabs */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-indigo-100">
           <div className="flex flex-wrap gap-2">
             {sections.map(({ id, label, icon: Icon }) => (
@@ -1023,7 +1155,7 @@ function EditAmendment({ customerId, onClose }) {
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md"
                 }`}
               >
-                <Icon className="h-5 w-5" />
+                <Icon Icon className="h-5 w-5" />
                 {label}
               </button>
             ))}
@@ -1042,7 +1174,7 @@ function EditAmendment({ customerId, onClose }) {
                     Personal Information
                   </h2>
                   <p className="text-gray-600 mt-2">
-                    Update personal details and contact information
+                    Enter customer's personal details and contact information
                   </p>
                 </div>
 
@@ -1053,6 +1185,8 @@ function EditAmendment({ customerId, onClose }) {
                     value={formData.prefix}
                     onChange={handleChange}
                     options={["Mr", "Mrs", "Ms", "Dr"]}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="First Name"
@@ -1060,12 +1194,16 @@ function EditAmendment({ customerId, onClose }) {
                     value={formData.Firstname}
                     onChange={handleChange}
                     required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Middle Name"
                     name="Middlename"
                     value={formData.Middlename}
                     onChange={handleChange}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Surname"
@@ -1073,30 +1211,34 @@ function EditAmendment({ customerId, onClose }) {
                     value={formData.Surname}
                     onChange={handleChange}
                     required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Mobile Number"
                     name="mobile"
                     value={formData.mobile}
                     onChange={handleChange}
-                    placeholder="Cannot be changed"
-                    className="opacity-60"
+                    required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Alternative Mobile"
                     name="alternativeMobile"
                     value={formData.alternativeMobile}
                     onChange={handleChange}
-                    className="opacity-60"
-                    placeholder="Cannot be changed"
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="ID Number"
                     name="idNumber"
                     value={formData.idNumber}
                     onChange={handleChange}
-                    className="opacity-60"
-                    placeholder="Cannot be changed"
+                    required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Date of Birth"
@@ -1104,6 +1246,8 @@ function EditAmendment({ customerId, onClose }) {
                     type="date"
                     value={formData.dateOfBirth}
                     onChange={handleChange}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Gender"
@@ -1111,6 +1255,8 @@ function EditAmendment({ customerId, onClose }) {
                     value={formData.gender}
                     onChange={handleChange}
                     options={["Male", "Female"]}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Marital Status"
@@ -1123,6 +1269,8 @@ function EditAmendment({ customerId, onClose }) {
                       "Separated/Divorced",
                       "Other",
                     ]}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Residence Status"
@@ -1130,18 +1278,22 @@ function EditAmendment({ customerId, onClose }) {
                     value={formData.residenceStatus}
                     onChange={handleChange}
                     options={["Own", "Rent", "Family", "Other"]}
+                    errors={errors}
                   />
                   <FormField
                     label="Occupation"
                     name="occupation"
                     value={formData.occupation}
                     onChange={handleChange}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Postal Address"
                     name="postalAddress"
                     value={formData.postalAddress}
                     onChange={handleChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="Postal Code"
@@ -1149,23 +1301,26 @@ function EditAmendment({ customerId, onClose }) {
                     type="number"
                     value={formData.code}
                     onChange={handleChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="Town/City"
                     name="town"
                     value={formData.town}
                     onChange={handleChange}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="County"
                     name="county"
                     value={formData.county}
                     onChange={handleChange}
+                    handleNestedChange={handleNestedChange}
                   />
                 </div>
 
                 {/* Document Uploads */}
-                <div className="mt-8">
+               <div className="mt-8">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">
                     Personal Documents
                   </h3>
@@ -1274,7 +1429,7 @@ function EditAmendment({ customerId, onClose }) {
                     Business Information
                   </h2>
                   <p className="text-gray-600 mt-2">
-                    Update business details and operations
+                    Enter business details and operations information
                   </p>
                 </div>
 
@@ -1284,6 +1439,9 @@ function EditAmendment({ customerId, onClose }) {
                     name="businessName"
                     value={formData.businessName}
                     onChange={handleChange}
+                    required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Business Type"
@@ -1291,6 +1449,9 @@ function EditAmendment({ customerId, onClose }) {
                     value={formData.businessType}
                     onChange={handleChange}
                     placeholder="e.g. Retail, Wholesale"
+                    required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Year Established"
@@ -1298,6 +1459,9 @@ function EditAmendment({ customerId, onClose }) {
                     type="date"
                     value={formData.yearEstablished}
                     onChange={handleChange}
+                    required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Daily Sales (KES)"
@@ -1305,18 +1469,27 @@ function EditAmendment({ customerId, onClose }) {
                     type="number"
                     value={formData.daily_Sales}
                     onChange={handleChange}
+                    required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Business Location"
                     name="businessLocation"
                     value={formData.businessLocation}
                     onChange={handleChange}
+                    required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Road"
                     name="road"
                     value={formData.road}
                     onChange={handleChange}
+                    required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Landmark"
@@ -1324,6 +1497,9 @@ function EditAmendment({ customerId, onClose }) {
                     value={formData.landmark}
                     onChange={handleChange}
                     placeholder="e.g. Near KCB Bank"
+                    required
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Local Authority License"
@@ -1331,6 +1507,8 @@ function EditAmendment({ customerId, onClose }) {
                     value={formData.hasLocalAuthorityLicense}
                     onChange={handleChange}
                     options={["Yes", "No"]}
+                    handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                 </div>
 
@@ -1439,8 +1617,7 @@ function EditAmendment({ customerId, onClose }) {
                 </div>
               </div>
             )}
-
-            {/* Borrower Security */}
+    {/* Borrower Security */}
             {activeSection === "borrowerSecurity" && (
               <div className="space-y-8">
                 <div className="border-b border-gray-200 pb-6">
@@ -1619,7 +1796,7 @@ function EditAmendment({ customerId, onClose }) {
                     Loan Information
                   </h2>
                   <p className="text-gray-600 mt-2">
-                    Update loan amount and terms
+                    Set loan amount and terms
                   </p>
                 </div>
 
@@ -1632,13 +1809,16 @@ function EditAmendment({ customerId, onClose }) {
                       value={formData.prequalifiedAmount}
                       onChange={handleChange}
                       className="text-center"
+                      required
+                      handleNestedChange={handleNestedChange}
+                      errors={errors}
                     />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Guarantor Details */}
+          {/* Guarantor Details */}
             {activeSection === "guarantor" && (
               <div className="space-y-8">
                 <div className="border-b border-gray-200 pb-6">
@@ -2124,7 +2304,7 @@ function EditAmendment({ customerId, onClose }) {
                     Next of Kin Information
                   </h2>
                   <p className="text-gray-600 mt-2">
-                    Update next of kin details
+                    Enter next of kin details
                   </p>
                 </div>
 
@@ -2134,7 +2314,9 @@ function EditAmendment({ customerId, onClose }) {
                     name="Firstname"
                     value={formData.nextOfKin.Firstname}
                     section="nextOfKin"
+                    required
                     handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Middle Name"
@@ -2148,29 +2330,35 @@ function EditAmendment({ customerId, onClose }) {
                     name="Surname"
                     value={formData.nextOfKin.Surname}
                     section="nextOfKin"
+                    required
                     handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="ID Number"
                     name="idNumber"
                     value={formData.nextOfKin.idNumber}
                     section="nextOfKin"
+                    required
                     handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Relationship"
                     name="relationship"
                     value={formData.nextOfKin.relationship}
                     section="nextOfKin"
-                    handleNestedChange={handleNestedChange}
                     placeholder="e.g. Brother, Sister"
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="Mobile Number"
                     name="mobile"
                     value={formData.nextOfKin.mobile}
                     section="nextOfKin"
+                    required
                     handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Alternative Number"
@@ -2178,13 +2366,13 @@ function EditAmendment({ customerId, onClose }) {
                     value={formData.nextOfKin.alternativeNumber}
                     section="nextOfKin"
                     handleNestedChange={handleNestedChange}
+                    errors={errors}
                   />
                   <FormField
                     label="Employment Status"
                     name="employmentStatus"
                     value={formData.nextOfKin.employmentStatus}
                     section="nextOfKin"
-                    handleNestedChange={handleNestedChange}
                     options={[
                       "Employed",
                       "Self Employed",
@@ -2192,6 +2380,7 @@ function EditAmendment({ customerId, onClose }) {
                       "Student",
                       "Retired",
                     ]}
+                    handleNestedChange={handleNestedChange}
                   />
                   <FormField
                     label="County"
@@ -2211,7 +2400,7 @@ function EditAmendment({ customerId, onClose }) {
               </div>
             )}
 
-         {/* Documents Verification */}
+                  {/* Documents Verification */}
 {activeSection === "documents" && (
   <div className="space-y-8">
     <div className="border-b border-gray-200 pb-6">
@@ -2342,74 +2531,101 @@ function EditAmendment({ customerId, onClose }) {
   </div>
 )}
 
-            {/* Action Buttons */}
-            <div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
-              <div className="flex gap-4">
-                {/* Single Previous button */}
-                {activeSection !== sections[0].id && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const currentIndex = sections.findIndex(
-                        (s) => s.id === activeSection
-                      );
-                      setActiveSection(sections[currentIndex - 1].id);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    <ChevronLeftIcon className="h-4 w-4" />
-                    Previous
-                  </button>
-                )}
+  {/* Action Buttons */}
+<div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
+  {/* Left Side: Previous Button */}
+  <div>
+    {activeSection !== sections[0].id && (
+      <button
+        type="button"
+        onClick={() => {
+          const currentIndex = sections.findIndex((s) => s.id === activeSection);
+          setActiveSection(sections[currentIndex - 1].id);
+        }}
+        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+        disabled={isSubmitting || isSavingDraft}
+      >
+        <ChevronLeftIcon className="h-4 w-4" />
+        Previous
+      </button>
+    )}
+  </div>
 
-                {/* Single Next button */}
-                {activeSection !== sections[sections.length - 1].id && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const currentIndex = sections.findIndex(
-                        (s) => s.id === activeSection
-                      );
-                      setActiveSection(sections[currentIndex + 1].id);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Next
-                    <ChevronRightIcon className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+  {/* Right Side: Next/Submit + Save as Draft Buttons */}
+  <div className="flex items-center gap-4">
+    {/* Save as Draft Button */}
+    <button
+      type="button"
+      onClick={handleSaveDraft}
+      disabled={isSavingDraft || isSubmitting}
+      className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {isSavingDraft ? (
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+          Saving Draft...
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <DocumentTextIcon className="h-4 w-4" />
+          Save as Draft
+        </div>
+      )}
+    </button>
 
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      Saving Changes...
-                    </div>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </button>
-              </div>
-            </div>
+    {/* Next or Submit Button */}
+    {activeSection !== sections[sections.length - 1].id ? (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault(); // 🛑 Prevent any accidental form submission
+          const currentIndex = sections.findIndex((s) => s.id === activeSection);
+          const nextIndex = currentIndex + 1;
+          if (nextIndex < sections.length) {
+            setActiveSection(sections[nextIndex].id);
+          }
+        }}
+        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+        disabled={isSubmitting || isSavingDraft}
+      >
+        Next
+        <ChevronRightIcon className="h-4 w-4" />
+      </button>
+    ) : (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          handleSubmit(e); // ✅ Explicitly call your handleSubmit instead of auto form submission
+        }}
+        disabled={isSubmitting || isSavingDraft}
+        className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isSubmitting ? (
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            Submitting Application...
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <CheckCircleIcon className="h-5 w-5" />
+            Submit Application
+          </div>
+        )}
+      </button>
+    )}
+  </div>
+</div>
+
+
+
+
+
           </form>
         </div>
       </div>
     </div>
   );
-}
+};
 
-export default EditAmendment;
+export default CustomerDraft;

@@ -5,6 +5,7 @@ import bodyParser from "body-parser";
 import { createClient } from "@supabase/supabase-js";
 import c2b from "./routes/c2b.js";
 import b2c from "./routes/b2c.js";
+import stkpush from "./routes/stkpush.js";
 
 const app = express();
 app.use(cors());
@@ -59,6 +60,7 @@ app.post("/create-user", async (req, res) => {
 });
 app.use("/mpesa/c2b",c2b );
 app.use("/mpesa/b2c", b2c);
+app.use("/mpesa/b2c", stkpush);
 // Start server
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

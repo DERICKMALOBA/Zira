@@ -187,6 +187,7 @@ const AddCustomer = ({ profile, onClose }) => {
   const [officerClientImage2, setOfficerClientImage2] = useState(null);
   const [bothOfficersImage, setBothOfficersImage] = useState(null);
   const [previews, setPreviews] = useState({});
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // Navigation sections with proper icons
   const sections = [
@@ -910,6 +911,172 @@ const validateNextOfKinDetails = async () => {
       return null;
     }
   };
+
+const handleSaveDraft = async () => {
+  setIsSavingDraft(true);
+
+  try {
+    // Determine if this is an update (existing form) or a new draft
+    const existingCustomerId = formData?.id || null;
+
+    // Upload available files (optional)
+    let passportUrl = formData.passport_url || null;
+    let idFrontUrl = formData.id_front_url || null;
+    let idBackUrl = formData.id_back_url || null;
+    let houseImageUrl = formData.house_image_url || null;
+
+    if (passportFile)
+      passportUrl = await uploadFile(
+        passportFile,
+        `personal/${Date.now()}_passport_${passportFile.name}`,
+        "customers"
+      );
+
+    if (idFrontFile)
+      idFrontUrl = await uploadFile(
+        idFrontFile,
+        `personal/${Date.now()}_id_front_${idFrontFile.name}`,
+        "customers"
+      );
+
+    if (idBackFile)
+      idBackUrl = await uploadFile(
+        idBackFile,
+        `personal/${Date.now()}_id_back_${idBackFile.name}`,
+        "customers"
+      );
+
+    if (houseImageFile)
+      houseImageUrl = await uploadFile(
+        houseImageFile,
+        `personal/${Date.now()}_house_${houseImageFile.name}`,
+        "customers"
+      );
+
+    // --- Prepare the payload ---
+    const customerPayload = {
+      prefix: formData.prefix || null,
+      Firstname: formData.Firstname || null,
+      Surname: formData.Surname || null,
+      Middlename: formData.Middlename || null,
+      marital_status: formData.maritalStatus || null,
+      residence_status: formData.residenceStatus || null,
+      mobile: formData.mobile || null,
+      alternative_mobile: formData.alternativeMobile || null,
+      occupation: formData.occupation || null,
+      date_of_birth: formData.dateOfBirth || null,
+      gender: formData.gender || null,
+      id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
+      postal_address: formData.postalAddress || null,
+      code: formData.code ? parseInt(formData.code) : null,
+      town: formData.town || null,
+      county: formData.county || null,
+      business_name: formData.businessName || null,
+      business_type: formData.businessType || null,
+      daily_Sales: formData.daily_Sales
+        ? parseFloat(formData.daily_Sales)
+        : null,
+      year_established: formData.yearEstablished
+        ? parseInt(formData.yearEstablished)
+        : null,
+      business_location: formData.businessLocation || null,
+      road: formData.road || null,
+      landmark: formData.landmark || null,
+      has_local_authority_license:
+        formData.hasLocalAuthorityLicense === "Yes",
+      prequalifiedAmount: formData.prequalifiedAmount
+        ? parseFloat(formData.prequalifiedAmount)
+        : null,
+      passport_url: passportUrl,
+      id_front_url: idFrontUrl,
+      id_back_url: idBackUrl,
+      house_image_url: houseImageUrl,
+      form_status: "draft",
+      status: "pending",
+      created_by: profile?.id,
+      branch_id: profile?.branch_id,
+      region_id: profile?.region_id,
+      updated_at: new Date().toISOString(),
+    };
+
+    let draftResult;
+
+    if (existingCustomerId) {
+      // Update existing record
+      draftResult = await supabase
+        .from("customers")
+        .update(customerPayload)
+        .eq("id", existingCustomerId)
+        .select("id")
+        .single();
+    } else {
+      // Insert new record
+      draftResult = await supabase
+        .from("customers")
+        .insert([{ ...customerPayload, created_at: new Date().toISOString() }])
+        .select("id")
+        .single();
+    }
+
+    if (draftResult.error) throw draftResult.error;
+    const customerId = draftResult.data.id;
+
+    // --- Save related data ---
+    const nextOfKin = formData.nextOfKin || {};
+    if (Object.values(nextOfKin).some((val) => val))
+      await supabase.from("next_of_kin").upsert(
+        {
+          customer_id: customerId,
+          ...nextOfKin,
+          created_by: profile?.id,
+          branch_id: profile?.branch_id,
+          region_id: profile?.region_id,
+        },
+        { onConflict: "customer_id" }
+      );
+
+    const guarantor = formData.guarantor || {};
+    if (Object.values(guarantor).some((val) => val))
+      await supabase.from("guarantors").upsert(
+        {
+          customer_id: customerId,
+          ...guarantor,
+          created_by: profile?.id,
+          branch_id: profile?.branch_id,
+          region_id: profile?.region_id,
+        },
+        { onConflict: "customer_id" }
+      );
+
+    if (securityItems.length > 0) {
+      const itemsToInsert = securityItems.map((s) => ({
+        customer_id: customerId,
+        item: s.item || null,
+        description: s.description || null,
+        identification: s.identification || null,
+        value: s.value ? parseFloat(s.value) : null,
+        created_by: profile?.id,
+        branch_id: profile?.branch_id,
+        region_id: profile?.region_id,
+      }));
+      await supabase.from("security_items").insert(itemsToInsert);
+    }
+
+    toast.success("Draft saved successfully!", {
+      position: "top-right",
+      autoClose: 3000,
+    });
+  } catch (error) {
+    console.error("Error saving draft:", error);
+    toast.error("Failed to save draft. Please try again.", {
+      position: "top-right",
+      autoClose: 3000,
+    });
+  } finally {
+    setIsSavingDraft(false);
+  }
+};
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -2620,35 +2787,55 @@ const validateNextOfKinDetails = async () => {
             )}
 
             {/* Action Buttons */}
-          <div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
-  {/* Previous button on the left */}
-  <div>
+  {/* Action Buttons */}
+<div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
+
+  {/* Left Side: Previous Button */}
+  <div className="flex items-center gap-4">
     {activeSection !== sections[0].id && (
       <button
         type="button"
         onClick={() => {
-          const currentIndex = sections.findIndex(
-            (s) => s.id === activeSection
-          );
+          const currentIndex = sections.findIndex((s) => s.id === activeSection);
           setActiveSection(sections[currentIndex - 1].id);
         }}
         className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-        disabled={isSubmitting}
+        disabled={isSubmitting || isSavingDraft}
       >
         <ChevronLeftIcon className="h-4 w-4" />
         Previous
       </button>
     )}
+
+    {/* ✅ Save as Draft Button */}
+    <button
+      type="button"
+      onClick={handleSaveDraft}
+      disabled={isSavingDraft || isSubmitting}
+      className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {isSavingDraft ? (
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+          Saving Draft...
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <DocumentTextIcon className="h-4 w-4" />
+          Save as Draft
+        </div>
+      )}
+    </button>
   </div>
 
-  {/* Next or Submit button on the right */}
+  {/* Right Side: Next or Submit Button */}
   <div>
     {activeSection !== sections[sections.length - 1].id ? (
       <button
         type="button"
         onClick={handleNext}
         className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-        disabled={isSubmitting}
+        disabled={isSubmitting || isSavingDraft}
       >
         Next
         <ChevronRightIcon className="h-4 w-4" />
@@ -2656,7 +2843,7 @@ const validateNextOfKinDetails = async () => {
     ) : (
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || isSavingDraft}
         className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSubmitting ? (
@@ -2674,6 +2861,7 @@ const validateNextOfKinDetails = async () => {
     )}
   </div>
 </div>
+
 
           </form>
         </div>

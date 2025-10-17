@@ -97,6 +97,7 @@ import CustomerListing from "./pages/reports/CustomerListing";
 import LoanDueReport from "./pages/reports/LoanDueReport";
 import DisbursementLoansReport from "./pages/reports/DisbursementLoansReport";
 import CustomerAccountModal from "./pages/reports/CustomerAccountModal";
+import CustomerDraft from "./relationship-officer/components/CustomerDraft";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -291,6 +292,23 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <Amendments />
+                      </ProtectedRoute>
+                    }
+                  />
+
+                   <Route
+                    path="/officer/customers/drafts"
+                    element={
+                      <ProtectedRoute>
+                        <CustomerDraft />
+                      </ProtectedRoute>
+                    }
+                  />
+                   <Route
+                    path="/officer/loans/drafts"
+                    element={
+                      <ProtectedRoute>
+                        <LoanDrafts/>
                       </ProtectedRoute>
                     }
                   />

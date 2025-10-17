@@ -21,7 +21,7 @@ import { useAuth } from "../hooks/userAuth";
 import { supabase } from "../supabaseClient";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import CustomerForm from "./components/CustomerForm"; // ✅ Import the actual CustomerForm component
+import CustomerForm from "./components/CustomerForm"; // Import the actual CustomerForm component
 
 const Leads = () => {
   const [leads, setLeads] = useState([]);
@@ -43,7 +43,7 @@ const Leads = () => {
     status: "Cold",
   });
 
-  // ✅ Fetch leads for logged-in officer
+  //  Fetch leads for logged-in officer
   const fetchLeads = async () => {
     try {
       if (!profile?.id) return;
@@ -108,7 +108,7 @@ const Leads = () => {
         }
       }
 
-      // ✅ Passed all checks
+      //  Passed all checks
       return true;
     } catch (err) {
       console.error("Error checking mobile uniqueness:", err);
@@ -167,7 +167,7 @@ const Leads = () => {
         status: "Cold",
       });
       setShowLeadForm(false);
-      toast.success("Lead saved successfully ✅");
+      toast.success("Lead saved successfully ");
     } catch (err) {
       console.error("Error saving lead:", err);
       toast.error("Error saving lead");
@@ -284,10 +284,10 @@ const Leads = () => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-4 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
+              <h1 className=" font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
                 Lead Management
               </h1>
               <p className="text-gray-600 mt-2">Track and convert potential customers</p>

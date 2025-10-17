@@ -188,78 +188,127 @@ const PendingLoans = () => {
     setRepaymentSchedule(schedule);
   };
 
-  const handleDisbursement = async (loan) => {
-    try {
-      setDisbursing(true);
+ const handleDisbursement = async (loan) => {
+  try {
+    setDisbursing(true);
 
-      // Validate required fields
-      if (!loan.customers || !loan.customers.mobile) {
-        toast.error("Customer mobile number is missing. Cannot process disbursement.");
-        return;
-      }
-
-      if (!loan.scored_amount || loan.scored_amount <= 0) {
-        toast.error("Invalid loan amount. Cannot process disbursement.");
-        return;
-      }
-
-      // Format mobile number to ensure it's in correct format (254...)
-      let mobileNumber = loan.customers.mobile;
-      
-      // Clean the mobile number - remove any spaces, dashes, etc.
-      mobileNumber = mobileNumber.replace(/\D/g, '');
-      
-      // Convert to 254 format if it starts with 0 or 7
-      if (mobileNumber.startsWith('0')) {
-        mobileNumber = '254' + mobileNumber.substring(1);
-      } else if (mobileNumber.startsWith('7')) {
-        mobileNumber = '254' + mobileNumber;
-      }
-
-      // Validate mobile number format
-      if (!mobileNumber.startsWith('254') || mobileNumber.length !== 12) {
-        toast.error("Invalid mobile number format. Please ensure it's a valid Kenyan number.");
-        return;
-      }
-
-      console.log('Disbursing loan:', {
-        amount: loan.scored_amount,
-        mobile: mobileNumber,
-        customer: `${loan.customers.Firstname} ${loan.customers.Surname}`
-      });
-
-      // Call backend to disburse via B2C
-      const { data, error: b2cError } = await axios.post('http://localhost:5000/mpesa/b2c/send', {
-        amount: loan.scored_amount,
-        msisdn: mobileNumber
-      });
-
-      if (b2cError) throw b2cError;
-
-      // Update loan status as disbursed
-      const { error } = await supabase
-        .from("loans")
-        .update({
-          status: 'disbursed',
-          checker_decision: 'approved',
-          checker_comment: 'Disbursed via B2C',
-          checker_id: profile?.id,
-          disbursed_at: new Date().toISOString()
-        })
-        .eq("id", loan.id);
-
-      if (error) throw error;
-      
-      toast.success("Loan disbursed successfully!");
-      fetchPendingDisbursementLoans();
-      setSelectedLoan(null); // Clear selected loan after disbursement
-    } catch (err) {
-      console.error('Disbursement error:', err);
-      toast.error(`Failed to disburse loan: ${err.response?.data?.message || err.message}`);
-    } finally {
-      setDisbursing(false);
+    // ✅ Step 1: Validate basic fields
+    if (!loan.customers || !loan.customers.mobile) {
+      toast.error("Customer mobile number is missing. Cannot process disbursement.");
+      return;
     }
-  };
+
+    if (!loan.scored_amount || loan.scored_amount <= 0) {
+      toast.error("Invalid loan amount. Cannot process disbursement.");
+      return;
+    }
+
+    // ✅ Step 2: Format mobile number to correct 254... format
+    let mobileNumber = loan.customers.mobile.replace(/\D/g, '');
+    if (mobileNumber.startsWith('0')) mobileNumber = '254' + mobileNumber.substring(1);
+    else if (mobileNumber.startsWith('7')) mobileNumber = '254' + mobileNumber;
+
+    if (!mobileNumber.startsWith('254') || mobileNumber.length !== 12) {
+      toast.error("Invalid mobile number format. Please ensure it's a valid Kenyan number.");
+      return;
+    }
+
+    // ✅ Step 3: Check registration & processing fees status
+    const customerId = loan.customers.id;
+
+    // Fetch latest customer + loan status from backend (important for real-time accuracy)
+    const { data: customerData, error: customerError } = await supabase
+      .from("customers")
+      .select("registration_fee_paid")
+      .eq("id", customerId)
+      .single();
+
+    const { data: loanData, error: loanError } = await supabase
+      .from("loans")
+      .select("processing_fee_paid")
+      .eq("id", loan.id)
+      .single();
+
+    if (customerError || loanError) throw new Error("Unable to verify payment status.");
+
+    // ✅ Step 4: If unpaid fees exist, trigger STK Push for them
+    let stkTriggered = false;
+
+    // Registration fee (only for new customers)
+    if (!customerData.registration_fee_paid) {
+      stkTriggered = true;
+      await axios.post("http://localhost:5000/mpesa/stkpush", {
+        amount: 100, // your registration fee amount
+        phone: mobileNumber,
+        accountReference: "registration",
+        transactionDesc: "Registration Fee",
+        customerId,
+      });
+      toast.info("Registration fee STK push sent. Please complete payment before disbursement.");
+    }
+
+    // Processing fee (each loan)
+    if (!loanData.processing_fee_paid) {
+      stkTriggered = true;
+      await axios.post("http://localhost:5000/mpesa/stkpush", {
+        amount: 200, // your processing fee amount
+        phone: mobileNumber,
+        accountReference: "processing_fee",
+        transactionDesc: "Processing Fee",
+        loanId: loan.id,
+        customerId,
+      });
+      toast.info("Processing fee STK push sent. Please complete payment before disbursement.");
+    }
+
+    if (stkTriggered) {
+      toast.error("Disbursement blocked until required fees are paid.");
+      return; // 🛑 Stop here — no disbursement until payment complete
+    }
+
+    // ✅ Step 5: Proceed with disbursement (only if fees are paid)
+    console.log("Disbursing loan:", {
+      amount: loan.scored_amount,
+      mobile: mobileNumber,
+      customer: `${loan.customers.Firstname} ${loan.customers.Surname}`,
+    });
+
+    // B2C disbursement
+    const { data: b2cResponse, error: b2cError } = await axios.post(
+      "http://localhost:5000/mpesa/b2c/send",
+      {
+        amount: loan.scored_amount,
+        msisdn: mobileNumber,
+      }
+    );
+
+    if (b2cError) throw b2cError;
+
+    // ✅ Update loan as disbursed
+    const { error: updateError } = await supabase
+      .from("loans")
+      .update({
+        status: "disbursed",
+        checker_decision: "approved",
+        checker_comment: "Disbursed via B2C",
+        checker_id: profile?.id,
+        disbursed_at: new Date().toISOString(),
+      })
+      .eq("id", loan.id);
+
+    if (updateError) throw updateError;
+
+    toast.success("Loan disbursed successfully!");
+    fetchPendingDisbursementLoans();
+    setSelectedLoan(null);
+  } catch (err) {
+    console.error("Disbursement error:", err);
+    toast.error(`Failed to disburse loan: ${err.response?.data?.message || err.message}`);
+  } finally {
+    setDisbursing(false);
+  }
+};
+
 
   // Check if selected loan is valid for disbursement
   const isLoanValidForDisbursement = (loan) => {

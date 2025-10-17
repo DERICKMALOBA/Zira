@@ -33,18 +33,36 @@ const OfficerSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       bgColor: 'bg-blue-400/10',
       noChildren: true, // direct NavLink
     },
-    {
-      name: 'Customer',
-      href: '/officer/customers',
-      icon: Users,
-      color: 'text-orange-400',
-      bgColor: 'bg-orange-400/10',
-      children: [
-        { name: 'View Customers', href: '/officer/customers', icon: Users },
-       
-        { name: 'Pending Amendments', href: '/officer/customers/amendments', icon: ClipboardList },
-      ],
+   {
+  name: 'Customer',
+  href: '/officer/customers',
+  icon: Users,
+  color: 'text-orange-400',
+  bgColor: 'bg-orange-400/10',
+  children: [
+    { 
+      name: 'View Customers', 
+      href: '/officer/customers', 
+      icon: Users 
     },
+    { 
+      name: 'Pending Amendments', 
+      href: '/officer/customers/amendments', 
+      icon: ClipboardList 
+    },
+    { 
+      name: 'Customer Drafts', 
+      href: '/officer/customers/drafts', 
+      icon: FileText // or use a better icon like 'Archive' from lucide-react
+    },
+    // { 
+    //   name: 'Loan Drafts', 
+    //   href: '/officer/loans/drafts', 
+    //   icon: FileText // you can also use 'Briefcase' or 'Wallet' if preferred
+    // },
+  ],
+},
+
    {
   name: 'Loan Processing',
   href: '/officer/loans',

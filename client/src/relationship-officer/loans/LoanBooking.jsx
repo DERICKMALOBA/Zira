@@ -330,10 +330,10 @@ const handleBookLoan = async () => {
       
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-4 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
+              <h1 className=" font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
                 Loan Booking Confirmation
               </h1>
               <p className="text-gray-600 mt-2">
