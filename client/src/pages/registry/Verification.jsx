@@ -21,6 +21,7 @@ import {
   PhotoIcon,
   DevicePhoneMobileIcon,
   PhoneIcon,
+  BookmarkIcon,
   PencilSquareIcon,
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
@@ -37,11 +38,12 @@ const Verification = ({ customerId, onClose }) => {
   const [nextOfKinInfo, setNextOfKinInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
+     const [isSavingDraft, setIsSavingDraft] = useState(false);
   
   // Loan amounts - READ ONLY
   const [prequalifiedAmount, setPrequalifiedAmount] = useState(0);
   const [bmScoredAmount, setBmScoredAmount] = useState(0);
-  const [userRole] = useState('credit_analyst_officer'); // Added missing state
+  const [userRole] = useState('credit_analyst_officer'); 
 
 
   const [verificationData, setVerificationData] = useState({
@@ -573,6 +575,102 @@ const Verification = ({ customerId, onClose }) => {
     );
   }
 
+
+     const saveAsDraft = async () => {
+      try {
+        setIsSavingDraft(true);
+  
+      const draftData = {
+  customer_id: Number(customerId),
+
+  co_customer_id_verified: verificationData.customer.idVerified,
+  co_customer_phone_verified: verificationData.customer.phoneVerified,
+  co_customer_comment: verificationData.customer.comment,
+
+  co_business_verified: verificationData.business.verified,
+  co_business_comment: verificationData.business.comment,
+
+  co_loan_scored_amount: verificationData.loan.scoredAmount,
+  co_loan_comment: verificationData.loan.comment,
+
+  co_guarantor_id_verified: verificationData.guarantors.every((g) => g.idVerified),
+  co_guarantor_phone_verified: verificationData.guarantors.every((g) => g.phoneVerified),
+  co_guarantor_comment: verificationData.guarantors.map((g) => g.comment).join("; "),
+
+  co_borrower_security_verified: verificationData.security.verified,
+  co_borrower_security_comment: verificationData.security.comment,
+
+  co_guarantor_security_verified: verificationData.guarantorSecurity.verified,
+  co_guarantor_security_comment: verificationData.guarantorSecurity.comment,
+
+  co_next_of_kin_verified: verificationData.nextOfKin.verified,
+  co_next_of_kin_comment: verificationData.nextOfKin.comment,
+
+  co_document_verified: verificationData.document.verified,
+  co_document_comment: verificationData.document.comment,
+
+  co_final_decision: verificationData.finalDecision || null,
+  co_overall_comment: verificationData.overallComment || null,
+
+  co_verified_by: profile?.id || null,
+  is_draft: true,
+};
+
+  
+        const { data: existingDraft } = await supabase
+          .from("customer_verifications")
+          .select("id")
+          .eq("customer_id", Number(customerId))
+          .eq("is_draft", true)
+          .maybeSingle();
+  
+        if (existingDraft) {
+          const { error } = await supabase
+            .from("customer_verifications")
+            .update(draftData)
+            .eq("id", existingDraft.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from("customer_verifications")
+            .insert(draftData);
+          if (error) throw error;
+        }
+  
+        const { error: statusError } = await supabase
+          .from("customers")
+          .update({ form_status: 'draft' })
+          .eq("id", customerId);
+        if (statusError) throw statusError;
+  
+        toast.success("Draft saved successfully!");
+      } catch (error) {
+        console.error("Error saving draft:", error);
+        toast.error("Error saving draft");
+      } finally {
+        setIsSavingDraft(false);
+      }
+    };
+
+      const SaveDraftButton = () => (
+        <button
+          onClick={saveAsDraft}
+          disabled={isSavingDraft}
+          className="flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-300 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSavingDraft ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-600 border-t-transparent mr-2"></div>
+              Saving...
+            </>
+          ) : (
+            <>
+              <BookmarkIcon className="h-5 w-5 mr-2" />
+              Save Draft
+            </>
+          )}
+        </button>
+      );
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -2188,57 +2286,65 @@ const Verification = ({ customerId, onClose }) => {
         </div>
 
         {/* Navigation Buttons */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 flex justify-between border border-indigo-100">
-          <button
-            onClick={() => setStep(step - 1)}
-            disabled={step === 1}
-            className={`flex items-center px-6 py-3 rounded-xl font-medium transition-all ${
-              step === 1
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:shadow-md"
-            }`}
-          >
-            <ChevronLeftIcon className="h-5 w-5 mr-2" />
-            Previous
-          </button>
-
-          {step < 8 ? (
-            <button
-              onClick={() => {
-                if (validateCurrentStep()) {
-                  setStep(step + 1);
-                }
-              }}
-              className="flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
-            >
-              Next
-              <ChevronRightIcon className="h-5 w-5 ml-2" />
-            </button>
-          ) : (
-            <button
-              onClick={() => {
-                if (validateCurrentStep()) {
-                  submitVerification();
-                }
-              }}
-              disabled={loading}
-              className={`px-6 py-3 rounded-xl font-medium transition-all ${
-                loading
-                  ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                  : "bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700 shadow-md hover:shadow-lg"
-              }`}
-            >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                  Submitting...
-                </div>
-              ) : (
-                "Submit Verification"
-              )}
-            </button>
-          )}
-        </div>
+     <div className="bg-white rounded-2xl shadow-lg p-6 flex justify-between items-center border border-indigo-100">
+               <div className="flex items-center gap-4">
+                 <button
+                   onClick={() => setStep(step - 1)}
+                   disabled={step === 1}
+                   className={`flex items-center px-6 py-3 rounded-xl font-medium transition-all ${
+                     step === 1
+                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                       : "bg-gray-200 text-gray-700 hover:bg-gray-300 hover:shadow-md"
+                   }`}
+                 >
+                   <ChevronLeftIcon className="h-5 w-5 mr-2" />
+                   Previous
+                 </button>
+                 
+                 {/* Save Draft Button - Show for all steps except the last one */}
+                 {step < 8 && <SaveDraftButton />}
+               </div>
+     
+               {step < 8 ? (
+                 <button
+                   onClick={() => {
+                     if (validateCurrentStep()) {
+                       setStep(step + 1);
+                     }
+                   }}
+                   className="flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
+                 >
+                   Next
+                   <ChevronRightIcon className="h-5 w-5 ml-2" />
+                 </button>
+               ) : (
+                 <div className="flex items-center gap-4">
+                   <SaveDraftButton />
+                   <button
+                     onClick={() => {
+                       if (validateCurrentStep()) {
+                         submitVerification();
+                       }
+                     }}
+                     disabled={loading}
+                     className={`px-6 py-3 rounded-xl font-medium transition-all ${
+                       loading
+                         ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                         : "bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700 shadow-md hover:shadow-lg"
+                     }`}
+                   >
+                     {loading ? (
+                       <div className="flex items-center">
+                         <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                         Submitting...
+                       </div>
+                     ) : (
+                       "Submit Verification"
+                     )}
+                   </button>
+                 </div>
+               )}
+             </div>
 
         {/* Image Modal */}
         {selectedImage && (

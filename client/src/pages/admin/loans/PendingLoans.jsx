@@ -188,103 +188,96 @@ const PendingLoans = () => {
     setRepaymentSchedule(schedule);
   };
 
- const handleDisbursement = async (loan) => {
+const handleDisbursement = async (loan) => {
   try {
     setDisbursing(true);
 
-    // ✅ Step 1: Validate basic fields
     if (!loan.customers || !loan.customers.mobile) {
       toast.error("Customer mobile number is missing. Cannot process disbursement.");
       return;
     }
 
-    if (!loan.scored_amount || loan.scored_amount <= 0) {
+    const principal = loan.scored_amount;
+    if (!principal || principal <= 0) {
       toast.error("Invalid loan amount. Cannot process disbursement.");
       return;
     }
 
-    // ✅ Step 2: Format mobile number to correct 254... format
+    // Format mobile number
     let mobileNumber = loan.customers.mobile.replace(/\D/g, '');
     if (mobileNumber.startsWith('0')) mobileNumber = '254' + mobileNumber.substring(1);
     else if (mobileNumber.startsWith('7')) mobileNumber = '254' + mobileNumber;
-
     if (!mobileNumber.startsWith('254') || mobileNumber.length !== 12) {
-      toast.error("Invalid mobile number format. Please ensure it's a valid Kenyan number.");
+      toast.error("Invalid mobile number format.");
       return;
     }
 
-    // ✅ Step 3: Check registration & processing fees status
     const customerId = loan.customers.id;
 
-    // Fetch latest customer + loan status from backend (important for real-time accuracy)
+    //  Fetch customer + loan latest statuses
     const { data: customerData, error: customerError } = await supabase
       .from("customers")
-      .select("registration_fee_paid")
+      .select("registration_fee_paid, is_new_customer")
       .eq("id", customerId)
       .single();
 
     const { data: loanData, error: loanError } = await supabase
       .from("loans")
-      .select("processing_fee_paid")
+      .select("processing_fee_paid, scored_amount")
       .eq("id", loan.id)
       .single();
 
-    if (customerError || loanError) throw new Error("Unable to verify payment status.");
+    if (customerError || loanError) throw new Error("Unable to verify customer/loan info.");
 
-    // ✅ Step 4: If unpaid fees exist, trigger STK Push for them
+    //  Compute processing fee dynamically
+    const processingFee =
+      loanData.scored_amount < 10000 ? 500 : loanData.scored_amount * 0.05;
+
+    const registrationFee = 300; // Always 300 for new customers
     let stkTriggered = false;
 
-    // Registration fee (only for new customers)
-    if (!customerData.registration_fee_paid) {
+    //  1. Registration Fee STK (new customers only)
+    if (customerData.is_new_customer && !customerData.registration_fee_paid) {
       stkTriggered = true;
-      await axios.post("http://localhost:5000/mpesa/stkpush", {
-        amount: 100, // your registration fee amount
+      await axios.post("http://localhost:5000/mpesa/c2b/stkpush", {
+        amount: registrationFee,
         phone: mobileNumber,
-        accountReference: "registration",
+        accountReference: "REGISTRATION",
         transactionDesc: "Registration Fee",
         customerId,
       });
-      toast.info("Registration fee STK push sent. Please complete payment before disbursement.");
+      toast.info(`STK Push for KES ${registrationFee} sent for Registration Fee.`);
     }
 
-    // Processing fee (each loan)
+    //  2. Processing Fee STK (every loan)
     if (!loanData.processing_fee_paid) {
       stkTriggered = true;
-      await axios.post("http://localhost:5000/mpesa/stkpush", {
-        amount: 200, // your processing fee amount
+      await axios.post("http://localhost:5000/mpesa/c2b/stkpush", {
+        amount: processingFee,
         phone: mobileNumber,
-        accountReference: "processing_fee",
+        accountReference: "PROCESSING",
         transactionDesc: "Processing Fee",
         loanId: loan.id,
         customerId,
       });
-      toast.info("Processing fee STK push sent. Please complete payment before disbursement.");
+      toast.info(`STK Push for KES ${processingFee.toLocaleString()} sent for Processing Fee.`);
     }
 
+    //  Block disbursement until fees are paid
     if (stkTriggered) {
-      toast.error("Disbursement blocked until required fees are paid.");
-      return; // 🛑 Stop here — no disbursement until payment complete
+      toast.warn("Loan disbursement is on hold until required fees are paid.");
+      return;
     }
 
-    // ✅ Step 5: Proceed with disbursement (only if fees are paid)
-    console.log("Disbursing loan:", {
-      amount: loan.scored_amount,
-      mobile: mobileNumber,
-      customer: `${loan.customers.Firstname} ${loan.customers.Surname}`,
-    });
-
-    // B2C disbursement
+    //  Continue with B2C disbursement
     const { data: b2cResponse, error: b2cError } = await axios.post(
       "http://localhost:5000/mpesa/b2c/send",
-      {
-        amount: loan.scored_amount,
-        msisdn: mobileNumber,
-      }
+      { amount: loan.scored_amount, msisdn: mobileNumber }
     );
-
     if (b2cError) throw b2cError;
+    console.log("B2C Response:", b2cResponse);
 
-    // ✅ Update loan as disbursed
+    //  Update loan as disbursed
     const { error: updateError } = await supabase
       .from("loans")
       .update({
@@ -301,6 +294,7 @@ const PendingLoans = () => {
     toast.success("Loan disbursed successfully!");
     fetchPendingDisbursementLoans();
     setSelectedLoan(null);
+
   } catch (err) {
     console.error("Disbursement error:", err);
     toast.error(`Failed to disburse loan: ${err.response?.data?.message || err.message}`);

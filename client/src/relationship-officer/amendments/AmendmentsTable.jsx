@@ -27,7 +27,7 @@ function AmendmentsTable({ amendments, loading, onEdit, onView, onRefresh }) {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Loan Amount</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Business Name</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
             </tr>
@@ -40,7 +40,7 @@ function AmendmentsTable({ amendments, loading, onEdit, onView, onRefresh }) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">{amendment.customers?.id_number}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{amendment.customers?.mobile}</td>
-                <td className="px-6 py-4 whitespace-nowrap">ksh {amendment.bm_loan_scored_amount? Number(amendment.bm_loan_scored_amount).toLocaleString() : "N/A"}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{amendment.customers?.business_name}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
                     ${amendment.final_decision === 'approved' ? 'bg-green-100 text-green-800' : 

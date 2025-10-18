@@ -60,7 +60,7 @@ app.post("/create-user", async (req, res) => {
 });
 app.use("/mpesa/c2b",c2b );
 app.use("/mpesa/b2c", b2c);
-app.use("/mpesa/b2c", stkpush);
+app.use("/mpesa/c2b", stkpush);
 // Start server
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

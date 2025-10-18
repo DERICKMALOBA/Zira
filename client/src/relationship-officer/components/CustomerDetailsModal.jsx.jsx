@@ -146,7 +146,7 @@ setSecurityItems(processedSecurityItems);
       setExistingImages(imageData);
    
 
-      toast.success("Customer details loaded");
+    
     } catch {
       
       toast.error("Error loading customer details");

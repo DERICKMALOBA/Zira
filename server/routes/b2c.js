@@ -11,8 +11,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// --------------------
-// 1️SEND B2C REQUEST
+// SEND B2C PAYMENT REQUEST
 
 
 b2c.post("/send", async (req, res) => {

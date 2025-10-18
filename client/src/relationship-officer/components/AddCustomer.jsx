@@ -976,9 +976,10 @@ const handleSaveDraft = async () => {
       daily_Sales: formData.daily_Sales
         ? parseFloat(formData.daily_Sales)
         : null,
-      year_established: formData.yearEstablished
-        ? parseInt(formData.yearEstablished)
-        : null,
+      year_established: formData.yearEstablished 
+  ? new Date(formData.yearEstablished) 
+  : null,
+
       business_location: formData.businessLocation || null,
       road: formData.road || null,
       landmark: formData.landmark || null,
@@ -1168,9 +1169,10 @@ const handleSaveDraft = async () => {
             daily_Sales: formData.daily_Sales
               ? parseFloat(formData.daily_Sales)
               : null,
-            year_established: formData.yearEstablished
-              ? parseInt(formData.yearEstablished)
-              : null,
+          year_established: formData.yearEstablished 
+  ? new Date(formData.yearEstablished) 
+  : null,
+
             business_location: formData.businessLocation || null,
             road: formData.road || null,
             landmark: formData.landmark || null,
@@ -2786,8 +2788,8 @@ const handleSaveDraft = async () => {
               </div>
             )}
 
-            {/* Action Buttons */}
   {/* Action Buttons */}
+
 <div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
 
   {/* Left Side: Previous Button */}

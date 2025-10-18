@@ -1923,7 +1923,7 @@ const CustomerVerification = ({ customerId, onClose }) => {
                             label="Alternative Mobile"
                             value={nok.alternative_mobile}
                           />
-                          <DetailRow label="Email" value={nok.email} />
+                          {/* <DetailRow label="Email" value={nok.email} /> */}
                         </div>
 
                         {/* Right column */}
@@ -1932,11 +1932,11 @@ const CustomerVerification = ({ customerId, onClose }) => {
                             label="Relationship"
                             value={nok.relationship}
                           />
-                          <DetailRow label="Gender" value={nok.gender} />
-                          <DetailRow
+                          {/* <DetailRow label="Gender" value={nok.gender} /> */}
+                          {/* <DetailRow
                             label="Occupation"
                             value={nok.occupation}
-                          />
+                          /> */}
                           <DetailRow label="County" value={nok.county} />
                           <DetailRow label="City/Town" value={nok.city_town} />
                         </div>

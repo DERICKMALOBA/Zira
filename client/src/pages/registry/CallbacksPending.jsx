@@ -265,7 +265,7 @@ useEffect(() => {
               {/* Loan form takes the whole screen */}
               <div className="p-6 h-full overflow-y-auto">
               <Verification
-    customerId={selectedCustomer}   // ✅ Only send the id
+    customerId={selectedCustomer}   // Only send the id
     onClose={() => setShowForm(false)}
   />
   

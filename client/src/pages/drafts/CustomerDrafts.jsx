@@ -50,7 +50,15 @@ const CustomerDrafts = () => {
       } else if (userRole === 'credit_analyst_officer') {
         query = query.eq("status", "ca_review");
         // CA can see all customers with ca_review status (no branch restriction)
-      } else {
+      }
+
+      else if (userRole === 'customer_service_officer') {
+        query = query.eq("status", "cso_review");
+        // CA can see all customers with ca_review status (no branch restriction)
+      }
+      
+      
+      else {
         console.error("Unknown user role:", userRole);
         return;
       }
