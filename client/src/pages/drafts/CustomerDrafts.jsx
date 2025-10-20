@@ -10,6 +10,7 @@ import {
 import { supabase } from "../../supabaseClient.js";
 import { useAuth } from "../../hooks/userAuth.js";
 import CustomerVerificationForm from './CustomerVerification.jsx';
+import Verification from './Verification.jsx';
 import CustomerDetailsModal from '../../relationship-officer/components/CustomerDetailsModal.jsx';
 
 const CustomerDrafts = () => {
@@ -26,8 +27,6 @@ const CustomerDrafts = () => {
   const userRole = profile?.role;
   const userBranchId = profile?.branch_id;
 
-
-
   // Fetch pending customers based on user role
   const fetchPendingCustomers = async () => {
     setLoading(true);
@@ -37,7 +36,7 @@ const CustomerDrafts = () => {
       let query = supabase
         .from("customers")
         .select("*")
-          .eq("form_status", "draft")
+        .eq("form_status", "draft")
         .order("created_at", { ascending: false });
 
       // Set status filter based on role
@@ -50,15 +49,10 @@ const CustomerDrafts = () => {
       } else if (userRole === 'credit_analyst_officer') {
         query = query.eq("status", "ca_review");
         // CA can see all customers with ca_review status (no branch restriction)
-      }
-
-      else if (userRole === 'customer_service_officer') {
+      } else if (userRole === 'customer_service_officer') {
         query = query.eq("status", "cso_review");
-        // CA can see all customers with ca_review status (no branch restriction)
-      }
-      
-      
-      else {
+        // CSO can see all customers with cso_review status
+      } else {
         console.error("Unknown user role:", userRole);
         return;
       }
@@ -91,14 +85,14 @@ const CustomerDrafts = () => {
     const filtered = customers.filter(customer =>
       (customer.first_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (customer.last_name?.toLowerCase() || customer.surname?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (customer.id_number?.toString() || customer.national_id?.toString() || '').includes(searchTerm.toLowerCase()) ||
+      (customer.id_number?.toString() || customer.national_id?.toString() || '').includes(searchTerm) ||
       (customer.mobile || customer.phone_number || customer.phone || '').includes(searchTerm)
     );
     setFilteredCustomers(filtered);
   }, [searchTerm, customers]);
 
-  const handleApprove = (customer) => {
-    setSelectedCustomer(customer);
+  const handleApprove = (customerId) => {
+    setSelectedCustomer(customerId);
     setShowForm(true);
   };
 
@@ -107,12 +101,21 @@ const CustomerDrafts = () => {
     setIsModalOpen(true);
   };
 
+  const handleFormClose = () => {
+    setShowForm(false);
+    setSelectedCustomer(null);
+  };
+
+  
+
   // Get dynamic header text based on user role
   const getHeaderText = () => {
     if (userRole === 'branch_manager') {
       return "Customers awaiting BM approval";
     } else if (userRole === 'credit_analyst_officer') {
       return "Customers awaiting CA approval";
+    } else if (userRole === 'customer_service_officer') {
+      return "Customers awaiting CSO approval";
     }
     return "Customers awaiting approval";
   };
@@ -121,15 +124,27 @@ const CustomerDrafts = () => {
   const getVerificationForm = () => {
     if (!selectedCustomer) return null;
     
-    return (
-      <CustomerVerificationForm
-        customerId={selectedCustomer}
-        userRole={userRole}
-        userBranchId={userBranchId}
-        onClose={() => setShowForm(false)}
-        onSuccess={fetchPendingCustomers}
-      />
-    );
+    // For branch_manager and credit_analyst_officer: use CustomerVerificationForm
+    if (userRole === 'branch_manager' || userRole === 'credit_analyst_officer') {
+      return (
+        <CustomerVerificationForm
+          customerId={selectedCustomer}
+          onClose={handleFormClose}
+        />
+      );
+    }
+    
+    // For customer_service_officer: use Verification
+    if (userRole === 'customer_service_officer') {
+      return (
+        <Verification
+          customerId={selectedCustomer}
+          onClose={handleFormClose}
+        />
+      );
+    }
+
+    return null;
   };
 
   // Get appropriate view customer component based on role
@@ -166,10 +181,8 @@ const CustomerDrafts = () => {
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
-             
               <p className="text-gray-600 mt-2 text-sm">
                 {getHeaderText()} ({filteredCustomers.length})
-               
               </p>
             </div>
           </div>
@@ -296,7 +309,7 @@ const CustomerDrafts = () => {
           <div className="bg-white rounded-none shadow-2xl w-full h-full overflow-y-auto relative">
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold z-10"
             >
               ✕
             </button>
@@ -307,16 +320,10 @@ const CustomerDrafts = () => {
         </div>
       )}
 
-      {/* Customer Verification Form Modal */}
+      {/* Customer Verification Form Modal - Role-based */}
       {showForm && selectedCustomer && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white w-full h-full relative rounded-none shadow-xl">
-            {/* <button
-              onClick={() => setShowForm(false)}
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
-            >
-              ✕
-            </button> */}
             <div className="p-6 h-full overflow-y-auto">
               {getVerificationForm()}
             </div>

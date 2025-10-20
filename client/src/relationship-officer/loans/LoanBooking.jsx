@@ -173,7 +173,7 @@ const LoanBookingForm = ({ customerData, onComplete }) => {
     const interestRate = weeklyRate * duration;
     const totalInterest = (principal * interestRate) / 100;
 
-    const totalPayable = principal + totalInterest + processingFee + registrationFee;
+    const totalPayable = principal + totalInterest;
     const weeklyPayment = totalPayable / duration;
 
     const productInfo = getProductInfo(principal);

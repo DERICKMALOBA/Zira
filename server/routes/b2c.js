@@ -24,8 +24,8 @@ b2c.post("/send", async (req, res) => {
     const token = await getMpesaToken();
     const url = "https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest";
 
-    // ✅ Log payload (for debugging)
-    console.log("📤 Sending B2C Payload:", {
+    //  Log payload (for debugging)
+    console.log(" Sending B2C Payload:", {
       InitiatorName: process.env.MPESA_INITIATOR,
       SecurityCredential:
         process.env.MPESA_SECURITY_CREDENTIAL?.substring(0, 10) + "...",
@@ -54,7 +54,7 @@ b2c.post("/send", async (req, res) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
-    // ✅ Insert transaction into database
+    //  Insert transaction into database
     const { error: insertError } = await supabaseAdmin
       .from("mpesa_b2c_transactions")
       .insert([
@@ -77,7 +77,7 @@ b2c.post("/send", async (req, res) => {
       data,
     });
   } catch (err) {
-    console.error("❌ B2C Send Error:", err.message);
+    console.error(" B2C Send Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -90,7 +90,7 @@ b2c.post("/result", async (req, res) => {
   const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     const result = body.Result || body;
 
-    console.log("📩 B2C Result Received:", JSON.stringify(result, null, 2));
+    console.log(" B2C Result Received:", JSON.stringify(result, null, 2));
 
     if (!result || typeof result.ResultCode === "undefined") {
       return res.status(400).json({ error: "Invalid callback payload" });

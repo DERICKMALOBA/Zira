@@ -10,7 +10,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-
+//  Timestamp generator for M-Pesa format
 const getCurrentTimestamp = () => {
   const date = new Date();
   const YYYY = date.getFullYear();
@@ -22,38 +22,82 @@ const getCurrentTimestamp = () => {
   return `${YYYY}${MM}${DD}${HH}${mm}${ss}`;
 };
 
-
-//  STK PUSH INITIATION
+// STK PUSH INITIATION
 stkpush.post("/stkpush", async (req, res) => {
   try {
-    console.log(" Incoming STK Push request body:", req.body);
+    console.log(" Incoming STK Push request:", req.body);
 
     const { amount, phone, accountReference, transactionDesc, loanId, customerId } = req.body;
 
-    // Basic validation
     if (!amount || !phone) {
-      console.error(" Missing required fields. Amount or phone is null.");
       return res.status(400).json({ success: false, message: "Amount and phone are required" });
     }
 
-    console.log(` STK Details: 
-      Amount: ${amount}
-      Phone: ${phone}
-      Account Reference: ${accountReference}
-      Description: ${transactionDesc}
-      Loan ID: ${loanId}
-      Customer ID: ${customerId}`);
+    //  Determine payment purpose and set description & type
+    let billRef = "";
+    let description = "";
+    let paymentType = "other";
 
-    // Generate token
+    switch (accountReference?.toUpperCase()) {
+      case "REGISTRATION":
+        billRef = `registration-${customerId}`;
+        description = "Joining Fee Payment";
+        paymentType = "registration";
+        break;
+
+      case "PROCESSING":
+        billRef = `processing-${loanId}`;
+        description = "Loan Processing Fee";
+        paymentType = "processing";
+        break;
+
+      case "INTEREST":
+        billRef = `interest-${loanId}`;
+        description = "Interest Repayment";
+        paymentType = "interest";
+        break;
+
+      case "PRINCIPAL":
+        billRef = `principal-${loanId}`;
+        description = "Principal Repayment";
+        paymentType = "principal";
+        break;
+
+      default:
+        billRef = `general-${customerId || "unknown"}`;
+        description = "General Payment";
+        paymentType = "other";
+    }
+
+    console.log(` STK Reference: ${billRef}`);
+
+    //  Log pending transaction before push
+    const { data: tx, error: txError } = await supabaseAdmin
+      .from("mpesa_c2b_transactions")
+      .insert([
+        {
+          transaction_id: null, // will be updated after STK push
+          phone_number: phone,
+          amount,
+          loan_id: loanId || null,
+          status: "pending",
+          payment_type: paymentType,
+          description,
+          reference: billRef,
+          raw_payload: {}, // placeholder
+        },
+      ])
+      .select()
+      .single();
+
+    if (txError) {
+      console.error("Failed to insert pending transaction:", txError.message);
+    }
+
+    //  Get M-Pesa Access Token
     const token = await getMpesaToken();
-    console.log(" Access Token Retrieved Successfully");
 
-    // Handle reference types
-    let billRef = "general";
-    if (accountReference === "REGISTRATION") billRef = `registration-${customerId}`;
-    if (accountReference === "PROCESSING") billRef = `processing-${loanId}`;
-
-    // Prepare payload
+    //  Prepare STK Payload
     const payload = {
       BusinessShortCode: process.env.MPESA_SHORTCODE,
       Password: process.env.MPESA_PASSKEY,
@@ -65,12 +109,12 @@ stkpush.post("/stkpush", async (req, res) => {
       PhoneNumber: phone,
       CallBackURL: `${process.env.CALLBACK_URL}/mpesa/c2b/confirmation`,
       AccountReference: billRef,
-      TransactionDesc: transactionDesc || "Payment",
+      TransactionDesc: description,
     };
 
-    console.log(" STK Payload Sent to Safaricom:", payload);
+    console.log(" Sending STK Push payload:", payload);
 
-    // Send to Safaricom
+    //  Send request to Safaricom
     const { data } = await axios.post(
       "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
       payload,
@@ -78,43 +122,53 @@ stkpush.post("/stkpush", async (req, res) => {
     );
 
     console.log(" STK Push initiated successfully:", data);
-    res.status(200).json({ success: true, message: "STK Push sent", data });
+
+    // Update record with CheckoutRequestID (for callback)
+    await supabaseAdmin
+      .from("mpesa_c2b_transactions")
+      .update({
+        transaction_id: data.CheckoutRequestID,
+        raw_payload: payload,
+      })
+      .eq("id", tx?.id);
+
+    res.status(200).json({
+      success: true,
+      message: "STK Push sent successfully",
+      data,
+    });
   } catch (error) {
-    console.error(" STK Push Error (Full):", error.response?.data || error.message);
+    console.error(" STK Push Error:", error.response?.data || error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-
-
 //  STK PUSH CALLBACK HANDLER
-
 stkpush.post("/callback", async (req, res) => {
   try {
     const body = req.body?.Body?.stkCallback;
     if (!body) throw new Error("Invalid callback payload");
 
     const { CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } = body;
-
-    // Update transaction status
-    const status = ResultCode === 0 ? "success" : "failed";
+    const status = ResultCode === 0 ? "applied" : "failed";
     const amount = CallbackMetadata?.Item?.find((i) => i.Name === "Amount")?.Value;
     const phone = CallbackMetadata?.Item?.find((i) => i.Name === "PhoneNumber")?.Value;
 
+    // Update the transaction
     await supabaseAdmin
       .from("mpesa_c2b_transactions")
       .update({
         status,
-        amount: amount || null,
-        phone_number: phone || null,
+        amount,
+        phone_number: phone,
         transaction_time: new Date().toISOString(),
         raw_payload: body,
       })
       .eq("transaction_id", CheckoutRequestID);
 
-    console.log(`STK Push Callback: ${ResultDesc}`);
+    console.log(` STK Callback: ${ResultDesc}`);
 
-    res.json({ ResultCode: 0, ResultDesc: "Received successfully" });
+    res.json({ ResultCode: 0, ResultDesc: "Callback received successfully" });
   } catch (error) {
     console.error(" STK Callback Error:", error.message);
     res.json({ ResultCode: 1, ResultDesc: "Callback processing failed" });

@@ -29,10 +29,10 @@ c2b.get("/register", async (req, res) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
-    console.log("✅ C2B URL Registration:", data);
+    console.log(" C2B URL Registration:", data);
     res.json(data);
   } catch (err) {
-    console.error("❌ C2B Registration Error:", err.message);
+    console.error(" C2B Registration Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -58,30 +58,28 @@ c2b.post("/confirmation", async (req, res) => {
     const totalPaidAmount = parseFloat(TransAmount);
     const transaction_time = new Date().toISOString();
 
-    // Determine payment type and IDs
     let paymentType = "repayment";
+    let description = "Loan Repayment";
     let loanId = null;
     let customerId = null;
 
-    // 🔹 Detect payment category based on BillRefNumber
+    //  Identify payment category
     if (BillRefNumber === "registration_fee") {
       paymentType = "registration";
-    } else if (BillRefNumber.startsWith("loan_")) {
-      paymentType = "processing";
-      loanId = BillRefNumber.split("_")[1];
+      description = "Joining Fee Payment";
     } else if (BillRefNumber.startsWith("registration-")) {
       paymentType = "registration";
+      description = "Joining Fee Payment";
       customerId = BillRefNumber.split("-")[1];
     } else if (BillRefNumber.startsWith("processing-")) {
       paymentType = "processing";
+      description = "Loan Processing Fee";
       loanId = BillRefNumber.split("-")[1];
     } else {
       loanId = parseInt(BillRefNumber.trim());
     }
 
-    console.log(`📥 C2B Confirmation Received: ${paymentType} | MSISDN: ${MSISDN}`);
-
-    // Prevent duplicate transactions
+    //  Prevent duplicate transactions
     const { data: existingTx } = await supabaseAdmin
       .from("mpesa_c2b_transactions")
       .select("id")
@@ -89,11 +87,11 @@ c2b.post("/confirmation", async (req, res) => {
       .maybeSingle();
 
     if (existingTx) {
-      console.log(`⚠️ Duplicate transaction ${TransID} ignored.`);
+      console.log(`Duplicate transaction ${TransID} ignored.`);
       return res.json({ ResultCode: 0, ResultDesc: "Duplicate transaction" });
     }
 
-    // Store transaction
+    //  Log transaction before processing
     await supabaseAdmin.from("mpesa_c2b_transactions").insert([
       {
         transaction_id: TransID,
@@ -104,32 +102,26 @@ c2b.post("/confirmation", async (req, res) => {
         status: "pending",
         loan_id: loanId || null,
         payment_type: paymentType,
+        description,
+        reference: TransID,
       },
     ]);
 
-    // 🟢 Handle Registration Fee Payment
+    //  Handle joining and processing fees
     if (paymentType === "registration") {
-      console.log(`✅ Registration fee received from ${MSISDN}`);
-
-      // Find customer by phone
-      const { data: customer, error: customerError } = await supabaseAdmin
+      const { data: customer } = await supabaseAdmin
         .from("customers")
-        .select("id, registration_fee_paid, is_new_customer")
+        .select("id")
         .eq("mobile", MSISDN)
         .single();
 
-      if (customerError || !customer) throw new Error("Customer not found");
+      if (!customer) throw new Error("Customer not found");
 
-      // Update registration payment + mark as not new
       await supabaseAdmin
         .from("customers")
-        .update({
-          registration_fee_paid: true,
-          is_new_customer: false,
-        })
+        .update({ registration_fee_paid: true, is_new_customer: false })
         .eq("id", customer.id);
 
-      // Mark transaction as applied
       await supabaseAdmin
         .from("mpesa_c2b_transactions")
         .update({ status: "applied" })
@@ -141,16 +133,10 @@ c2b.post("/confirmation", async (req, res) => {
       });
     }
 
-    // 🟡 Handle Processing Fee Payment
     if (paymentType === "processing") {
-      console.log(`✅ Processing fee received for loan ${loanId}`);
-
       await supabaseAdmin
         .from("loans")
-        .update({
-          processing_fee_paid: true,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ processing_fee_paid: true, updated_at: new Date().toISOString() })
         .eq("id", loanId);
 
       await supabaseAdmin
@@ -164,13 +150,11 @@ c2b.post("/confirmation", async (req, res) => {
       });
     }
 
-    // 🧾 Default: Loan Repayment Logic
+    //  Loan Repayment: Split into Interest and Principal
     if (!loanId) throw new Error("Missing loan ID for repayment.");
 
-    console.log(`💰 Processing loan repayment for loan ${loanId}`);
-
+    console.log(`Processing loan repayment for loan ${loanId}`);
     let remainingAmount = totalPaidAmount;
-    const appliedPayments = [];
 
     const { data: installments, error: fetchError } = await supabaseAdmin
       .from("loan_installments")
@@ -180,55 +164,87 @@ c2b.post("/confirmation", async (req, res) => {
       .order("installment_number", { ascending: true });
 
     if (fetchError) throw fetchError;
-    if (!installments?.length) {
-      console.log(`ℹ️ No pending installments for loan ${loanId}`);
-      return res.json({
-        ResultCode: 0,
-        ResultDesc: "No pending installments for this loan",
-      });
-    }
+    if (!installments?.length)
+      return res.json({ ResultCode: 0, ResultDesc: "No pending installments" });
 
     for (const inst of installments) {
       if (remainingAmount <= 0) break;
 
       const installmentId = inst.id;
       const oldPaid = parseFloat(inst.paid_amount || 0);
-      const dueAmount = parseFloat(inst.due_amount);
-      const amountNeeded = dueAmount - oldPaid;
-      const appliedAmount = Math.min(remainingAmount, amountNeeded);
-      const newPaid = oldPaid + appliedAmount;
-      const newStatus = newPaid >= dueAmount ? "paid" : "partial";
+      const interestDue = parseFloat(inst.interest_due || 0);
+      const principalDue = parseFloat(inst.principal_due || 0);
+      const interestPaid = parseFloat(inst.interest_paid || 0);
+      const principalPaid = parseFloat(inst.principal_paid || 0);
 
+      let descriptionPart = "";
+
+      //  Pay off Interest First
+      let interestToPay = Math.min(remainingAmount, interestDue - interestPaid);
+      if (interestToPay > 0) {
+        remainingAmount -= interestToPay;
+        descriptionPart = "Interest Repayment";
+
+        await supabaseAdmin.from("loan_payments").insert([
+          {
+            loan_id: loanId,
+            installment_id: installmentId,
+            paid_amount: interestToPay,
+            payment_type: "interest",
+            description: descriptionPart,
+            mpesa_receipt: TransID,
+            phone_number: MSISDN,
+            payment_method: "mpesa_c2b",
+          },
+        ]);
+
+        await supabaseAdmin
+          .from("loan_installments")
+          .update({ interest_paid: interestPaid + interestToPay })
+          .eq("id", installmentId);
+      }
+
+      // Then Pay Principal
+      if (remainingAmount > 0) {
+        let principalToPay = Math.min(remainingAmount, principalDue - principalPaid);
+        if (principalToPay > 0) {
+          remainingAmount -= principalToPay;
+          descriptionPart = "Principal Repayment";
+
+          await supabaseAdmin.from("loan_payments").insert([
+            {
+              loan_id: loanId,
+              installment_id: installmentId,
+              paid_amount: principalToPay,
+              payment_type: "principal",
+              description: descriptionPart,
+              mpesa_receipt: TransID,
+              phone_number: MSISDN,
+              payment_method: "mpesa_c2b",
+            },
+          ]);
+
+          await supabaseAdmin
+            .from("loan_installments")
+            .update({ principal_paid: principalPaid + principalToPay })
+            .eq("id", installmentId);
+        }
+      }
+
+      //  Update Installment Status
+      const totalPaid = (interestPaid + principalPaid) + (interestToPay || 0) + (principalToPay || 0);
+      const fullyPaid = totalPaid >= (interestDue + principalDue);
       await supabaseAdmin
         .from("loan_installments")
         .update({
-          paid_amount: newPaid,
-          status: newStatus,
+          paid_amount: totalPaid,
+          status: fullyPaid ? "paid" : "partial",
           updated_at: new Date().toISOString(),
         })
         .eq("id", installmentId);
-
-      await supabaseAdmin.from("loan_payments").insert([
-        {
-          loan_id: loanId,
-          installment_id: installmentId,
-          paid_amount: appliedAmount,
-          balance_before: oldPaid,
-          balance_after: newPaid,
-          mpesa_receipt: TransID,
-          phone_number: MSISDN,
-          payment_method: "mpesa_c2b",
-        },
-      ]);
-
-      appliedPayments.push({
-        installment_number: inst.installment_number,
-        applied: appliedAmount,
-      });
-
-      remainingAmount -= appliedAmount;
     }
 
+    //  Update transaction as applied
     await supabaseAdmin
       .from("mpesa_c2b_transactions")
       .update({
@@ -237,19 +253,19 @@ c2b.post("/confirmation", async (req, res) => {
       })
       .eq("transaction_id", TransID);
 
-    console.log(`✅ Loan repayment processed for loan ${loanId}`);
     res.json({
       ResultCode: 0,
-      ResultDesc: "Loan repayment processed successfully",
+      ResultDesc: "Loan repayment processed successfully (interest → principal)",
     });
   } catch (error) {
-    console.error(" C2B Confirmation Error:", error.message);
+    console.error("C2B Confirmation Error:", error.message);
     res.json({
       ResultCode: 1,
       ResultDesc: `Processing failed: ${error.message}`,
     });
   }
 });
+
 
 
 
