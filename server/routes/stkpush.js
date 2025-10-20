@@ -25,7 +25,7 @@ const getCurrentTimestamp = () => {
 // STK PUSH INITIATION
 stkpush.post("/stkpush", async (req, res) => {
   try {
-    console.log(" Incoming STK Push request:", req.body);
+    console.log("📥 Incoming STK Push request:", req.body);
 
     const { amount, phone, accountReference, transactionDesc, loanId, customerId } = req.body;
 
@@ -38,38 +38,33 @@ stkpush.post("/stkpush", async (req, res) => {
     let description = "";
     let paymentType = "other";
 
-    switch (accountReference?.toUpperCase()) {
-      case "REGISTRATION":
-        billRef = `registration-${customerId}`;
-        description = "Joining Fee Payment";
-        paymentType = "registration";
-        break;
+    const refType = accountReference?.toUpperCase();
 
-      case "PROCESSING":
-        billRef = `processing-${loanId}`;
-        description = "Loan Processing Fee";
-        paymentType = "processing";
-        break;
-
-      case "INTEREST":
-        billRef = `interest-${loanId}`;
-        description = "Interest Repayment";
-        paymentType = "interest";
-        break;
-
-      case "PRINCIPAL":
-        billRef = `principal-${loanId}`;
-        description = "Principal Repayment";
-        paymentType = "principal";
-        break;
-
-      default:
-        billRef = `general-${customerId || "unknown"}`;
-        description = "General Payment";
-        paymentType = "other";
+    if (refType === "REGISTRATION") {
+      billRef = `registration-${customerId}`;
+      description = "Joining Fee Payment";
+      paymentType = "registration";
+      console.log(`💰 Registration Fee: KES ${amount} for Customer ${customerId}`);
+    } else if (refType === "PROCESSING") {
+      billRef = `processing-${loanId}`;
+      description = "Loan Processing Fee";
+      paymentType = "processing";
+      console.log(`💰 Processing Fee: KES ${amount} for Loan ${loanId}`);
+    } else if (refType === "INTEREST") {
+      billRef = `interest-${loanId}`;
+      description = "Interest Repayment";
+      paymentType = "interest";
+    } else if (refType === "PRINCIPAL") {
+      billRef = `principal-${loanId}`;
+      description = "Principal Repayment";
+      paymentType = "principal";
+    } else {
+      billRef = `general-${customerId || "unknown"}`;
+      description = "General Payment";
+      paymentType = "other";
     }
 
-    console.log(` STK Reference: ${billRef}`);
+    console.log(`📋 STK Reference: ${billRef}`);
 
     //  Log pending transaction before push
     const { data: tx, error: txError } = await supabaseAdmin
@@ -80,6 +75,7 @@ stkpush.post("/stkpush", async (req, res) => {
           phone_number: phone,
           amount,
           loan_id: loanId || null,
+          customer_id: customerId || null,
           status: "pending",
           payment_type: paymentType,
           description,
@@ -91,7 +87,9 @@ stkpush.post("/stkpush", async (req, res) => {
       .single();
 
     if (txError) {
-      console.error("Failed to insert pending transaction:", txError.message);
+      console.error(" Failed to insert pending transaction:", txError.message);
+    } else {
+      console.log(`Pending transaction logged with ID: ${tx?.id}`);
     }
 
     //  Get M-Pesa Access Token
@@ -99,7 +97,7 @@ stkpush.post("/stkpush", async (req, res) => {
 
     //  Prepare STK Payload
     const payload = {
-      BusinessShortCode: process.env.MPESA_SHORTCODE,
+      BusinessShortCode: process.env.MPESA_SHORTCODE,   
       Password: process.env.MPESA_PASSKEY,
       Timestamp: getCurrentTimestamp(),
       TransactionType: "CustomerPayBillOnline",
@@ -124,13 +122,15 @@ stkpush.post("/stkpush", async (req, res) => {
     console.log(" STK Push initiated successfully:", data);
 
     // Update record with CheckoutRequestID (for callback)
-    await supabaseAdmin
-      .from("mpesa_c2b_transactions")
-      .update({
-        transaction_id: data.CheckoutRequestID,
-        raw_payload: payload,
-      })
-      .eq("id", tx?.id);
+    if (tx?.id) {
+      await supabaseAdmin
+        .from("mpesa_c2b_transactions")
+        .update({
+          transaction_id: data.CheckoutRequestID,
+          raw_payload: payload,
+        })
+        .eq("id", tx.id);
+    }
 
     res.status(200).json({
       success: true,
@@ -154,6 +154,8 @@ stkpush.post("/callback", async (req, res) => {
     const amount = CallbackMetadata?.Item?.find((i) => i.Name === "Amount")?.Value;
     const phone = CallbackMetadata?.Item?.find((i) => i.Name === "PhoneNumber")?.Value;
 
+    console.log(` STK Callback received: ${ResultDesc} (Code: ${ResultCode})`);
+
     // Update the transaction
     await supabaseAdmin
       .from("mpesa_c2b_transactions")
@@ -166,11 +168,11 @@ stkpush.post("/callback", async (req, res) => {
       })
       .eq("transaction_id", CheckoutRequestID);
 
-    console.log(` STK Callback: ${ResultDesc}`);
+    console.log(` Transaction ${CheckoutRequestID} updated to status: ${status}`);
 
     res.json({ ResultCode: 0, ResultDesc: "Callback received successfully" });
   } catch (error) {
-    console.error(" STK Callback Error:", error.message);
+    console.error("STK Callback Error:", error.message);
     res.json({ ResultCode: 1, ResultDesc: "Callback processing failed" });
   }
 });

@@ -51,6 +51,8 @@ c2b.post("/confirmation", async (req, res) => {
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     const { TransID, TransAmount, MSISDN, BillRefNumber } = body;
+   let localNumber = MSISDN.replace(/^254/, "0");
+
 
     if (!TransID || !MSISDN || !TransAmount || !BillRefNumber)
       throw new Error("Missing required transaction fields.");
@@ -112,7 +114,7 @@ c2b.post("/confirmation", async (req, res) => {
       const { data: customer } = await supabaseAdmin
         .from("customers")
         .select("id")
-        .eq("mobile", MSISDN)
+         .in("mobile", [MSISDN, localNumber]) 
         .single();
 
       if (!customer) throw new Error("Customer not found");
