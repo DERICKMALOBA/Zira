@@ -98,6 +98,7 @@ import LoanDueReport from "./pages/reports/LoanDueReport";
 import DisbursementLoansReport from "./pages/reports/DisbursementLoansReport";
 import CustomerAccountModal from "./pages/reports/CustomerAccountModal";
 import CustomerDraft from "./relationship-officer/components/CustomerDraft";
+import CustomerStatementModal from "./pages/reports/AccountList";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -387,6 +388,7 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
+
                   <Route
                     path="/registry/customers"
                     element={
@@ -395,6 +397,10 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
+
+             
+                  
+                  
                   <Route
                     path="/registry/pending-amendments"
                     element={
@@ -458,6 +464,17 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <HQReports userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
+                       
+                  <Route
+                    path="/reports/accountlist"
+                    element={
+                      <ProtectedRoute>
+                        <CustomerStatementModal userRole={role} />
                       </ProtectedRoute>
                     }
                   />

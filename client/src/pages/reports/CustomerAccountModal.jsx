@@ -33,7 +33,8 @@ const CustomerAccountModal = () => {
     fetchBranches();
   }, []);
 
-  // ✅ Fetch customer loan data
+  // Fetch customer loan data
+  
   useEffect(() => {
     const fetchCustomerAccounts = async () => {
       try {
@@ -126,7 +127,7 @@ const CustomerAccountModal = () => {
     fetchCustomerAccounts();
   }, []);
 
-  // ✅ Filtering logic
+  //  Filtering logic
   useEffect(() => {
     let result = [...customerAccountData];
 
@@ -346,32 +347,51 @@ const CustomerAccountModal = () => {
             </div>
           </div>
         )}
+{/* Data Summary */}
+<div className="flex justify-between items-stretch gap-2 w-full">
+  <div className="bg-white p-3 rounded-lg border border-gray-200 flex-1 text-center">
+    <p className="text-gray-600 text-sm font-medium">Total Records</p>
+    <p className="text-2xl font-bold text-gray-900">
+      {filteredData.length}
+    </p>
+  </div>
 
-        {/* Data Summary */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <p className="text-gray-600 text-sm font-medium">Total Records</p>
-            <p className="text-2xl font-bold text-gray-900">{filteredData.length}</p>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <p className="text-gray-600 text-sm font-medium">Total Disbursed</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {formatCurrency(filteredData.reduce((sum, c) => sum + c.loanAmount, 0))}
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <p className="text-gray-600 text-sm font-medium">Total Paid</p>
-            <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(filteredData.reduce((sum, c) => sum + c.totalPaid, 0))}
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <p className="text-gray-600 text-sm font-medium">Total Outstanding</p>
-            <p className="text-2xl font-bold text-red-600">
-              {formatCurrency(filteredData.reduce((sum, c) => sum + c.outstanding, 0))}
-            </p>
-          </div>
-        </div>
+  <div className="bg-white p-3 rounded-lg border border-gray-200 flex-1 text-center">
+    <p className="text-gray-600 text-sm font-medium">Total Payable</p>
+    <p className="text-2xl font-bold text-blue-600">
+      {formatCurrency(
+        filteredData.reduce((sum, c) => sum + c.totalPayable, 0)
+      )}
+    </p>
+  </div>
+
+  <div className="bg-white p-3 rounded-lg border border-gray-200 flex-1 text-center">
+    <p className="text-gray-600 text-sm font-medium">Total Principal</p>
+    <p className="text-2xl font-bold text-blue-600">
+      {formatCurrency(
+        filteredData.reduce((sum, c) => sum + c.loanAmount, 0)
+      )}
+    </p>
+  </div>
+
+  <div className="bg-white p-3 rounded-lg border border-gray-200 flex-1 text-center">
+    <p className="text-gray-600 text-sm font-medium">Total Paid</p>
+    <p className="text-2xl font-bold text-green-600">
+      {formatCurrency(
+        filteredData.reduce((sum, c) => sum + c.totalPaid, 0)
+      )}
+    </p>
+  </div>
+
+  <div className="bg-white p-3 rounded-lg border border-gray-200 flex-1 text-center">
+    <p className="text-gray-600 text-sm font-medium">Total Outstanding</p>
+    <p className="text-2xl font-bold text-red-600">
+      {formatCurrency(
+        filteredData.reduce((sum, c) => sum + c.outstanding, 0)
+      )}
+    </p>
+  </div>
+</div>
 
         {/* Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
@@ -393,8 +413,7 @@ const CustomerAccountModal = () => {
                       <SortableHeader label="Customer Details" sortKey="customerName" />
                       <SortableHeader label="Phone" sortKey="phone" />
                       <SortableHeader label="Branch" sortKey="branch" />
-                      <SortableHeader label="Total Loan Applied" sortKey="totalLoanApplied" />
-                      <SortableHeader label="Loan Amount" sortKey="loanAmount" />
+                      <SortableHeader label="Principal Amount" sortKey="loanAmount" />
                       <SortableHeader label="Interest" sortKey="interest" />
                       <SortableHeader label="Total Payable" sortKey="totalPayable" />
                       <SortableHeader label="Paid" sortKey="totalPaid" />
@@ -410,9 +429,7 @@ const CustomerAccountModal = () => {
                         <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{c.customerName}</td>
                         <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{c.phone}</td>
                         <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{c.branch}</td>
-                        <td className="px-6 py-4 text-right text-gray-900 font-medium whitespace-nowrap">
-                          {formatCurrency(c.totalLoanApplied)}
-                        </td>
+                      
                         <td className="px-6 py-4 text-right text-gray-900 font-medium whitespace-nowrap">
                           {formatCurrency(c.loanAmount)}
                         </td>

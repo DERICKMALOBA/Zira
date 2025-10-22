@@ -250,10 +250,10 @@ const PendingLoans = () => {
     //  Track STK pushes
     let stkTriggered = false;
 
-    // 1️⃣ Registration Fee (only new + unpaid)
+    // 1 Registration Fee (only new + unpaid)
     if (customerData.is_new_customer && !customerData.registration_fee_paid) {
       stkTriggered = true;
-      console.log(`🔔 TRIGGERING STK PUSH: Registration Fee (KES ${registrationFee})`);
+      console.log(` TRIGGERING STK PUSH: Registration Fee (KES ${registrationFee})`);
       
       await axios.post("http://localhost:5000/mpesa/c2b/stkpush", {
         amount: registrationFee,
@@ -264,14 +264,14 @@ const PendingLoans = () => {
       });
       
       toast.info(`STK Push for KES ${registrationFee} sent for Registration Fee.`);
-      console.log(`✅ Registration Fee STK Push sent successfully`);
+      console.log(` Registration Fee STK Push sent successfully`);
     } else if (customerData.is_new_customer) {
       console.log(`✓ Registration Fee already paid - skipping STK Push`);
     } else {
       console.log(`✓ Existing customer - no Registration Fee required`);
     }
 
-    // 2️⃣ Processing Fee (unpaid only)
+    // Processing Fee (unpaid only)
     if (!loanData.processing_fee_paid) {
       stkTriggered = true;
       console.log(`TRIGGERING STK PUSH: Processing Fee (KES ${processingFee.toLocaleString()})`);
@@ -324,18 +324,18 @@ const PendingLoans = () => {
 
       if (updateError) throw updateError;
 
-      console.log("✅ Loan status updated to 'disbursed'");
-      toast.success("💰 Loan disbursed successfully!");
+      console.log("Loan status updated to 'disbursed'");
+      toast.success("Loan disbursed successfully!");
       fetchPendingDisbursementLoans();
       setSelectedLoan(null);
     } else {
-      console.log("⏸️  DISBURSEMENT ON HOLD - WAITING FOR FEE PAYMENT(S)");
-      toast.warn("⏳ Loan disbursement is on hold until required fees are paid.");
+      console.log("  DISBURSEMENT ON HOLD - WAITING FOR FEE PAYMENT(S)");
+      toast.warn(" Loan disbursement is on hold until required fees are paid.");
     }
 
     console.log("=".repeat(60));
   } catch (err) {
-    console.error("❌ Disbursement error:", err);
+    console.error(" Disbursement error:", err);
     console.error("Error details:", err.response?.data || err.message);
     toast.error(`Failed to disburse loan: ${err.response?.data?.message || err.message}`);
   } finally {

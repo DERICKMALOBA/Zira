@@ -25,7 +25,7 @@ const getCurrentTimestamp = () => {
 // STK PUSH INITIATION
 stkpush.post("/stkpush", async (req, res) => {
   try {
-    console.log("📥 Incoming STK Push request:", req.body);
+    console.log(" Incoming STK Push request:", req.body);
 
     const { amount, phone, accountReference, transactionDesc, loanId, customerId } = req.body;
 
@@ -44,12 +44,12 @@ stkpush.post("/stkpush", async (req, res) => {
       billRef = `registration-${customerId}`;
       description = "Joining Fee Payment";
       paymentType = "registration";
-      console.log(`💰 Registration Fee: KES ${amount} for Customer ${customerId}`);
+      console.log(`Registration Fee: KES ${amount} for Customer ${customerId}`);
     } else if (refType === "PROCESSING") {
       billRef = `processing-${loanId}`;
       description = "Loan Processing Fee";
       paymentType = "processing";
-      console.log(`💰 Processing Fee: KES ${amount} for Loan ${loanId}`);
+      console.log(` Processing Fee: KES ${amount} for Loan ${loanId}`);
     } else if (refType === "INTEREST") {
       billRef = `interest-${loanId}`;
       description = "Interest Repayment";
@@ -64,7 +64,7 @@ stkpush.post("/stkpush", async (req, res) => {
       paymentType = "other";
     }
 
-    console.log(`📋 STK Reference: ${billRef}`);
+    console.log(` STK Reference: ${billRef}`);
 
     //  Log pending transaction before push
     const { data: tx, error: txError } = await supabaseAdmin
