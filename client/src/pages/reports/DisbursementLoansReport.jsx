@@ -1,6 +1,22 @@
 import { useState, useEffect } from "react";
-import { Download, Printer, Filter, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  Download,
+  Printer,
+  Filter,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import { supabase } from "../../supabaseClient";
+
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell } from "docx";
+import { saveAs } from "file-saver";
+
 
 const DisbursementLoansReport = () => {
   const [disbursedLoans, setDisbursedLoans] = useState([]);
@@ -9,130 +25,335 @@ const DisbursementLoansReport = () => {
     search: "",
     branch: "",
     officer: "",
-    ro: "",
-    startDate: "",
-    endDate: "",
-    status: "",
+    product: "",
   });
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  const [exportFormat, setExportFormat] = useState("csv");
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
-  // ✅ Fetch disbursed loans
+  // Calculate branch and officer totals
+  const calculateTotals = (loans) => {
+    const branchTotals = {};
+    const officerTotals = {};
+
+    loans.forEach((loan) => {
+      // Branch totals
+      if (!branchTotals[loan.branch]) {
+        branchTotals[loan.branch] = 0;
+      }
+      branchTotals[loan.branch] += loan.disbursedAmount || 0;
+
+      // Officer totals within branch
+      const officerKey = `${loan.branch}-${loan.loanOfficer}`;
+      if (!officerTotals[officerKey]) {
+        officerTotals[officerKey] = 0;
+      }
+      officerTotals[officerKey] += loan.disbursedAmount || 0;
+    });
+
+    return { branchTotals, officerTotals };
+  };
+
+  const groupLoansForDisplay = (loans) => {
+    const { branchTotals, officerTotals } = calculateTotals(loans);
+    const groupedByBranch = {};
+
+    loans.forEach((loan) => {
+      if (!groupedByBranch[loan.branch]) {
+        groupedByBranch[loan.branch] = {
+          branch: loan.branch,
+          totalAmount: branchTotals[loan.branch] || 0,
+          officers: {},
+        };
+      }
+
+      if (!groupedByBranch[loan.branch].officers[loan.loanOfficer]) {
+        const officerKey = `${loan.branch}-${loan.loanOfficer}`;
+        groupedByBranch[loan.branch].officers[loan.loanOfficer] = {
+          officer: loan.loanOfficer,
+          roTotalAmount: officerTotals[officerKey] || 0,
+          customers: [],
+        };
+      }
+
+      groupedByBranch[loan.branch].officers[loan.loanOfficer].customers.push({
+        ...loan,
+        mpesaReference: loan.mpesaReference,
+        loanReferenceNumber: loan.loanReferenceNumber,
+        appliedLoanAmount: loan.appliedLoanAmount,
+        disbursedAmount: loan.disbursedAmount,
+        interestAmount: loan.interestAmount,
+        nextPaymentDate: loan.nextPaymentDate,
+        disbursementDate: loan.disbursementDate,
+        // Store raw date for filtering
+        rawDisbursementDate: loan.rawDisbursementDate,
+      });
+    });
+
+    return groupedByBranch;
+  };
+
   useEffect(() => {
     const fetchDisbursedLoans = async () => {
       try {
         setLoading(true);
+        console.log(" Fetching disbursed loans from Supabase...");
 
         const { data, error } = await supabase
           .from("loans")
-          .select(`
+          .select(
+            `
             id,
             scored_amount,
             total_interest,
             total_payable,
             product_name,
             product_type,
-            disbursed_date,
+            disbursed_at,
             repayment_state,
             status,
             branch:branch_id(name),
-            loan_officer:users!loans_disbursed_by_fkey(full_name),
+            loan_officer:booked_by(full_name),
             customer:customer_id(
               id,
-              "Firstname",
-              "Middlename",
-              "Surname",
+              Firstname,
+              Middlename,
+              Surname,
               mobile,
               id_number,
               business_name,
-              business_type,
-              ro:users!customers_created_by_fkey(full_name)
+              business_type
             ),
-            mpesa:mpesa_b2c_transactions(transaction_id),
             installments:loan_installments(
               due_date,
+              status,
+              loan_id
+            ),
+            mpesa:mpesa_b2c_transactions(
+              transaction_id,
+              loan_id,
               status
             )
-          `)
-          .in("status", ["disbursed"])
-          .order("disbursed_date", { ascending: false });
+          `
+          )
+          .eq("status", "disbursed")
+          .order("disbursed_at", { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error(" Supabase error:", error);
+          throw error;
+        }
+
+        console.log("Raw Supabase data:", data);
 
         const formatted = data.map((loan) => {
           const customer = loan.customer || {};
-          const fullName = [customer.Firstname, customer.Middlename, customer.Surname]
-            .filter(Boolean)
-            .join(" ");
-          const relationshipOfficer = customer.ro?.full_name || "N/A";
 
-          const nextPayment =
-            loan.installments?.find((i) => i.status === "pending")?.due_date || "N/A";
+          const fullName =
+            [customer.Firstname, customer.Middlename, customer.Surname]
+              .filter(Boolean)
+              .join(" ") || "N/A";
+
+          const pendingInstallment = Array.isArray(loan.installments)
+            ? loan.installments.find((inst) => inst.status === "pending")
+            : null;
+          const nextPaymentDate = pendingInstallment?.due_date
+            ? new Date(pendingInstallment.due_date).toLocaleDateString()
+            : "N/A";
+
+          const mpesaTx =
+            Array.isArray(loan.mpesa) && loan.mpesa.length > 0
+              ? loan.mpesa.find((tx) => tx.status === "success")
+              : null;
+          const mpesaReference = mpesaTx?.transaction_id || "N/A";
+
+          const loanReferenceNumber = `LN${String(loan.id).padStart(5, "0")}`;
+
+          const appliedLoanAmount = loan.scored_amount ?? 0;
+          const disbursedAmount = loan.total_payable ?? 0;
+
+          const rawDisbursementDate = loan.disbursed_at;
+          const disbursementDate = loan.disbursed_at
+            ? new Date(loan.disbursed_at).toLocaleString()
+            : "N/A";
 
           return {
             id: loan.id,
-            loanNumber: `LN${String(loan.id).padStart(3, "0")}`,
             branch: loan.branch?.name || "N/A",
             loanOfficer: loan.loan_officer?.full_name || "N/A",
-            relationshipOfficer,
-            customerName: fullName || "N/A",
-            idNumber: customer.id_number || "N/A",
+            customerName: fullName,
             mobile: customer.mobile || "N/A",
-            businessDescription: `${customer.business_name || ""} - ${customer.business_type || ""}`,
-            productName: loan.product_name || "N/A",
-            productType: loan.product_type || "N/A",
-            mpesaTransaction: loan.mpesa?.[0]?.transaction_id || "N/A",
-            appliedAmount: loan.scored_amount || 0,
-            disbursedAmount: loan.total_payable || 0,
+            idNumber: customer.id_number || "N/A", // Fixed property name
+            mpesaReference,
+            loanNumber: loanReferenceNumber, // Added for search filter
+            loanReferenceNumber,
+            appliedLoanAmount,
+            disbursedAmount,
             interestAmount: loan.total_interest || 0,
+            business_name: customer.business_name || "N/A",
+            business_type: customer.business_type || "N/A",
+            productName: loan.product_type || "N/A", // Added for product filter
+            product_type: loan.product_type || "N/A",
+            nextPaymentDate,
+            disbursementDate,
+            rawDisbursementDate, // Store raw date for filtering
             repaymentStatus: loan.repayment_state || "N/A",
-            disbursedDate: loan.disbursed_date || "N/A",
-            nextPayment,
           };
         });
 
-        setDisbursedLoans(formatted);
-        setFilteredData(formatted);
+        console.log(" Formatted loans:", formatted);
+
+        const grouped = [];
+        let branchCounter = 1;
+        const branches = [...new Set(formatted.map((l) => l.branch))];
+        console.log("Unique branches found:", branches);
+
+        for (const branch of branches) {
+          const branchLoans = formatted.filter((l) => l.branch === branch);
+          const branchTotal = branchLoans.reduce(
+            (sum, l) => sum + (l.disbursedAmount || 0),
+            0
+          );
+
+          const officers = [...new Set(branchLoans.map((l) => l.loanOfficer))];
+          console.log(` Officers in ${branch}:`, officers);
+
+          for (const officer of officers) {
+            const officerLoans = branchLoans.filter(
+              (l) => l.loanOfficer === officer
+            );
+            const officerTotal = officerLoans.reduce(
+              (sum, l) => sum + (l.disbursedAmount || 0),
+              0
+            );
+
+            officerLoans.forEach((loan, index) => {
+              grouped.push({
+                ...loan,
+                branchNumber: branchCounter,
+                branch,
+                loanOfficer: officer,
+                branchTotalAmount: branchTotal,
+                roTotalAmount: officerTotal,
+                isFirstInBranch: index === 0 && officers.indexOf(officer) === 0,
+                isFirstInOfficer: index === 0,
+              });
+            });
+          }
+          branchCounter++;
+        }
+
+        console.log("Grouped loan data ready:", grouped);
+
+        setDisbursedLoans(grouped);
+        setFilteredData(grouped);
       } catch (err) {
-        console.error("Error fetching disbursed loans:", err.message);
+        console.error(" Error fetching disbursed loans:", err);
       } finally {
         setLoading(false);
+        console.log(" Fetch process completed.");
       }
     };
 
     fetchDisbursedLoans();
   }, []);
 
-  // ✅ Filter logic
+  // Enhanced Date Filtering - FIXED
+  const getDateRange = (filter) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let start, end;
+
+    switch (filter) {
+      case "today":
+        start = new Date(today);
+        end = new Date(today);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "week":
+        start = new Date(today);
+        start.setDate(start.getDate() - start.getDay());
+        end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "month":
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "quarter":
+        const currentQuarter = Math.floor(today.getMonth() / 3);
+        start = new Date(today.getFullYear(), currentQuarter * 3, 1);
+        end = new Date(today.getFullYear(), (currentQuarter + 1) * 3, 0);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "year":
+        start = new Date(today.getFullYear(), 0, 1);
+        end = new Date(today.getFullYear(), 11, 31);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "custom":
+        start = customStartDate ? new Date(customStartDate) : new Date(0);
+        start.setHours(0, 0, 0, 0);
+        end = customEndDate ? new Date(customEndDate) : new Date();
+        end.setHours(23, 59, 59, 999);
+        break;
+      default:
+        return null;
+    }
+    return { start, end };
+  };
+
+  // Filter logic - FIXED
   useEffect(() => {
     let result = [...disbursedLoans];
     const q = filters.search.toLowerCase();
 
+    // Text search - FIXED property names
     if (filters.search) {
-      result = result.filter(
-        (i) =>
-          i.customerName.toLowerCase().includes(q) ||
-          i.loanNumber.toLowerCase().includes(q) ||
-          i.mobile.includes(q)
-      );
+      result = result.filter((i) => {
+        const idNum = i.idNumber ? String(i.idNumber) : "";
+        const mobile = i.mobile ? String(i.mobile) : "";
+        const loanNum = i.loanNumber ? String(i.loanNumber).toLowerCase() : "";
+        const name = i.customerName ? i.customerName.toLowerCase() : "";
+
+        return (
+          name.includes(q) ||
+          loanNum.includes(q) ||
+          mobile.includes(q) ||
+          idNum.includes(q)
+        );
+      });
     }
 
-    if (filters.branch) result = result.filter((i) => i.branch === filters.branch);
-    if (filters.officer) result = result.filter((i) => i.loanOfficer === filters.officer);
-    if (filters.ro) result = result.filter((i) => i.relationshipOfficer === filters.ro);
-    if (filters.status) result = result.filter((i) => i.repaymentStatus === filters.status);
+    // Dropdown filters
+    if (filters.branch)
+      result = result.filter((i) => i.branch === filters.branch);
+    if (filters.officer)
+      result = result.filter((i) => i.loanOfficer === filters.officer);
+    if (filters.product)
+      result = result.filter((i) => i.productName === filters.product);
 
-    if (filters.startDate)
-      result = result.filter(
-        (i) => new Date(i.disbursedDate) >= new Date(filters.startDate)
-      );
-    if (filters.endDate)
-      result = result.filter(
-        (i) => new Date(i.disbursedDate) <= new Date(filters.endDate)
-      );
+    // Date filter - FIXED: using rawDisbursementDate instead of disbursed_at
+    if (dateFilter !== "all") {
+      const range = getDateRange(dateFilter);
+      if (range) {
+        result = result.filter((i) => {
+          if (!i.rawDisbursementDate) return false;
+          const disbursementDate = new Date(i.rawDisbursementDate);
+          return (
+            disbursementDate >= range.start && disbursementDate <= range.end
+          );
+        });
+      }
+    }
 
     // Apply sorting
     if (sortConfig.key) {
@@ -147,9 +368,16 @@ const DisbursementLoansReport = () => {
 
     setFilteredData(result);
     setCurrentPage(1);
-  }, [filters, disbursedLoans, sortConfig]);
+  }, [
+    filters,
+    disbursedLoans,
+    sortConfig,
+    dateFilter,
+    customStartDate,
+    customEndDate,
+  ]);
 
-  // ✅ Utility Functions
+  // Utility Functions
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("en-KE", {
       style: "currency",
@@ -157,373 +385,717 @@ const DisbursementLoansReport = () => {
       minimumFractionDigits: 0,
     }).format(amount);
 
-  const handleSort = (key) =>
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
 
-  const SortableHeader = ({ label, sortKey }) => (
-    <th
-      onClick={() => handleSort(sortKey)}
-      className="px-6 py-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-200 transition-colors whitespace-nowrap"
-    >
-      <div className="flex items-center gap-2">
-        {label}
-        {sortConfig.key === sortKey && (
-          sortConfig.direction === "asc" ? 
-            <ChevronUp className="w-4 h-4" /> : 
-            <ChevronDown className="w-4 h-4" />
-        )}
-      </div>
-    </th>
+    // Utility: Get current timestamp
+const getCurrentTimestamp = () => {
+  const now = new Date();
+  return now.toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" });
+};
+
+// 🔹 PDF Export
+const exportToPDF = () => {
+  const data = getExportData();
+  if (data.length === 0) return alert("No data to export");
+
+  const doc = new jsPDF({ orientation: "landscape" });
+  const title = "Mula Credit Ltd - Loan Disbursement Report";
+  const generated = `Generated on: ${getCurrentTimestamp()}`;
+
+  doc.setFontSize(14);
+  doc.text(title, 14, 15);
+  doc.setFontSize(10);
+  doc.text(generated, 14, 22);
+
+  const headers = [
+    [
+      "No.", "Branch Name", "Total Amount", "Loan Officer", "RO Total Amount",
+      "Customer Name", "Mobile Number", "ID Number", "Mpesa Reference",
+      "Loan Reference Number", "Applied Loan Amount", "Disbursed Amount",
+      "Interest Amount", "Business Name", "Business Type",
+      "Product", "Next Payment Date", "Disbursement Date"
+    ],
+  ];
+
+  const groupedData = groupLoansForDisplay(data);
+  const rows = [];
+  let branchNum = 1;
+  Object.values(groupedData).forEach(branch => {
+    Object.values(branch.officers).forEach(officer => {
+      officer.customers.forEach((cust, i) => {
+        rows.push([
+          i === 0 ? branchNum : "",
+          i === 0 ? branch.branch : "",
+          i === 0 ? formatCurrency(branch.totalAmount) : "",
+          i === 0 ? officer.officer : "",
+          i === 0 ? formatCurrency(officer.roTotalAmount) : "",
+          cust.customerName,
+          cust.mobile,
+          cust.idNumber,
+          cust.mpesaReference,
+          cust.loanReferenceNumber,
+          formatCurrency(cust.appliedLoanAmount),
+          formatCurrency(cust.disbursedAmount),
+          formatCurrency(cust.interestAmount),
+          cust.business_name,
+          cust.business_type,
+          cust.productName,
+          cust.nextPaymentDate,
+          cust.disbursementDate,
+        ]);
+      });
+    });
+    branchNum++;
+  });
+
+  autoTable(doc, {
+    head: headers,
+    body: rows,
+    startY: 28,
+    styles: { fontSize: 8 },
+  });
+
+  doc.save(getExportFileName("pdf"));
+};
+
+// 🔹 Excel Export
+const exportToExcel = () => {
+  const data = getExportData();
+  if (data.length === 0) return alert("No data to export");
+
+  const ws = XLSX.utils.json_to_sheet(
+    data.map((d, index) => ({
+      No: index + 1,
+      Branch: d.branch,
+      "Loan Officer": d.loanOfficer,
+      "Customer Name": d.customerName,
+      Mobile: d.mobile,
+      "ID Number": d.idNumber,
+      "Mpesa Reference": d.mpesaReference,
+      "Loan Ref": d.loanReferenceNumber,
+      "Applied Amount": d.appliedLoanAmount,
+      "Disbursed Amount": d.disbursedAmount,
+      "Interest Amount": d.interestAmount,
+      "Business Name": d.business_name,
+      "Business Type": d.business_type,
+      Product: d.productName,
+      "Next Payment Date": d.nextPaymentDate,
+      "Disbursement Date": d.disbursementDate,
+    }))
   );
 
-  const exportToCSV = (data, filename) => {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Disbursement Report");
+  XLSX.writeFile(wb, getExportFileName("xlsx"));
+};
+
+// 🔹 Word Export
+const exportToWord = async () => {
+  const data = getExportData();
+  if (data.length === 0) return alert("No data to export");
+
+  const rows = data.map((d, i) => new TableRow({
+    children: [
+      new TableCell({ children: [new Paragraph(String(i + 1))] }),
+      new TableCell({ children: [new Paragraph(d.branch)] }),
+      new TableCell({ children: [new Paragraph(d.loanOfficer)] }),
+      new TableCell({ children: [new Paragraph(d.customerName)] }),
+      new TableCell({ children: [new Paragraph(String(d.mobile))] }),
+      new TableCell({ children: [new Paragraph(d.loanReferenceNumber)] }),
+      new TableCell({ children: [new Paragraph(formatCurrency(d.disbursedAmount))] }),
+    ]
+  }));
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({ children: [new TextRun({ text: "Mula Credit Ltd - Loan Disbursement Report", bold: true, size: 28 })] }),
+        new Paragraph({ children: [new TextRun({ text: `Generated on: ${getCurrentTimestamp()}`, italics: true, size: 22 })] }),
+        new Paragraph(" "),
+        new Table({
+          rows: [
+            new TableRow({
+              children: [
+                "No.", "Branch", "Loan Officer", "Customer Name", "Mobile", "Loan Ref", "Disbursed Amount"
+              ].map(h => new TableCell({ children: [new Paragraph({ text: h, bold: true })] }))
+            }),
+            ...rows,
+          ]
+        })
+      ],
+    }],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, getExportFileName("docx"));
+};
+
+
+  // Export Functions
+  const getExportData = () => {
+    return filteredData;
+  };
+
+  const getExportFileName = (ext) => {
+    const timestamp = new Date().toISOString().split("T")[0];
+    return `loan-disbursement-report-${timestamp}.${ext}`;
+  };
+
+  const downloadFile = (content, fileName, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // CSV Export
+  const exportToCSV = () => {
+    const data = getExportData();
     if (data.length === 0) return alert("No data to export");
+
     const headers = [
       "No.",
-      "Loan Number",
-      "Branch",
+      "Branch Name",
+      "Total Amount",
       "Loan Officer",
-      "RO",
-      "Customer",
-      "ID",
-      "Mobile",
+      "RO Total Amount",
+      "Customer Name",
+      "Mobile Number",
+      "ID Number",
+      "Mpesa Reference",
+      "Loan Reference Number",
+      "Applied Loan Amount",
+      "Disbursed Amount",
+      "Interest Amount",
+      "Business Name",
+      "Business Type",
       "Product",
-      "Applied",
-      "Disbursed",
-      "Mpesa Transaction",
-      "Interest",
-      "Repayment Status",
-      "Next Payment",
-      "Disbursed Date",
+      "Next Payment Date",
+      "Disbursement Date",
     ];
+
+    const groupedData = groupLoansForDisplay(data);
+    let flattenedData = [];
+    let branchNumber = 1;
+
+    Object.values(groupedData).forEach((branch) => {
+      Object.values(branch.officers).forEach((officer) => {
+        officer.customers.forEach((customer, customerIndex) => {
+          flattenedData.push([
+            customerIndex === 0 ? branchNumber : "",
+            customerIndex === 0 ? branch.branch : "",
+            customerIndex === 0 ? formatCurrency(branch.totalAmount) : "",
+            customerIndex === 0 ? officer.officer : "",
+            customerIndex === 0 ? formatCurrency(officer.roTotalAmount) : "",
+            customer.customerName,
+            customer.mobile,
+            customer.idNumber || customer.id_number,
+            customer.mpesaReference,
+            customer.loanReferenceNumber,
+            formatCurrency(customer.appliedLoanAmount),
+            formatCurrency(customer.disbursedAmount),
+            formatCurrency(customer.interestAmount),
+            customer.business_name,
+            customer.business_type,
+            customer.productName || customer.product_type,
+            customer.nextPaymentDate,
+            customer.disbursementDate,
+          ]);
+        });
+      });
+      branchNumber++;
+    });
 
     const csv = [
       headers.join(","),
-      ...data.map((item, index) =>
-        [
-          index + 1,
-          item.loanNumber,
-          item.branch,
-          item.loanOfficer,
-          item.relationshipOfficer,
-          `"${item.customerName}"`,
-          item.idNumber,
-          item.mobile,
-          item.productType,
-          item.appliedAmount,
-          item.disbursedAmount,
-          item.mpesaTransaction,
-          item.interestAmount,
-          item.repaymentStatus,
-          item.nextPayment,
-          item.disbursedDate,
-        ].join(",")
+      ...flattenedData.map((row) =>
+        row
+          .map((field) =>
+            typeof field === "string" && field.includes(",")
+              ? `"${field}"`
+              : field
+          )
+          .join(",")
       ),
     ].join("\n");
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
+    downloadFile(csv, getExportFileName("csv"), "text/csv;charset=utf-8;");
   };
+const handleExport = () => {
+  switch (exportFormat) {
+    case "pdf":
+      exportToPDF();
+      break;
+    case "word":
+      exportToWord();
+      break;
+    case "excel":
+      exportToExcel();
+      break;
+    case "csv":
+    default:
+      exportToCSV();
+      break;
+  }
+};
 
-  const handleExport = () => {
-    const timestamp = new Date().toISOString().split("T")[0];
-    exportToCSV(filteredData, `loan-disbursement-report-${timestamp}.csv`);
-  };
 
   const handlePrint = () => window.print();
-  const handleFilterChange = (key, value) => setFilters((p) => ({ ...p, [key]: value }));
-  const clearFilters = () =>
+
+  const handleFilterChange = (key, value) =>
+    setFilters((prev) => ({ ...prev, [key]: value }));
+
+  const clearFilters = () => {
     setFilters({
       search: "",
       branch: "",
       officer: "",
-      ro: "",
-      startDate: "",
-      endDate: "",
-      status: "",
+      product: "",
     });
-
-  // ✅ Dropdown options
-  const branches = [...new Set(disbursedLoans.map((i) => i.branch).filter(b => b !== "N/A"))];
-  const officers = [...new Set(disbursedLoans.map((i) => i.loanOfficer).filter(o => o !== "N/A"))];
-  const ros = [...new Set(disbursedLoans.map((i) => i.relationshipOfficer).filter(r => r !== "N/A"))];
-  const statuses = [...new Set(disbursedLoans.map((i) => i.repaymentStatus).filter(s => s !== "N/A"))];
-
-  // ✅ Totals for filtered data
-  const totals = {
-    disbursedAmount: filteredData.reduce((sum, i) => sum + i.disbursedAmount, 0),
-    interestAmount: filteredData.reduce((sum, i) => sum + i.interestAmount, 0),
-    appliedAmount: filteredData.reduce((sum, i) => sum + i.appliedAmount, 0),
+    setDateFilter("all");
+    setCustomStartDate("");
+    setCustomEndDate("");
   };
 
-  // ✅ Pagination
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const startIdx = (currentPage - 1) * itemsPerPage;
-  const endIdx = startIdx + itemsPerPage;
-  const currentData = filteredData.slice(startIdx, endIdx);
+  // Dropdown options - FIXED: using correct property names
+  const branches = [
+    ...new Set(
+      disbursedLoans.map((i) => i.branch).filter((b) => b && b !== "N/A")
+    ),
+  ];
+  const officers = [
+    ...new Set(
+      disbursedLoans.map((i) => i.loanOfficer).filter((o) => o && o !== "N/A")
+    ),
+  ];
+  const products = [
+    ...new Set(
+      disbursedLoans.map((i) => i.productName).filter((p) => p && p !== "N/A")
+    ),
+  ];
+
+  // Date filter options
+  const dateFilterOptions = [
+    { value: "all", label: "All Time" },
+    { value: "today", label: "Today" },
+    { value: "week", label: "This Week" },
+    { value: "month", label: "This Month" },
+    { value: "quarter", label: "This Quarter" },
+    { value: "year", label: "This Year" },
+    { value: "custom", label: "Custom Range" },
+  ];
+
+  // Export format options
+  const exportFormatOptions = [
+    { value: "csv", label: "CSV" },
+    { value: "excel", label: "Excel" },
+    { value: "word", label: "Word" },
+    { value: "pdf", label: "PDF" },
+  ];
+
+  // Get grouped data for display
+  const groupedData = groupLoansForDisplay(filteredData);
+
+  // Calculate total rows for pagination
+  let totalRows = 0;
+  Object.values(groupedData).forEach((branch) => {
+    Object.values(branch.officers).forEach((officer) => {
+      totalRows += officer.customers.length;
+    });
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(totalRows / itemsPerPage);
+
+  // Get current page data with proper numbering and grouping
+  const getCurrentPageData = () => {
+    const allRows = [];
+    let globalIndex = 0;
+    let branchNumber = 1;
+
+    Object.values(groupedData).forEach((branch) => {
+      let isFirstOfficerInBranch = true;
+
+      Object.values(branch.officers).forEach((officer) => {
+        officer.customers.forEach((customer, customerIndex) => {
+          globalIndex++;
+
+          if (
+            globalIndex > (currentPage - 1) * itemsPerPage &&
+            globalIndex <= currentPage * itemsPerPage
+          ) {
+            allRows.push({
+              ...customer,
+              branch: branch.branch,
+              branchTotalAmount: branch.totalAmount,
+              loanOfficer: officer.officer,
+              roTotalAmount: officer.roTotalAmount,
+              branchNumber:
+                customerIndex === 0 && isFirstOfficerInBranch
+                  ? branchNumber
+                  : "",
+              isFirstInBranch: customerIndex === 0 && isFirstOfficerInBranch,
+              isFirstInOfficer: customerIndex === 0,
+              rowNumber: globalIndex,
+            });
+          }
+        });
+        isFirstOfficerInBranch = false;
+      });
+      branchNumber++;
+    });
+
+    return allRows;
+  };
+
+  const currentData = getCurrentPageData();
 
   if (loading)
     return (
-      <div className="p-8 text-center">
+      <div className="min-h-screen bg-gray-50 p-8 text-center">
         <p className="text-gray-500">Fetching disbursed loans...</p>
       </div>
     );
 
   return (
-    <div className="space-y-6">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-sm font-bold text-gray-900">Disbursement Loans Report</h2>
-          {/* <p className="text-gray-600 text-sm mt-1">View and manage all disbursed loans</p> */}
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium ${
-              showFilters ? "bg-blue-600 text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-            }`}
-          >
-            <Filter className="w-4 h-4" /> Filters
-          </button>
-          <button 
-            onClick={handlePrint} 
-            className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 font-medium"
-          >
-            <Printer className="w-4 h-4" /> Print
-          </button>
-          <button 
-            onClick={handleExport} 
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 font-medium"
-          >
-            <Download className="w-4 h-4" /> Export CSV
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-[1600px] mx-auto space-y-6">
+        {/* HEADER */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm font-medium ${
+                  showFilters
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                <Filter className="w-4 h-4" /> Filters
+              </button>
+              <button
+                onClick={handlePrint}
+                className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-medium"
+              >
+                <Printer className="w-4 h-4" /> Print
+              </button>
 
-      {/* FILTER SECTION */}
-      {showFilters && (
-        <div className="bg-white p-6 border border-gray-200 rounded-lg shadow-sm space-y-4">
-          <h3 className="font-semibold text-gray-900">Filter Results</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <input
-              type="text"
-              value={filters.search}
-              onChange={(e) => handleFilterChange("search", e.target.value)}
-              placeholder="Search name, loan #, or phone"
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <select 
-              value={filters.branch} 
-              onChange={(e) => handleFilterChange("branch", e.target.value)} 
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Branches</option>
-              {branches.map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
-            <select 
-              value={filters.officer} 
-              onChange={(e) => handleFilterChange("officer", e.target.value)} 
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Officers</option>
-              {officers.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-            <select 
-              value={filters.ro} 
-              onChange={(e) => handleFilterChange("ro", e.target.value)} 
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All ROs</option>
-              {ros.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <input 
-              type="date" 
-              value={filters.startDate} 
-              onChange={(e) => handleFilterChange("startDate", e.target.value)} 
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input 
-              type="date" 
-              value={filters.endDate} 
-              onChange={(e) => handleFilterChange("endDate", e.target.value)} 
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <select 
-              value={filters.status} 
-              onChange={(e) => handleFilterChange("status", e.target.value)} 
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Statuses</option>
-              {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          {(filters.search || filters.branch || filters.officer || filters.ro || filters.startDate || filters.endDate || filters.status) && (
-            <button 
-              onClick={clearFilters} 
-              className="text-red-600 text-sm font-medium flex items-center gap-1 mt-2 hover:text-red-700"
-            >
-              <X className="w-4 h-4" /> Clear Filters
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* DATA SUMMARY */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <p className="text-gray-600 text-sm font-medium">Total Records</p>
-          <p className="text-2xl font-bold text-gray-900">{filteredData.length}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <p className="text-gray-600 text-sm font-medium">Total Applied</p>
-          <p className="text-2xl font-bold text-blue-600">{formatCurrency(totals.appliedAmount)}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <p className="text-gray-600 text-sm font-medium">Total Disbursed</p>
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(totals.disbursedAmount)}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <p className="text-gray-600 text-sm font-medium">Total Interest</p>
-          <p className="text-2xl font-bold text-purple-600">{formatCurrency(totals.interestAmount)}</p>
-        </div>
-      </div>
-
-      {/* TABLE */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-        {filteredData.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">No records found</p>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-100 border-b border-gray-200 sticky top-0">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold text-gray-700 text-left whitespace-nowrap">#</th>
-                    <SortableHeader label="Loan No" sortKey="loanNumber" />
-                    <SortableHeader label="Branch" sortKey="branch" />
-                    <SortableHeader label="Loan Officer" sortKey="loanOfficer" />
-                    <SortableHeader label="RO" sortKey="relationshipOfficer" />
-                    <SortableHeader label="Customer" sortKey="customerName" />
-                    <SortableHeader label="ID" sortKey="idNumber" />
-                    <SortableHeader label="Mobile" sortKey="mobile" />
-                    <SortableHeader label="Product" sortKey="productType" />
-                    <SortableHeader label="Applied" sortKey="appliedAmount" />
-                    <SortableHeader label="Disbursed" sortKey="disbursedAmount" />
-                    <SortableHeader label="Mpesa Txn" sortKey="mpesaTransaction" />
-                    <SortableHeader label="Interest" sortKey="interestAmount" />
-                    <SortableHeader label="Repayment Status" sortKey="repaymentStatus" />
-                    <SortableHeader label="Next Payment" sortKey="nextPayment" />
-                    <SortableHeader label="Disbursed Date" sortKey="disbursedDate" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {currentData.map((loan, index) => (
-                    <tr key={loan.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{startIdx + index + 1}</td>
-                      <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{loan.loanNumber}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{loan.branch}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{loan.loanOfficer}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{loan.relationshipOfficer}</td>
-                      <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{loan.customerName}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{loan.idNumber}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{loan.mobile}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{loan.productType}</td>
-                      <td className="px-6 py-4 text-right text-gray-900 font-medium whitespace-nowrap">{formatCurrency(loan.appliedAmount)}</td>
-                      <td className="px-6 py-4 text-right text-gray-900 font-semibold whitespace-nowrap">{formatCurrency(loan.disbursedAmount)}</td>
-                      <td className="px-6 py-4 text-center text-gray-700 whitespace-nowrap text-sm">{loan.mpesaTransaction}</td>
-                      <td className="px-6 py-4 text-right text-gray-900 font-medium whitespace-nowrap">{formatCurrency(loan.interestAmount)}</td>
-                      <td className={`px-6 py-4 font-medium whitespace-nowrap ${
-                        loan.repaymentStatus === "Fully Paid"
-                          ? "text-green-600"
-                          : loan.repaymentStatus === "Partially Paid"
-                          ? "text-yellow-600"
-                          : "text-red-600"
-                      }`}>
-                        {loan.repaymentStatus}
-                      </td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{loan.nextPayment}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{loan.disbursedDate}</td>
-                    </tr>
+              {/* Export Format Dropdown */}
+              <div className="flex gap-2">
+                <select
+                  value={exportFormat}
+                  onChange={(e) => setExportFormat(e.target.value)}
+                  className="border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {exportFormatOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
                   ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* PAGINATION */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Showing <span className="font-semibold">{startIdx + 1}</span> to{' '}
-                <span className="font-semibold">{Math.min(endIdx, filteredData.length)}</span> of{' '}
-                <span className="font-semibold">{filteredData.length}</span> records
-              </div>
-
-              <div className="flex items-center gap-2">
+                </select>
                 <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className={`px-3 py-2 rounded-lg flex items-center gap-1 transition-colors ${
-                    currentPage === 1
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                  }`}
+                  onClick={handleExport}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm font-medium"
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
-                </button>
-
-                <div className="flex items-center gap-2">
-                  {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-2 rounded-lg transition-colors ${
-                          currentPage === pageNum
-                            ? 'bg-blue-600 text-white font-semibold'
-                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className={`px-3 py-2 rounded-lg flex items-center gap-1 transition-colors ${
-                    currentPage === totalPages
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                  }`}
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
+                  <Download className="w-4 h-4" /> Export
                 </button>
               </div>
             </div>
-          </>
+          </div>
+        </div>
+
+        {/* FILTER SECTION */}
+        {showFilters && (
+          <div className="bg-white p-6 border border-gray-200 rounded-lg shadow-sm space-y-4">
+            <h3 className="font-semibold text-gray-900">Filter Results</h3>
+
+            {/* Date Filter Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                {dateFilterOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              {dateFilter === "custom" && (
+                <>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="Start Date"
+                  />
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="End Date"
+                  />
+                </>
+              )}
+            </div>
+
+            {/* Other Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <input
+                type="text"
+                value={filters.search}
+                onChange={(e) => handleFilterChange("search", e.target.value)}
+                placeholder="Search name, ID, or phone"
+                className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+              <select
+                value={filters.branch}
+                onChange={(e) => handleFilterChange("branch", e.target.value)}
+                className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">All Branches</option>
+                {branches.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filters.officer}
+                onChange={(e) => handleFilterChange("officer", e.target.value)}
+                className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">All Officers</option>
+                {officers.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filters.product}
+                onChange={(e) => handleFilterChange("product", e.target.value)}
+                className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">All Products</option>
+                {products.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Clear Filters */}
+            {(filters.search ||
+              filters.branch ||
+              filters.officer ||
+              filters.product ||
+              dateFilter !== "all") && (
+              <button
+                onClick={clearFilters}
+                className="text-red-600 text-sm font-medium flex items-center gap-1 mt-2 hover:text-red-700"
+              >
+                <X className="w-4 h-4" /> Clear Filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* PAGINATION CONTROLS */}
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-600">
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+            {Math.min(currentPage * itemsPerPage, totalRows)} of {totalRows}{" "}
+            entries
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="px-3 py-1 text-sm">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* TABLE */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full border border-gray-300 text-sm text-left whitespace-nowrap">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border p-2 text-center font-semibold text-gray-700">
+                  No.
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Branch Name
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Total Amount
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Loan Officer
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  RO Total Amount
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Customer Name
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Mobile Number
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  ID Number
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Mpesa Reference
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Loan Reference
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Applied Amount
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Disbursed Amount
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Interest Amount
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Business Name
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Business Type
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Product
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Next Payment Date
+                </th>
+                <th className="border p-2 font-semibold text-gray-700">
+                  Disbursement Date
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {currentData.length > 0 ? (
+                currentData.map((row, index) => (
+                  <tr key={`${row.id}-${index}`} className="hover:bg-gray-50">
+                    <td className="border p-2 text-center font-medium">
+                      {row.branchNumber}
+                    </td>
+                    <td className="border p-2 font-semibold">
+                      {row.isFirstInBranch ? row.branch : ""}
+                    </td>
+                    <td className="border p-2">
+                      {row.isFirstInBranch
+                        ? formatCurrency(row.branchTotalAmount)
+                        : ""}
+                    </td>
+                    <td className="border p-2">
+                      {row.isFirstInOfficer ? row.loanOfficer : ""}
+                    </td>
+                    <td className="border p-2">
+                      {row.isFirstInOfficer
+                        ? formatCurrency(row.roTotalAmount)
+                        : ""}
+                    </td>
+                    <td className="border p-2">{row.customerName}</td>
+                    <td className="border p-2">{row.mobile}</td>
+                    <td className="border p-2">
+                      {row.idNumber || row.id_number}
+                    </td>
+                    <td className="border p-2">{row.mpesaReference}</td>
+                    <td className="border p-2">{row.loanReferenceNumber}</td>
+                    <td className="border p-2">
+                      {formatCurrency(row.appliedLoanAmount)}
+                    </td>
+                    <td className="border p-2">
+                      {formatCurrency(row.disbursedAmount)}
+                    </td>
+                    <td className="border p-2">
+                      {formatCurrency(row.interestAmount)}
+                    </td>
+                    <td className="border p-2">{row.business_name}</td>
+                    <td className="border p-2">{row.business_type}</td>
+                    <td className="border p-2">
+                      {row.productName || row.product_type}
+                    </td>
+                    <td className="border p-2">{row.nextPaymentDate}</td>
+                    <td className="border p-2">{row.disbursementDate}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan="18"
+                    className="border p-4 text-center text-gray-500"
+                  >
+                    No disbursed loans found matching your filters
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* PAGINATION CONTROLS - BOTTOM */}
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+              {Math.min(currentPage * itemsPerPage, totalRows)} of {totalRows}{" "}
+              entries
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="px-3 py-1 text-sm">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

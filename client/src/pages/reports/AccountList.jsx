@@ -4,8 +4,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  X,
-  Download,
+  X, Download, Search, Share2,  Printer,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
@@ -31,11 +30,29 @@ const CustomerStatementModal = ({
   const [customEndDate, setCustomEndDate] = useState("");
   const [exportFormat, setExportFormat] = useState("csv");
   const [reportTimestamp, setReportTimestamp] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Summary state
+  const [statementSummary, setStatementSummary] = useState({
+    totalLoanAmount: 0,
+    principal: 0,
+    interest: 0,
+    totalPaid: 0,
+    outstandingBalance: 0
+  });
+
+  // Statement period state
+  const [statementPeriod, setStatementPeriod] = useState({
+    startDate: "",
+    endDate: "",
+    period: ""
+  });
 
   // Set report timestamp when component mounts
   useEffect(() => {
+    const now = new Date();
     setReportTimestamp(
-      new Date().toLocaleString("en-US", {
+      now.toLocaleString("en-US", {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
@@ -52,26 +69,67 @@ const CustomerStatementModal = ({
       try {
         setLoading(true);
 
-        //  Fetch loans
+        // 1️ Fetch customer creation date
+        const { data: customer, error: customerError } = await supabase
+          .from("customers")
+          .select("id, created_at")
+          .eq("id", customerId)
+          .single();
+
+        if (customerError) throw customerError;
+
+        // 2️ Fetch customer loans
         const { data: loans, error: loansError } = await supabase
           .from("loans")
           .select(
-            "id, customer_id, processing_fee, registration_fee, total_payable, scored_amount, total_interest, created_at"
+            "id, customer_id, processing_fee, registration_fee, total_payable, scored_amount, total_interest, created_at, status"
           )
           .eq("customer_id", customerId);
 
         if (loansError) throw loansError;
-        if (!loans?.length) {
-          setTransactions([]);
-          setFilteredTransactions([]);
-          return;
+
+        // Summary calculations
+        let totalLoanAmount = 0;
+        let totalPrincipal = 0;
+        let totalInterest = 0;
+        let totalPaid = 0;
+      
+
+
+
+        if (loans?.length) {
+          loans.forEach((loan) => {
+            totalLoanAmount += Number(loan.total_payable) || 0;
+            totalPrincipal += Number(loan.scored_amount) || 0;
+            totalInterest += Number(loan.total_interest) || 0;
+          });
         }
 
-        const loanIds = loans.map((l) => l.id);
 
-        //  Fetch related data
-        const [{ data: installments }, { data: c2b }, { data: b2c }] =
-          await Promise.all([
+        // Calculate statement period (last 4 months)
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setMonth(endDate.getMonth() - 4);
+        
+        setStatementPeriod({
+          startDate: startDate.toLocaleDateString('en-GB'),
+          endDate: endDate.toLocaleDateString('en-GB'),
+          period: "four-month"
+        });
+
+        const loanIds = loans?.map((l) => l.id) || [];
+
+        // 3️ Fetch related data
+        let installments = [];
+        let c2b = [];
+        let b2c = [];
+
+        if (loanIds.length > 0) {
+          const [
+            { data: installmentsData },
+            { data: c2bData },
+            { data: b2cData },
+          ] = await Promise.all([
             supabase
               .from("loan_installments")
               .select("*")
@@ -93,9 +151,33 @@ const CustomerStatementModal = ({
               .order("created_at", { ascending: true }),
           ]);
 
-        let allEvents = [];
+          installments = installmentsData || [];
+          c2b = c2bData || [];
+          b2c = b2cData || [];
+        }
 
-        //  Joining + Processing Fees
+        // 4️ Start building transaction events
+        let allEvents = [];
+        let runningBalance = 0;
+
+        // (1) JOINING FEE — debit at time customer was created
+        if (customer?.created_at) {
+          const joiningFee = 300; // default joining fee
+          runningBalance -= joiningFee;
+
+          allEvents.push({
+            id: `joining-fee-${customer.id}`,
+            date: new Date(customer.created_at),
+            description: "JOINING FEE",
+            reference: "-",
+            debit: -Math.abs(Number(joiningFee)),
+            credit: 0,
+            balance: runningBalance,
+            sequence: 1,
+          });
+        }
+
+        // (2) Registration / Processing fee deposits (C2B)
         c2b
           .filter(
             (tx) =>
@@ -103,128 +185,151 @@ const CustomerStatementModal = ({
               tx.payment_type === "processing"
           )
           .forEach((tx) => {
+            runningBalance += Number(tx.amount);
             allEvents.push({
+              id: `deposit-${tx.id}`,
               date: new Date(tx.transaction_time),
-              description:
-                tx.payment_type === "registration"
-                  ? "Joining Fee Payment"
-                  : "Processing Fee Payment",
-              reference: tx.transaction_id || tx.reference || "-",
-              credit: Number(tx.amount),
+              description: "Mobile Money Deposit",
+              reference: `Mpesa Deposit - ${tx.transaction_id || tx.reference || "-"}`,
               debit: 0,
-              sequence: 1,
+              credit: Number(tx.amount),
+              balance: runningBalance,
+              sequence: 2,
             });
           });
 
-        // Disbursements
+        // (3) Loan Disbursement (B2C)
         b2c.forEach((disb) => {
           const loan = loans.find((l) => l.id === disb.loan_id);
           if (!loan) return;
           const disbDate = new Date(disb.created_at);
 
-          if (loan.registration_fee > 0)
-            allEvents.push({
-              date: disbDate,
-              description: "Joining Fee",
-              reference: "-",
-              debit: Number(loan.registration_fee),
-              credit: 0,
-              sequence: 2,
-            });
-
-          if (loan.processing_fee > 0)
-            allEvents.push({
-              date: disbDate,
-              description: "Processing Fee",
-              reference: "-",
-              debit: Number(loan.processing_fee),
-              credit: 0,
-              sequence: 3,
-            });
-
+          // (a) Credit Loan amount
+          runningBalance += Number(loan.scored_amount);
           allEvents.push({
+            id: `loan-disbursement-${disb.id}`,
             date: disbDate,
             description: "Loan Disbursement",
             reference: disb.transaction_id || `Loan-${loan.id}`,
-            credit: Number(loan.total_payable),
             debit: 0,
-            sequence: 4,
+            credit: Number(loan.scored_amount),
+            balance: runningBalance,
+            sequence: 3,
           });
 
+          // (b) Debit Loan processing fee
+          if (loan.processing_fee > 0) {
+            runningBalance -= Number(loan.processing_fee);
+            allEvents.push({
+              id: `processing-fee-${disb.id}`,
+              date: disbDate,
+              description: "LOAN PROCESSING FEE",
+              reference: "-",
+              debit: -Math.abs(Number(loan.processing_fee)),
+              credit: 0,
+              balance: runningBalance,
+              sequence: 4,
+            });
+          }
+
+          // (c) Debit actual mobile disbursement
+          runningBalance -= Number(disb.amount);
           allEvents.push({
+            id: `mobile-disbursement-${disb.id}`,
             date: disbDate,
             description: "Mobile Money Disbursement",
-            reference: disb.transaction_id || "-",
-            credit: Number(disb.amount),
-            debit: 0,
+            reference: "-",
+            debit: -Math.abs(Number(disb.amount)),
+            credit: 0,
+            balance: runningBalance,
             sequence: 5,
-            displayOnly: true,
           });
         });
 
-        //  Repayments (synchronized with deposit)
+        // (4) Loan Repayments (C2B)
         c2b
           .filter((tx) => tx.payment_type === "repayment")
           .forEach((tx) => {
             const payDate = new Date(tx.transaction_time);
             const ref = tx.transaction_id || tx.reference || "-";
+            const relatedInstallments = installments
+              .filter((i) => i.loan_id === tx.loan_id)
+              .sort((a, b) => a.installment_number - b.installment_number);
 
-            // Fetch all installments for the same loan that have been paid
-            const relatedInstallments = installments.filter(
-              (i) =>
-                i.loan_id === tx.loan_id &&
-                (i.interest_paid > 0 || i.principal_paid > 0)
-            );
-
-            //  Record the mobile money deposit
+            // (a) Credit repayment amount
+            runningBalance += Number(tx.amount);
             allEvents.push({
+              id: `repayment-credit-${tx.id}`,
               date: payDate,
               description: "Mobile Money Deposit",
-              reference: ref,
-              credit: Number(tx.amount),
+              reference: `Mpesa Deposit - ${ref}`,
               debit: 0,
+              credit: Number(tx.amount),
+              balance: runningBalance,
               sequence: 6,
-              displayOnly: true,
             });
 
-            //  Record interest and principal repayments (same timestamp)
-            relatedInstallments.forEach((inst) => {
-              if (inst.interest_paid > 0) {
+            // (b) Alternate: Interest then Principal per installment
+            for (const inst of relatedInstallments) {
+              const instInterestPaid = Number(inst.interest_paid) || 0;
+              const instPrincipalPaid = Number(inst.principal_paid) || 0;
+
+              // Interest first
+              if (instInterestPaid > 0) {
+                runningBalance -= instInterestPaid;
                 allEvents.push({
+                  id: `interest-repayment-${tx.id}-${inst.installment_number}`,
                   date: payDate,
-                  description: `Interest Repayment `,
+                  description: `Interest Repayment`,
                   reference: ref,
-                  debit: Number(inst.interest_paid),
+                  debit: -Math.abs(instInterestPaid),
                   credit: 0,
-                  sequence: 7,
+                  balance: runningBalance,
+                  sequence: 7 + inst.installment_number * 2,
                 });
               }
 
-              if (inst.principal_paid > 0) {
+              // Then principal
+              if (instPrincipalPaid > 0) {
+                runningBalance -= instPrincipalPaid;
                 allEvents.push({
+                  id: `principal-repayment-${tx.id}-${inst.installment_number}`,
                   date: payDate,
-                  description: `Principal Repayment `,
+                  description: `Principal Repayment`,
                   reference: ref,
-                  debit: Number(inst.principal_paid),
+                  debit: -Math.abs(instPrincipalPaid),
                   credit: 0,
-                  sequence: 8,
+                  balance: runningBalance,
+                  sequence: 8 + inst.installment_number * 2,
                 });
               }
-            });
+            }
           });
+                  // Calculate total repayments from C2B transactions
+const totalRepayments = c2b
+  .filter((tx) => tx.payment_type === "repayment")
+  .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+        totalPaid = totalRepayments;
 
-        //  Sort and Calculate Balance
+
+setStatementSummary({
+  totalLoanAmount,
+  principal: totalPrincipal,
+  interest: totalInterest,
+  totalPaid,
+  outstandingBalance: totalLoanAmount - totalPaid,
+});
+
+
+        // (5) Sort by date & sequence
         allEvents.sort((a, b) => {
-          const dateDiff = a.date - b.date;
+          const dateDiff = new Date(a.date) - new Date(b.date);
           return dateDiff !== 0 ? dateDiff : a.sequence - b.sequence;
         });
 
-        let runningBalance = 0;
-        allEvents = allEvents.map((ev, idx) => {
-          if (!ev.displayOnly) runningBalance += ev.credit - ev.debit;
-          return { ...ev, balance: runningBalance, id: `event-${idx}` };
-        });
+        allEvents.reverse();
 
+        // (6) Add Balance B/F
         const balanceBF = {
           id: "balance-bf",
           date: new Date(),
@@ -232,11 +337,10 @@ const CustomerStatementModal = ({
           reference: "-",
           debit: 0,
           credit: 0,
-          balance: runningBalance,
+          balance: 0,
           isBalanceBF: true,
         };
-
-        const finalList = [balanceBF, ...[...allEvents].reverse()];
+        const finalList = [balanceBF, ...allEvents];
         setTransactions(finalList);
         applyFilters(finalList, "all");
       } catch (err) {
@@ -249,6 +353,8 @@ const CustomerStatementModal = ({
 
     if (customerId) fetchTransactions();
   }, [customerId]);
+
+
 
   // Enhanced Filtering & Sorting Helpers
   const getDateRange = (filter) => {
@@ -347,13 +453,11 @@ const CustomerStatementModal = ({
     setFilteredTransactions(balanceBF ? [balanceBF, ...sorted] : sorted);
   };
 
-  //  Export Functions (Final Improved)
+  // Export Functions
   const getExportData = () => {
-    // If filter is "all", export all transactions; otherwise, export only filtered ones
     return dateFilter === "all" ? transactions : filteredTransactions;
   };
 
-  // Dynamic filename e.g. "Derick Maloba Account Statement.pdf"
   const getExportFileName = (ext) => {
     const name = (customerInfo?.name || customerName || "Customer")
       .replace(/\s+/g, " ")
@@ -361,7 +465,6 @@ const CustomerStatementModal = ({
     return `${name} Account Statement.${ext}`;
   };
 
-  //  CSV Export
   const exportToCSV = () => {
     const data = getExportData();
     const headers = [
@@ -391,195 +494,146 @@ const CustomerStatementModal = ({
   };
 
   const exportToWord = () => {
-  const data = getExportData();
+    const data = getExportData();
+    const htmlContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+            xmlns:w='urn:schemas-microsoft-com:office:word' 
+            xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset="UTF-8">
+          <title>${customerInfo?.name || customerName} Account Statement</title>
+          <style>
+            @page {
+              size: A4;
+              margin: 1in;
+            }
+            body { font-family: Arial, sans-serif; font-size: 10pt; margin: 0; padding: 0; }
+            .header { text-align: center; margin-bottom: 10px; }
+            .header h1 { font-size: 16pt; margin-bottom: 4px; }
+            .header h2 { font-size: 13pt; margin-bottom: 6px; }
+            .header p { margin: 2px 0; font-size: 10pt; }
+            .summary { margin: 10px 0; padding: 8px; background: #f9f9f9; border: 1px solid #ddd; }
+            .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+            .summary-table td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+            table { border-collapse: collapse; width: 98%; margin: 0 auto; }
+            th, td { border: 1px solid #999; padding: 6px 8px; font-size: 9pt; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>MULAR CREDIT LTD</h1>
+            <h2>${customerInfo?.name || customerName} Account Statement</h2>
+            <p><strong>Mobile:</strong> ${customerInfo?.mobile || customerInfo?.phone || "N/A"}</p>
+            <p><strong>Report Generated:</strong> ${reportTimestamp}</p>
+          </div>
 
-  const htmlContent = `
-    <html xmlns:o='urn:schemas-microsoft-com:office:office' 
-          xmlns:w='urn:schemas-microsoft-com:office:word' 
-          xmlns='http://www.w3.org/TR/REC-html40'>
-      <head>
-        <meta charset="UTF-8">
-        <title>${customerInfo?.name || customerName} Account Statement</title>
-        <style>
-          /* ✅ Define equal printable margins */
-          @page {
-            size: A4;
-            margin-left: 1in;
-            margin-right: 1in;
-            margin-top: 1in;
-            margin-bottom: 1in;
-          }
-
-          body {
-            font-family: Arial, sans-serif;
-            font-size: 10pt;
-            color: #000;
-            margin: 0; /* Word handles page margins already */
-            padding: 0;
-          }
-
-          .header {
-            text-align: center;
-            margin-bottom: 20px;
-          }
-          .header h1 {
-            font-size: 16pt;
-            margin-bottom: 4px;
-          }
-          .header h2 {
-            font-size: 13pt;
-            margin-bottom: 6px;
-          }
-          .header p {
-            margin: 2px 0;
-            font-size: 10pt;
-          }
-
-          /* ✅ Perfectly centered table between margins */
-          table {
-            border-collapse: collapse;
-            width: 98%; /* Slightly smaller than 100% to balance both sides */
-            margin-left: auto;
-            margin-right: auto;
-            table-layout: fixed;
-            word-wrap: break-word;
-          }
-
-          th, td {
-            border: 1px solid #999;
-            padding: 6px 8px;
-            text-align: left;
-            vertical-align: top;
-            font-size: 9pt;
-          }
-
-          th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-          }
-
-          /* ✅ Adjust column widths proportionally */
-          th:nth-child(1), td:nth-child(1) { width: 15%; } /* Date/Time */
-          th:nth-child(2), td:nth-child(2) { width: 26%; } /* Description */
-          th:nth-child(3), td:nth-child(3) { width: 14%; } /* Reference */
-          th:nth-child(4), td:nth-child(4) { width: 15%; } /* Debit */
-          th:nth-child(5), td:nth-child(5) { width: 15%; } /* Credit */
-          th:nth-child(6), td:nth-child(6) { width: 15%; } /* Balance */
-
-          td {
-            word-break: break-word;
-            overflow-wrap: break-word;
-          }
-
-          .footer {
-            margin-top: 20px;
-            font-style: italic;
-            text-align: center;
-            font-size: 9pt;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>MULAR CREDIT LTD</h1>
-          <h2>${customerInfo?.name || customerName} Account Statement</h2>
-          <p><strong>Mobile:</strong> ${customerInfo?.mobile || customerInfo?.phone || "N/A"}</p>
-          <p><strong>Report Generated:</strong> ${reportTimestamp}</p>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Date/Time</th>
-              <th>Description</th>
-              <th>Reference</th>
-              <th>Debit (Ksh)</th>
-              <th>Credit (Ksh)</th>
-              <th>Balance (Ksh)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${data.map((t) => `
+          <div class="summary">
+            <table class="summary-table">
               <tr>
-                <td>${new Date(t.date).toLocaleString("en-KE")}</td>
-                <td>${t.description}</td>
-                <td>${t.reference}</td>
-                <td>${formatAmount(t.debit)}</td>
-                <td>${formatAmount(t.credit)}</td>
-                <td>${formatAmount(t.balance)}</td>
+                <td><strong>Total Loan Amount</strong></td>
+                <td><strong>Principal</strong></td>
+                <td><strong>Interest</strong></td>
+                <td><strong>Total Paid</strong></td>
+                <td><strong>Outstanding Balance</strong></td>
               </tr>
-            `).join("")}
-          </tbody>
-        </table>
+              <tr>
+                <td>${formatAmount(statementSummary.totalLoanAmount)}</td>
+                <td>${formatAmount(statementSummary.principal)}</td>
+                <td>${formatAmount(statementSummary.interest)}</td>
+                <td>${formatAmount(statementSummary.totalPaid)}</td>
+                <td>${formatAmount(statementSummary.outstandingBalance)}</td>
+              </tr>
+            </table>
+          </div>
 
-        <div class="footer">
-          <p>Generated automatically by MULAR CREDIT LTD System.</p>
-        </div>
-      </body>
-    </html>
-  `;
+          <table>
+            <thead>
+              <tr>
+                <th>Date/Time</th>
+                <th>Description</th>
+                <th>Reference</th>
+                <th>Debit (Ksh)</th>
+                <th>Credit (Ksh)</th>
+                <th>Balance (Ksh)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map((t) => `
+                <tr>
+                  <td>${new Date(t.date).toLocaleString("en-KE")}</td>
+                  <td>${t.description}</td>
+                  <td>${t.reference}</td>
+                  <td>${formatAmount(t.debit)}</td>
+                  <td>${formatAmount(t.credit)}</td>
+                  <td>${formatAmount(t.balance)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
 
-  downloadFile(htmlContent, getExportFileName("doc"), "application/msword");
-};
+          <div style="margin-top: 20px; font-style: italic; text-align: center; font-size: 9pt;">
+            <p>Generated automatically by MULAR CREDIT LTD System.</p>
+          </div>
+        </body>
+      </html>
+    `;
 
-const exportToExcel = async () => {
-  // Dynamically import the XLSX library
-  const XLSX = await import("xlsx");
+    downloadFile(htmlContent, getExportFileName("doc"), "application/msword");
+  };
 
-  const data = getExportData();
+  const exportToExcel = async () => {
+    const XLSX = await import("xlsx");
+    const data = getExportData();
 
-  // Prepare header and rows
-  const worksheetData = [
-    ["Date/Time", "Description", "Reference", "Debit (Ksh)", "Credit (Ksh)", "Balance (Ksh)"],
-    ...data.map((t) => [
-      new Date(t.date).toLocaleString("en-KE"),
-      t.description,
-      t.reference,
-      formatAmount(t.debit),
-      formatAmount(t.credit),
-      formatAmount(t.balance),
-    ]),
-  ];
+    const worksheetData = [
+      ["MULAR CREDIT LTD"],
+      [`${customerInfo?.name || customerName} Account Statement`],
+      [`Report Generated: ${reportTimestamp}`],
+      [],
+      ["Total Loan Amount", "Principal", "Interest", "Total Paid", "Outstanding Balance"],
+      [
+        formatAmount(statementSummary.totalLoanAmount),
+        formatAmount(statementSummary.principal),
+        formatAmount(statementSummary.interest),
+        formatAmount(statementSummary.totalPaid),
+        formatAmount(statementSummary.outstandingBalance)
+      ],
+      [],
+      ["Date/Time", "Description", "Reference", "Debit (Ksh)", "Credit (Ksh)", "Balance (Ksh)"],
+      ...data.map((t) => [
+        new Date(t.date).toLocaleString("en-KE"),
+        t.description,
+        t.reference,
+        formatAmount(t.debit),
+        formatAmount(t.credit),
+        formatAmount(t.balance),
+      ]),
+    ];
 
-  // Create worksheet and workbook
-  const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Account Statement");
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Account Statement");
 
-  // Adjust column widths (auto-fit style)
-  const colWidths = [
-    { wch: 22 }, // Date/Time
-    { wch: 30 }, // Description
-    { wch: 18 }, // Reference
-    { wch: 15 }, // Debit
-    { wch: 15 }, // Credit
-    { wch: 15 }, // Balance
-  ];
-  worksheet["!cols"] = colWidths;
+    const colWidths = [
+      { wch: 22 }, { wch: 30 }, { wch: 18 }, { wch: 15 }, { wch: 15 }, { wch: 15 }
+    ];
+    worksheet["!cols"] = colWidths;
 
-  // Generate Excel buffer
-  const excelBuffer = XLSX.write(workbook, {
-    bookType: "xlsx",
-    type: "array",
-  });
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
+    });
 
-  // Convert to Blob for download
-  const blob = new Blob([excelBuffer], {
-    type:
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
-  });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = getExportFileName("xlsx");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-  // Create a downloadable link
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = getExportFileName("xlsx");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
-
-  // PDF Export
   const exportToPDF = async () => {
     const { jsPDF } = await import("jspdf");
     const autoTable = (await import("jspdf-autotable")).default;
@@ -594,7 +648,7 @@ const exportToExcel = async () => {
       formatAmount(t.balance),
     ]);
 
-    //  Header text
+    // Header
     doc.setFontSize(14);
     doc.text("MULAR CREDIT LTD", 105, 15, { align: "center" });
     doc.setFontSize(11);
@@ -608,17 +662,29 @@ const exportToExcel = async () => {
       align: "center",
     });
 
-    //  Table
+    // Summary Table
     autoTable(doc, {
-      head: [
-        ["Date/Time", "Description", "Reference", "Debit", "Credit", "Balance"],
-      ],
+      head: [["Total Loan Amount", "Principal", "Interest", "Total Paid", "Outstanding Balance"]],
+      body: [[
+        formatAmount(statementSummary.totalLoanAmount),
+        formatAmount(statementSummary.principal),
+        formatAmount(statementSummary.interest),
+        formatAmount(statementSummary.totalPaid),
+        formatAmount(statementSummary.outstandingBalance)
+      ]],
+      startY: 40,
+      styles: { fontSize: 9, cellPadding: 3 },
+      theme: "grid",
+    });
+
+    // Main Table
+    autoTable(doc, {
+      head: [["Date/Time", "Description", "Reference", "Debit", "Credit", "Balance"]],
       body: data,
-      startY: 35,
+      startY: 60,
       styles: {
-        fontSize: 9,
+        fontSize: 8,
         cellPadding: 2,
-        overflow: "linebreak",
         lineColor: [0, 0, 0],
         lineWidth: 0.2,
       },
@@ -630,14 +696,11 @@ const exportToExcel = async () => {
         4: { cellWidth: 20 },
         5: { cellWidth: 25 },
       },
-      //  Black text, no fill
       headStyles: {
         fillColor: [255, 255, 255],
         textColor: [0, 0, 0],
         fontStyle: "bold",
         halign: "center",
-        lineColor: [0, 0, 0],
-        lineWidth: 0.2,
       },
       bodyStyles: {
         textColor: [0, 0, 0],
@@ -645,11 +708,9 @@ const exportToExcel = async () => {
       theme: "grid",
     });
 
-    // Save PDF
     doc.save(getExportFileName("pdf"));
   };
 
-  //  Helper to trigger download
   const downloadFile = (content, fileName, mimeType) => {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -662,7 +723,6 @@ const exportToExcel = async () => {
     URL.revokeObjectURL(url);
   };
 
-  //  Main Export Handler
   const handleExport = () => {
     switch (exportFormat) {
       case "csv":
@@ -682,11 +742,13 @@ const exportToExcel = async () => {
     }
   };
 
-  const formatAmount = (amt) =>
-    new Intl.NumberFormat("en-KE", {
+  const formatAmount = (amt) => {
+    if (amt === 0) return "0.00";
+    return new Intl.NumberFormat("en-KE", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(amt || 0);
+    }).format(amt);
+  };
 
   const SortableHeader = ({ label, sortKey }) => {
     const isActive = sortConfig.key === sortKey;
@@ -731,131 +793,243 @@ const exportToExcel = async () => {
 
     return pages;
   };
+const handleFindTransaction = () => {
+  if (!searchTerm.trim()) {
+    alert("Please enter a transaction ID to search.");
+    return;
+  }
 
-  const company = customerInfo || {
-    name: customerName || "Customer",
-    location: "-",
-    email: "-",
-    mobile: "-",
-    phone: "-",
-  };
+  const found = transactions.find(
+    (tx) =>
+      tx.reference?.includes(searchTerm) ||
+      tx.description?.includes(searchTerm)
+  );
+
+  if (found) {
+    alert(`Transaction found: ${found.description} on ${new Date(found.date).toLocaleDateString()}`);
+    setFilteredData([found]); // show only that transaction
+  } else {
+    alert("Transaction not found.");
+  }
+};
+
+//  Share Report via Email (as PDF)
+const handleShareReport = async () => {
+  try {
+    const response = await fetch("/api/send-statement-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerId,
+        customerName,
+        statementPeriod,
+      }),
+    });
+
+    if (!response.ok) throw new Error("Failed to send email");
+    alert("Report shared successfully via email!");
+  } catch (err) {
+    console.error(err);
+    alert("Error sharing report. Please try again.");
+  }
+};
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-start">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              MULAR CREDIT LTD
-            </h2>
-            <p className="text-gray-700 font-medium">Account Statement</p>
-            <p className="text-sm text-gray-600 mt-1">
-              Customer: {company.name} | Mobile:{" "}
-              {company.mobile || company.phone} | {company.email}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Report Generated: {reportTimestamp}
-            </p>
-          </div>
+      
+       {/* Header Section */}
+<div className="sticky top-0 bg-white border-b px-6 py-5 text-center">
+  {/* Customer Name + Title */}
+  <h2 className="text-2xl font-bold text-gray-800">
+    {customerName || "Customer Name"}
+  </h2>
+  <p className="text-lg font-semibold text-gray-600 mt-1">
+    Customer Account Statement
+  </p>
+
+  {/* Dynamic Statement Period */}
+  <div className="mt-3  py-2 ">
+    <p className="text-sm text-gray-700">
+      This report is for the{" "}
+      <span className="font-medium text-blue-800">
+        {statementPeriod.period}
+      </span>{" "}
+      period, starting on{" "}
+      <span className="font-medium text-blue-800">
+        {statementPeriod.startDate}
+      </span>{" "}
+      and ending on{" "}
+      <span className="font-medium text-blue-800">
+        {statementPeriod.endDate}
+      </span>.
+    </p>
+  </div>
+
+  {/* Close Button (top-right) */}
+  <button
+    onClick={onClose}
+    className="absolute right-6 top-5 p-2 rounded-lg hover:bg-gray-100"
+  >
+    <X className="w-5 h-5 text-gray-600" />
+  </button>
+</div>
+
+
+        {/* Filters and Export - Top Section */}
+       <div className="p-6 border-b bg-gray-50">
+  <div className="flex flex-wrap gap-4 items-center justify-between">
+    {/* Left Filters Section */}
+    <div className="flex flex-wrap gap-4 items-center">
+      {/* Date Filter */}
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium text-gray-700">Filter by:</label>
+        <select
+          value={dateFilter}
+          onChange={(e) => handleDateFilterChange(e.target.value)}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+        >
+          <option value="all">All Time</option>
+          <option value="today">Today</option>
+          <option value="week">This Week</option>
+          <option value="month">This Month</option>
+          <option value="quarter">This Quarter</option>
+          <option value="year">This Year</option>
+          <option value="custom">Custom Range</option>
+        </select>
+      </div>
+
+      {/* Custom Date Range */}
+      {dateFilter === "custom" && (
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={customStartDate}
+            onChange={(e) => setCustomStartDate(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <span>to</span>
+          <input
+            type="date"
+            value={customEndDate}
+            onChange={(e) => setCustomEndDate(e.target.value)}
+            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
           <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100"
+            onClick={handleCustomDateApply}
+            className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700"
           >
-            <X className="w-5 h-5" />
+            Apply
           </button>
         </div>
+      )}
 
-        {/* Filters and Export */}
-        <div className="p-6 border-b bg-gray-50">
-          <div className="flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex flex-wrap gap-4 items-center">
-              {/* Date Filter */}
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Filter by:
-                </label>
-                <select
-                  value={dateFilter}
-                  onChange={(e) => handleDateFilterChange(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                  <option value="quarter">This Quarter</option>
-                  <option value="year">This Year</option>
-                  <option value="custom">Custom Range</option>
-                </select>
-              </div>
+      {/* Items Per Page */}
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium text-gray-700">Show:</label>
+        <select
+          value={itemsPerPage}
+          onChange={(e) => setItemsPerPage(Number(e.target.value))}
+          className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value={10}>10</option>
+          <option value={25}>25</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+      </div>
+    </div>
 
-              {/* Custom Date Range */}
-              {dateFilter === "custom" && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span>to</span>
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={handleCustomDateApply}
-                    className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700"
-                  >
-                    Apply
-                  </button>
-                </div>
-              )}
+    {/* Right Action Buttons */}
+    <div className="flex items-center gap-2">
+      {/* Find Transaction */}
+      <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
+        <Search size={16} className="text-gray-600" />
+        <input
+          type="text"
+          placeholder="Find by M-Pesa Txn ID..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="text-sm focus:outline-none w-44"
+        />
+        <button
+          onClick={handleFindTransaction}
+          className="text-sm text-blue-600 hover:underline"
+        >
+          Find
+        </button>
+      </div>
 
-              {/* Items Per Page */}
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Show:
-                </label>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-            </div>
+      {/* Export Options */}
+      <select
+        value={exportFormat}
+        onChange={(e) => setExportFormat(e.target.value)}
+        className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="csv">CSV</option>
+        <option value="pdf">PDF</option>
+        <option value="excel">Excel</option>
+        <option value="word">Word</option>
+      </select>
+      <button
+        onClick={handleExport}
+        className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700"
+      >
+        <Download size={16} />
+        Export
+      </button>
 
-            {/* Export Options */}
-            <div className="flex items-center gap-2">
-              <select
-                value={exportFormat}
-                onChange={(e) => setExportFormat(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="csv">CSV</option>
-                <option value="pdf">PDF</option>
-                <option value="excel">Excel</option>
-                <option value="word">Word</option>
-              </select>
-              <button
-                onClick={handleExport}
-                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700"
-              >
-                <Download size={16} />
-                Export
-              </button>
-            </div>
+      {/* Share Report */}
+      <button
+        onClick={handleShareReport}
+        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
+      >
+        <Share2 size={16} />
+        Share
+      </button>
+    </div>
+  </div>
+</div>
+
+
+        {/* Summary Table - Positioned just above the transactions table */}
+        <div className="px-6 py-4 border-b">
+          <div className="overflow-x-auto">
+            <table className="w-full border border-gray-200">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 border">Total Loan Amount</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 border">Principal</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 border">Interest</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 border">Total Paid</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700 border">Outstanding Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="px-4 py-3 border text-right font-medium text-blue-600">
+                    {formatAmount(statementSummary.totalLoanAmount)}
+                  </td>
+                  <td className="px-4 py-3 border text-right font-medium text-green-600">
+                    {formatAmount(statementSummary.principal)}
+                  </td>
+                  <td className="px-4 py-3 border text-right font-medium text-yellow-600">
+                    {formatAmount(statementSummary.interest)}
+                  </td>
+                  <td className="px-4 py-3 border text-right font-medium text-purple-600">
+                    {formatAmount(statementSummary.totalPaid)}
+                  </td>
+                  <td className="px-4 py-3 border text-right font-medium text-red-600">
+                    {formatAmount(statementSummary.outstandingBalance)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Table */}
+        {/* Transactions Table */}
         <div className="p-6">
           {loading ? (
             <p className="text-center text-gray-500 py-10">
@@ -898,10 +1072,10 @@ const exportToExcel = async () => {
                       <td className="px-6 py-3">{t.description}</td>
                       <td className="px-6 py-3">{t.reference}</td>
                       <td className="px-6 py-3 text-right">
-                        {formatAmount(t.debit)}
+                        {t.debit !== 0 ? formatAmount(t.debit) : "-"}
                       </td>
                       <td className="px-6 py-3 text-right">
-                        {formatAmount(t.credit)}
+                        {t.credit > 0 ? formatAmount(t.credit) : "-"}
                       </td>
                       <td className="px-6 py-3 text-right">
                         {formatAmount(t.balance)}
@@ -986,6 +1160,13 @@ const exportToExcel = async () => {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Report Date and Time - Bottom */}
+        <div className="px-6 py-3 border-t bg-gray-50">
+          <p className="text-xs text-gray-500 text-center">
+            Report generated on: {reportTimestamp}
+          </p>
         </div>
       </div>
     </div>
