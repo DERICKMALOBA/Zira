@@ -66,51 +66,70 @@ const LoanDueReport = () => {
           .order("disbursed_at", { ascending: false });
 
         if (error) throw error;
+const now = new Date();
+const todayStr = now.toISOString().split("T")[0]; // e.g., "2025-10-24"
 
-        const now = new Date();
-        const processed = loansData
-          .map((loan) => {
-            const cust = loan.customer || {};
-            const fullName = [cust.Firstname, cust.Middlename, cust.Surname].filter(Boolean).join(" ");
-            const installments = loan.installments || [];
-            const unpaidInstallments = installments.filter((i) =>
-              ["pending", "partial", "overdue"].includes(i.status)
-            );
-            if (!unpaidInstallments.length) return null;
+const processed = loansData
+  .map((loan) => {
+    const cust = loan.customer || {};
+    const fullName = [cust.Firstname, cust.Middlename, cust.Surname].filter(Boolean).join(" ");
+    const installments = loan.installments || [];
 
-            const totalPrincipal = installments.reduce((sum, i) => sum + (i.principal_amount || i.principal_due || 0), 0);
-            const totalInterest = installments.reduce((sum, i) => sum + (i.interest_amount || i.interest_due || 0), 0);
-            const totalPrincipalPaid = installments.reduce((sum, i) => sum + (i.principal_paid || 0), 0);
-            const totalInterestPaid = installments.reduce((sum, i) => sum + (i.interest_paid || 0), 0);
-            const totalPaid = installments.reduce((sum, i) => sum + (i.paid_amount || 0), 0);
-            const unpaidAmount = (loan.total_payable || 0) - totalPaid;
-            if (unpaidAmount <= 0) return null;
+    // Identify due today installments
+    const dueToday = installments.filter(
+      (i) => i.due_date?.split("T")[0] === todayStr && ["pending", "partial"].includes(i.status)
+    );
 
-            unpaidInstallments.sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
-            const expectedDate = unpaidInstallments[0]?.due_date;
+    // Identify overdue installments
+    const overdue = installments.filter(
+      (i) => new Date(i.due_date) < now && ["pending", "partial"].includes(i.status)
+    );
 
-            return {
-              id: loan.id,
-              customerName: fullName || "N/A",
-              mobile: cust.mobile || "N/A",
-              idNumber: cust.id_number || "N/A",
-              loanOfficer: loan.loan_officer?.full_name || "N/A",
-              productType: loan.product_type || loan.product_name || "N/A",
-              numInstallments: installments.length,
-              unpaidInstallmentsCount: unpaidInstallments.length,
-              disbursedAmount: loan.scored_amount || 0,
-              totalAmountDue: loan.total_payable || 0,
-              amountPaid: totalPaid,
-              unpaidAmount,
-              principalDue: Math.max(0, totalPrincipal - totalPrincipalPaid),
-              interestDue: Math.max(0, totalInterest - totalInterestPaid),
-              expectedDate,
-              disbursementDate: loan.disbursed_at ? loan.disbursed_at.split("T")[0] : "N/A",
-              branch: loan.branch?.name || "N/A",
-              dueStatus: new Date(expectedDate) < now ? "Overdue" : "Upcoming",
-            };
-          })
-          .filter(Boolean);
+    // Total due amount today
+    const dueTodayAmount = dueToday.reduce((sum, i) => sum + (i.due_amount || 0), 0);
+
+    // Total overdue amount
+    const overdueAmount = overdue.reduce((sum, i) => sum + (i.due_amount || 0), 0);
+
+    // General totals
+    const totalPaid = installments.reduce((sum, i) => sum + (i.paid_amount || 0), 0);
+    const unpaidAmount = (loan.total_payable || 0) - totalPaid;
+    if (unpaidAmount <= 0) return null;
+
+    // Next expected installment date
+    const unpaidInstallments = installments.filter((i) =>
+      ["pending", "partial", "overdue"].includes(i.status)
+    );
+    unpaidInstallments.sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+    const expectedDate = unpaidInstallments[0]?.due_date;
+
+    return {
+      id: loan.id,
+      customerName: fullName || "N/A",
+      mobile: cust.mobile || "N/A",
+      idNumber: cust.id_number || "N/A",
+      loanOfficer: loan.loan_officer?.full_name || "N/A",
+      productType: loan.product_type || loan.product_name || "N/A",
+      numInstallments: installments.length,
+      unpaidInstallmentsCount: unpaidInstallments.length,
+      disbursedAmount: loan.scored_amount || 0,
+      totalAmountDue: loan.total_payable || 0,
+      amountPaid: totalPaid,
+      unpaidAmount,
+      dueTodayAmount,
+      overdueAmount,
+      expectedDate,
+      disbursementDate: loan.disbursed_at ? loan.disbursed_at.split("T")[0] : "N/A",
+      branch: loan.branch?.name || "N/A",
+      dueStatus:
+        dueTodayAmount > 0
+          ? "Due Today"
+          : overdueAmount > 0
+          ? "Overdue"
+          : "Upcoming",
+    };
+  })
+  .filter(Boolean);
 
         setLoans(processed);
         setFilteredData(processed);

@@ -100,16 +100,23 @@ const CustomerListing = () => {
   useEffect(() => {
     let result = [...customers];
     
-    // Search filter
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
-      result = result.filter(
-        (item) =>
-          item.customerName.toLowerCase().includes(q) ||
-          item.mobile.includes(q) ||
-          item.idNumber.includes(q)
-      );
-    }
+    
+// Search filter
+if (filters.search) {
+  const q = filters.search.toLowerCase();
+  result = result.filter((item) => {
+    const name = item.customerName?.toLowerCase() || "";
+    const mobile = item.mobile ? String(item.mobile) : "";
+    const idNumber = item.idNumber ? String(item.idNumber) : "";
+
+    return (
+      name.includes(q) ||
+      mobile.includes(q) ||
+      idNumber.includes(q)
+    );
+  });
+}
+
 
     // Branch filter
     if (filters.branch)
