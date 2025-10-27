@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Download, Filter, X, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Search } from "lucide-react";
+import {
+  Download,
+  Filter,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  Search,
+} from "lucide-react";
 import { supabase } from "../../supabaseClient";
 
 const MpesaRepaymentReports = () => {
@@ -17,33 +26,36 @@ const MpesaRepaymentReports = () => {
     status: "",
     startDate: "",
     endDate: "",
+    dateRangeType: "",
   });
 
   // Fetch branches
   useEffect(() => {
     const fetchBranches = async () => {
       const { data, error } = await supabase.from("branches").select("id, name");
-      if (!error) setBranches(data);
+      if (!error && data) setBranches(data);
     };
     fetchBranches();
   }, []);
 
-  // Fetch repayment data
+  //  Fetch repayment data
   useEffect(() => {
     const fetchRepayments = async () => {
       try {
         setLoading(true);
-
         const { data, error } = await supabase
-          .from("loan_payments")
+          .from("mpesa_c2b_transactions")
           .select(`
             id,
-            paid_amount,
+            transaction_id,
             phone_number,
-            paid_at,
-            mpesa_receipt,
-            loan_id,
-            loans!inner(
+            amount,
+            transaction_time,
+            status,
+            payment_type,
+            description,
+            reference,
+            loans:loan_id(
               id,
               customer:customer_id(
                 id,
@@ -55,7 +67,8 @@ const MpesaRepaymentReports = () => {
               )
             )
           `)
-          .order("paid_at", { ascending: false });
+          .eq("payment_type", "repayment")
+          .order("transaction_time", { ascending: false });
 
         if (error) throw error;
 
@@ -70,12 +83,12 @@ const MpesaRepaymentReports = () => {
             idNumber: customer.id_number || "N/A",
             mobile: item.phone_number || "N/A",
             branch: customer.branch?.name || "N/A",
-            transactionId: item.mpesa_receipt || "N/A",
-            amountPaid: item.paid_amount || 0,
-            status: "applied",
-            paymentDate: item.paid_at
-              ? new Date(item.paid_at).toLocaleDateString()
-              : "N/A",
+            transactionId: item.transaction_id || "N/A",
+            amountPaid: item.amount || 0,
+            status: item.status || "pending",
+            paymentDate: item.transaction_time
+              ? new Date(item.transaction_time)
+              : null,
           };
         });
 
@@ -91,13 +104,52 @@ const MpesaRepaymentReports = () => {
     fetchRepayments();
   }, []);
 
-  // Filtering and sorting
+  //  Function to get start and end date based on range type
+  const getDateRange = (type) => {
+    const now = new Date();
+    let start, end;
+
+    switch (type) {
+      case "today":
+        start = new Date(now.setHours(0, 0, 0, 0));
+        end = new Date();
+        break;
+      case "week": {
+        const day = now.getDay();
+        start = new Date(now);
+        start.setDate(now.getDate() - day);
+        start.setHours(0, 0, 0, 0);
+        end = new Date();
+        break;
+      }
+      case "month":
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case "quarter": {
+        const quarter = Math.floor(now.getMonth() / 3);
+        start = new Date(now.getFullYear(), quarter * 3, 1);
+        end = new Date(now.getFullYear(), quarter * 3 + 3, 0);
+        break;
+      }
+      case "year":
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31);
+        break;
+      default:
+        start = filters.startDate ? new Date(filters.startDate) : null;
+        end = filters.endDate ? new Date(filters.endDate) : null;
+    }
+    return { start, end };
+  };
+
+  //  Filtering logic with date range support
   useEffect(() => {
     let result = [...repayments];
+    const { search, branch, status, dateRangeType, startDate, endDate } = filters;
 
-    // Search filter
-    if (filters.search) {
-      const q = filters.search.toLowerCase();
+    if (search) {
+      const q = search.toLowerCase();
       result = result.filter(
         (r) =>
           r.customerName.toLowerCase().includes(q) ||
@@ -107,25 +159,19 @@ const MpesaRepaymentReports = () => {
       );
     }
 
-    if (filters.branch)
-      result = result.filter((r) => r.branch === filters.branch);
-
-    if (filters.status)
+    if (branch) result = result.filter((r) => r.branch === branch);
+    if (status)
       result = result.filter(
-        (r) => r.status.toLowerCase() === filters.status.toLowerCase()
+        (r) => r.status.toLowerCase() === status.toLowerCase()
       );
 
-    if (filters.startDate)
-      result = result.filter(
-        (r) => new Date(r.paymentDate) >= new Date(filters.startDate)
-      );
+    // ✅ Apply date range filtering
+    const { start, end } = getDateRange(dateRangeType);
+    if (start)
+      result = result.filter((r) => r.paymentDate && r.paymentDate >= start);
+    if (end)
+      result = result.filter((r) => r.paymentDate && r.paymentDate <= end);
 
-    if (filters.endDate)
-      result = result.filter(
-        (r) => new Date(r.paymentDate) <= new Date(filters.endDate)
-      );
-
-    // Apply sorting
     if (sortConfig.key) {
       result.sort((a, b) => {
         const aVal = a[sortConfig.key];
@@ -140,35 +186,15 @@ const MpesaRepaymentReports = () => {
     setCurrentPage(1);
   }, [filters, repayments, sortConfig]);
 
+  // Sorting handler
   const handleSort = (key) =>
     setSortConfig((prev) => ({
       key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+      direction:
+        prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
 
-  const SortableHeader = ({ label, sortKey }) => (
-    <th
-      onClick={() => handleSort(sortKey)}
-      className="px-6 py-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-200 transition-colors whitespace-nowrap text-left"
-    >
-      <div className="flex items-center gap-2">
-        {label}
-        {sortConfig.key === sortKey && (
-          sortConfig.direction === "asc" ? 
-            <ChevronUp className="w-4 h-4" /> : 
-            <ChevronDown className="w-4 h-4" />
-        )}
-      </div>
-    </th>
-  );
-
-  const handleFilterChange = (key, value) =>
-    setFilters((prev) => ({ ...prev, [key]: value }));
-
-  const clearFilters = () =>
-    setFilters({ search: "", branch: "", status: "", startDate: "", endDate: "" });
-
-  // Format currency
+  //  Currency formatter
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("en-KE", {
       style: "currency",
@@ -176,7 +202,29 @@ const MpesaRepaymentReports = () => {
       minimumFractionDigits: 0,
     }).format(amount || 0);
 
-  // Export CSV
+  //  Date formatter (NEW - to fix the Date object rendering error)
+  const formatDate = (date) => {
+    if (!date) return "N/A";
+    return new Date(date).toLocaleDateString("en-KE");
+  };
+
+  //  Filter & Reset handlers
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      search: "",
+      branch: "",
+      status: "",
+      startDate: "",
+      endDate: "",
+      dateRangeType: "",
+    });
+  };
+
+  //  CSV Export
   const exportToCSV = () => {
     if (filtered.length === 0) {
       alert("No data to export");
@@ -204,7 +252,7 @@ const MpesaRepaymentReports = () => {
         r.transactionId,
         r.amountPaid,
         r.status,
-        r.paymentDate,
+        formatDate(r.paymentDate),
       ]),
     ]
       .map((row) => row.join(","))
@@ -214,148 +262,200 @@ const MpesaRepaymentReports = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `mpesa_repayment_report_${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `mpesa_repayment_report_${new Date()
+      .toISOString()
+      .split("T")[0]}.csv`;
     a.click();
   };
 
-  // Pagination
+  //  Pagination
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
   const startIdx = (currentPage - 1) * itemsPerPage;
-  const endIdx = startIdx + itemsPerPage;
-  const currentData = filtered.slice(startIdx, endIdx);
+  const currentData = filtered.slice(startIdx, startIdx + itemsPerPage);
+  const totalAmount = filtered.reduce((sum, r) => sum + r.amountPaid, 0);
 
-  // Totals
-  const totals = {
-    amountPaid: filtered.reduce((sum, r) => sum + r.amountPaid, 0),
-  };
+  //  Sortable Header Component
+  const SortableHeader = ({ label, sortKey }) => (
+    <th
+      onClick={() => handleSort(sortKey)}
+      className="px-6 py-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-200 whitespace-nowrap text-left"
+    >
+      <div className="flex items-center gap-2">
+        {label}
+        {sortConfig.key === sortKey &&
+          (sortConfig.direction === "asc" ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          ))}
+      </div>
+    </th>
+  );
+
+  //  Pagination controls
+  const PaginationControls = () => (
+    <div className="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-200">
+      <div className="text-sm text-gray-700">
+        Showing {startIdx + 1} to {Math.min(startIdx + itemsPerPage, filtered.length)} of{" "}
+        {filtered.length} entries
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+          className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-lg">
+          {currentPage}
+        </span>
+        <button
+          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+          disabled={currentPage === totalPages}
+          className="p-2 rounded-lg border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-sm font-bold text-gray-900">M-Pesa  Repayment Reports</h2>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-medium ${
-              showFilters ? "bg-blue-600 text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-            }`}
-          >
-            <Filter className="w-4 h-4" /> Filters
-          </button>
-          <button
-            onClick={exportToCSV}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors"
-          >
-            <Download className="w-4 h-4" /> Export CSV
-          </button>
-        </div>
-      </div>
+      {/* HEADER */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+        {/* TOP HEADER BAR */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-green-600">M-Pesa Repayment Reports</h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Viewing all M-Pesa loan repayment transactions
+            </p>
+          </div>
 
-      {/* Filters */}
-      {showFilters && (
-        <div className="p-6 bg-white border border-gray-200 rounded-lg shadow-sm space-y-4">
-          <h3 className="font-semibold text-gray-900">Filter Results</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
-              </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
+                showFilters
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              <span>Filters</span>
+            </button>
+
+            <button
+              onClick={exportToCSV}
+              className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 font-medium shadow-md"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        {/* FILTER PANEL */}
+        {showFilters && (
+          <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Search */}
               <input
                 type="text"
-                placeholder="Search by name, ID, mobile, or transaction..."
+                placeholder="Search by name, phone, ID, or Txn ID"
                 value={filters.search}
                 onChange={(e) => handleFilterChange("search", e.target.value)}
-                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
+
+              {/* Branch */}
+              <select
+                value={filters.branch}
+                onChange={(e) => handleFilterChange("branch", e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="">All Branches</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.name}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Status */}
+              <select
+                value={filters.status}
+                onChange={(e) => handleFilterChange("status", e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="">All Status</option>
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+              </select>
+
+              {/* Date Filter Type */}
+              <select
+                value={filters.dateRangeType}
+                onChange={(e) => handleFilterChange("dateRangeType", e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                <option value="">Select Date Range</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="quarter">This Quarter</option>
+                <option value="year">This Year</option>
+                <option value="custom">Custom</option>
+              </select>
+
+              {/* Custom Date Pickers (only show if 'custom' selected) */}
+              {filters.dateRangeType === "custom" && (
+                <div className="col-span-1 sm:col-span-2 lg:col-span-2 flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={filters.startDate}
+                    onChange={(e) => handleFilterChange("startDate", e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                  <span className="text-gray-500 text-sm">to</span>
+                  <input
+                    type="date"
+                    value={filters.endDate}
+                    onChange={(e) => handleFilterChange("endDate", e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+              )}
             </div>
 
-            <select
-              value={filters.branch}
-              onChange={(e) => handleFilterChange("branch", e.target.value)}
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Branches</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.name}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filters.status}
-              onChange={(e) => handleFilterChange("status", e.target.value)}
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Status</option>
-              <option value="applied">Applied</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-            </select>
-
-            <input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) => handleFilterChange("startDate", e.target.value)}
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-
-            <input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) => handleFilterChange("endDate", e.target.value)}
-              className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            {/* Clear Button */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={clearFilters}
+                className="px-4 py-2 text-sm bg-gray-200 hover:bg-gray-300 rounded-lg font-medium text-gray-700 transition"
+              >
+                Clear Filters
+              </button>
+            </div>
           </div>
-          {(filters.search || filters.branch || filters.status || filters.startDate || filters.endDate) && (
-            <button
-              onClick={clearFilters}
-              className="text-red-600 text-sm font-medium flex items-center gap-1 mt-2 hover:text-red-700"
-            >
-              <X className="w-4 h-4" /> Clear Filters
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Data Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <p className="text-gray-600 text-sm font-medium">Total Records</p>
-          <p className="text-2xl font-bold text-gray-900">{filtered.length}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <p className="text-gray-600 text-sm font-medium">Total Amount Paid</p>
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(totals.amountPaid)}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <p className="text-gray-600 text-sm font-medium">Average Payment</p>
-          <p className="text-2xl font-bold text-blue-600">
-            {formatCurrency(filtered.length > 0 ? totals.amountPaid / filtered.length : 0)}
-          </p>
-        </div>
+        )}
       </div>
 
-      {/* Table */}
+      {/* TABLE */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
         {loading ? (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">Loading repayments...</p>
-          </div>
+          <div className="p-8 text-center text-gray-500">Loading repayments...</div>
         ) : filtered.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">No records found</p>
-          </div>
+          <div className="p-8 text-center text-gray-500">No records found</div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-100 border-b border-gray-200 sticky top-0">
+                <thead className="bg-gray-100 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-4 font-semibold text-gray-700 text-left whitespace-nowrap">#</th>
+                    <th className="px-6 py-4 font-semibold text-gray-700 text-left">#</th>
                     <SortableHeader label="Customer Name" sortKey="customerName" />
                     <SortableHeader label="Mobile" sortKey="mobile" />
                     <SortableHeader label="ID Number" sortKey="idNumber" />
@@ -368,96 +468,44 @@ const MpesaRepaymentReports = () => {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {currentData.map((r, i) => (
-                    <tr
-                      key={r.id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{startIdx + i + 1}</td>
-                      <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{r.customerName}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{r.mobile}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{r.idNumber}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{r.branch}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap font-mono text-sm">{r.transactionId}</td>
-                      <td className="px-6 py-4 text-right text-gray-900 font-semibold whitespace-nowrap">
+                    <tr key={r.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-gray-900">{startIdx + i + 1}</td>
+                      <td className="px-6 py-4">{r.customerName}</td>
+                      <td className="px-6 py-4">{r.mobile}</td>
+                      <td className="px-6 py-4">{r.idNumber}</td>
+                      <td className="px-6 py-4">{r.branch}</td>
+                      <td className="px-6 py-4 font-mono text-sm">{r.transactionId}</td>
+                      <td className="px-6 py-4 text-right font-semibold text-gray-900">
                         {formatCurrency(r.amountPaid)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-sm ${
+                          r.status === 'completed' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-yellow-100 text-yellow-700'
+                        }`}>
                           {r.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{r.paymentDate}</td>
+                      {/* FIXED: Format the date instead of rendering Date object directly */}
+                      <td className="px-6 py-4">{formatDate(r.paymentDate)}</td>
                     </tr>
                   ))}
+
+                  {/* ✅ TOTAL ROW */}
+                  <tr className="bg-gray-50 font-bold text-gray-900">
+                    <td colSpan="6" className="px-6 py-4 text-right">
+                      Total Repayment:
+                    </td>
+                    <td className="px-6 py-4 text-right text-green-600">
+                      {formatCurrency(totalAmount)}
+                    </td>
+                    <td colSpan="2"></td>
+                  </tr>
                 </tbody>
               </table>
             </div>
-
-            {/* PAGINATION */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Showing <span className="font-semibold">{startIdx + 1}</span> to{' '}
-                <span className="font-semibold">{Math.min(endIdx, filtered.length)}</span> of{' '}
-                <span className="font-semibold">{filtered.length}</span> repayments
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className={`px-3 py-2 rounded-lg flex items-center gap-1 transition-colors ${
-                    currentPage === 1
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                  }`}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
-                </button>
-
-                <div className="flex items-center gap-2">
-                  {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-2 rounded-lg transition-colors ${
-                          currentPage === pageNum
-                            ? 'bg-blue-600 text-white font-semibold'
-                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className={`px-3 py-2 rounded-lg flex items-center gap-1 transition-colors ${
-                    currentPage === totalPages
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-                  }`}
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+            <PaginationControls />
           </>
         )}
       </div>

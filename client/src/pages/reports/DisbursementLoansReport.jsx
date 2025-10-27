@@ -765,50 +765,92 @@ const handleExport = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-[1600px] mx-auto space-y-6">
-        {/* HEADER */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors text-sm font-medium ${
-                  showFilters
-                    ? "bg-blue-600 text-white"
-                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                }`}
-              >
-                <Filter className="w-4 h-4" /> Filters
-              </button>
-              <button
-                onClick={handlePrint}
-                className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-medium"
-              >
-                <Printer className="w-4 h-4" /> Print
-              </button>
+     
+       {/* Header Section  */}
+{/* Header Section */}
+<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 className="text-2xl font-bold text-green-600">
+        Disbursed Loan Report
+      </h1>
+      <p className="text-sm text-gray-600 mt-1">
+        Viewing disbursed loans for{" "}
+        <span className="font-semibold text-blue-600">
+          {(() => {
+            switch (dateFilter) {
+              case "today":
+                return "Today";
+              case "week":
+                return "This Week";
+              case "month":
+                return "This Month";
+              case "quarter":
+                return "This Quarter";
+              case "year":
+                return "This Year";
+              case "custom":
+                return customStartDate && customEndDate
+                  ? `${customStartDate} to ${customEndDate}`
+                  : "Custom Range";
+              default:
+                return "All Time";
+            }
+          })()}
+        </span>
+      </p>
+    </div>
 
-              {/* Export Format Dropdown */}
-              <div className="flex gap-2">
-                <select
-                  value={exportFormat}
-                  onChange={(e) => setExportFormat(e.target.value)}
-                  className="border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {exportFormatOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleExport}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm font-medium"
-                >
-                  <Download className="w-4 h-4" /> Export
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="flex flex-wrap gap-3">
+      {/* Filters Button */}
+      <button
+        onClick={() => setShowFilters(!showFilters)}
+        className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
+          showFilters
+            ? "bg-blue-600 text-white shadow-md"
+            : "bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
+        }`}
+      >
+        <Filter className="w-4 h-4" />
+        <span>Filters</span>
+      </button>
+
+      {/* Print Button */}
+      <button
+        onClick={handlePrint}
+        className="px-5 py-2.5 bg-white text-gray-700 border-2 border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 font-medium shadow-sm transition-all"
+      >
+        <Printer className="w-4 h-4" />
+        <span>Print</span>
+      </button>
+
+      {/* Export Options */}
+      <div className="flex gap-2 items-center">
+        <select
+          value={exportFormat}
+          onChange={(e) => setExportFormat(e.target.value)}
+          className="border-2 border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {exportFormatOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        <button
+          onClick={handleExport}
+          className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 font-medium shadow-md transition-all"
+        >
+          <Download className="w-4 h-4" />
+          <span>Export</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
 
         {/* FILTER SECTION */}
         {showFilters && (

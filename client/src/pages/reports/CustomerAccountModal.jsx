@@ -255,29 +255,48 @@ const CustomerAccountModal = () => {
   return (
     <>
       <div className="space-y-6">
-        {/* Header with Actions */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-sm font-bold text-gray-900">Customer Account Statements</h2>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium"
-            >
-              <Filter className="w-4 h-4" /> Filters
-            </button>
+     
+      {/* Header Section */}
+<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 className="text-2xl font-bold text-green-600">
+        Customer Account Statements
+      </h1>
+      <p className="text-sm text-gray-600 mt-1">
+        Viewing statement summary for{" "}
+        <span className="font-semibold text-blue-600">
+          all customers
+        </span>
+      </p>
+    </div>
 
-            <button
-              onClick={() =>
-                exportToCSV(filteredData, `customer_accounts_${Date.now()}.csv`)
-              }
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 font-medium"
-            >
-              <Download className="w-4 h-4" /> Export CSV
-            </button>
-          </div>
-        </div>
+    <div className="flex flex-wrap gap-3">
+      <button
+        onClick={() => setShowFilters(!showFilters)}
+        className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
+          showFilters
+            ? "bg-blue-600 text-white shadow-md"
+            : "bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
+        }`}
+      >
+        <Filter className="w-4 h-4" />
+        <span>Filters</span>
+      </button>
+
+      <button
+        onClick={() =>
+          exportToCSV(filteredData, `customer_accounts_${Date.now()}.csv`)
+        }
+        className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 font-medium shadow-md transition-all"
+      >
+        <Download className="w-4 h-4" />
+        <span>Export CSV</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 
         {/* Filter Panel */}
         {showFilters && (
