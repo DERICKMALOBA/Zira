@@ -105,6 +105,42 @@ c2b.post("/confirmation", async (req, res) => {
       },
     ]);
 
+
+    // handle suspense account for unmatched customers
+let customerMatched = false;
+
+if (paymentType === "repayment") {
+  // Attempt to find the customer using BillRefNumber or known mappings
+  if (loanId) {
+    const { data: customer } = await supabaseAdmin
+      .from("customers")
+      .select("id")
+      .eq("id", loanId) // or link to loan table if loanId exists
+      .maybeSingle();
+
+    if (!customer) {
+      // Customer not found: move to suspense
+      await supabaseAdmin.from("suspense_transactions").insert([{
+        payer_name: "Unknown", // optionally accept from body if provided
+        phone_number: MSISDN,
+        amount: totalPaidAmount,
+        transaction_id: TransID,
+        transaction_time,
+        status: "suspense",
+      }]);
+
+      return res.json({
+        ResultCode: 0,
+        ResultDesc: "Payment moved to suspense account for manual resolution",
+      });
+    } else {
+      customerMatched = true;
+      customerId = customer.id;
+    }
+  }
+}
+
+
     // Handle joining or processing payments
     if (paymentType === "registration") {
       const { data: customer } = await supabaseAdmin

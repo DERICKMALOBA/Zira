@@ -244,15 +244,17 @@ if (filters.search) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    
+{/* HEADER */}
+<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h1 className="text-2xl font-bold text-green-600">Customer Listing</h1>
+      <h1 className="text-2xl font-bold text-emerald-600">Customer Listing </h1>
       <p className="text-sm text-gray-600 mt-1">
-        Viewing all registered customers in the system
+        Viewing all registered customers in the system 
       </p>
     </div>
+
     <div className="flex flex-wrap gap-3">
       <button
         onClick={() => setShowFilters(!showFilters)}
@@ -265,6 +267,7 @@ if (filters.search) {
         <Filter className="w-4 h-4" />
         <span>Filters</span>
       </button>
+
       <button
         onClick={exportToCSV}
         className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 font-medium shadow-md transition-all"

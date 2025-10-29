@@ -34,7 +34,7 @@ const TraceMpesaTransaction = () => {
     loan_id,
     loan:loan_id(
       id,
-      product_name,
+     product_type,
       customer:customer_id(
         Firstname,
         Middlename,
@@ -62,13 +62,13 @@ const TraceMpesaTransaction = () => {
     id,
     transaction_id,
     amount,
-    transaction_time,
+    created_at as transaction_time,
     phone_number,
     status,
     failure_reason,
     loan:loan_id(
       id,
-      product_name,
+      product_type,
       customer:customer_id(
         Firstname,
         Middlename,
@@ -119,7 +119,7 @@ const TraceMpesaTransaction = () => {
 
   return (
     <div className="p-6 bg-white rounded-2xl shadow-md">
-      <h2 className="text-xl font-semibold mb-4">Trace M-Pesa Transaction</h2>
+      <h2 className="text-xl font-semibold mb-4 text-green-600">Trace M-Pesa Transaction</h2>
 
       <form onSubmit={handleSearch} className="mb-6 flex flex-col sm:flex-row gap-3">
         <input
@@ -236,7 +236,7 @@ const TraceMpesaTransaction = () => {
               {transaction.loan && (
                 <div>
                   <label className="text-sm font-medium text-gray-600">Loan Product</label>
-                  <p className="text-sm">{transaction.loan.product_name || "N/A"}</p>
+                  <p className="text-sm">{transaction.loan.product_type || "N/A"}</p>
                 </div>
               )}
             </div>

@@ -93,34 +93,35 @@ const Reports = () => {
       component: LoanListing,
       route: '/reports/loan-listing'
     },
-    {
+       {
       id: 11,
+      name: "Outstanding Loan Balance as at the End of Month",
+      description: "Summary of all outstanding loan balances across all customers",
+      component: OutstandingLoanBalanceReport,
+      route: '/reports/outstandEOM'
+    },
+    {
+      id: 12,
       name: "Trace M-Pesa Transaction",
       description: "Search and track specific M-Pesa transactions by reference",
       component: TraceMpesaTransaction,
       route: '/reports/trace-mpesa'
     },
     {
-      id: 12,
+      id: 13,
       name: "Inactive Customers",
       description: "List of customers with no recent activity or transactions",
       component: InactiveCustomers,
       route: '/reports/inactive-customers'
     },
     {
-      id: 13,
+      id: 14,
       name: "Loan Arrears Report",
       description: "Detailed report of loans in arrears with aging analysis",
       component: LoanArrearsReport,
       route: '/reports/loan-arrears'
     },
-    {
-      id: 14,
-      name: "Advanced M-Pesa Tracking",
-      description: "Advanced M-Pesa transaction tracking and reconciliation",
-      component: null,
-      route: '/reports/advanced-mpesa'
-    },
+  
     {
       id: 15,
       name: "Suspense Payment Report",
@@ -164,32 +165,41 @@ const Reports = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-4">
-          <h1 className="text-3xl font-bold text-gray-600">Reports</h1>
-          <p className="text-gray-600">Generate and view comprehensive loan management reports</p>
-        </div>
+       {/* Header Section */}
+<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    {/* Title & Description */}
+    <div>
+      <h1 className="text-2xl font-bold text-emerald-600">Reports</h1>
+      <p className="text-sm text-gray-600 mt-1">
+        Generate and view comprehensive loan management reports
+      </p>
+    </div>
 
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search reports by name or description..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          {searchTerm && (
-            <p className="mt-2 text-sm text-gray-600">
-              Found {filteredReports.length} report{filteredReports.length !== 1 ? 's' : ''} matching "{searchTerm}"
-            </p>
-          )}
-        </div>
+    {/* Search Bar */}
+    <div className="relative w-full sm:w-80">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <Search className="h-5 w-5 text-gray-400" />
+      </div>
+      <input
+        type="text"
+        placeholder="Search reports by name or description..."
+        value={searchTerm}
+        onChange={handleSearchChange}
+        className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg bg-white shadow-sm 
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+      />
+    </div>
+  </div>
+
+  {/* Optional search feedback */}
+  {searchTerm && (
+    <p className="mt-3 text-sm text-gray-600">
+      Found {filteredReports.length} report{filteredReports.length !== 1 ? 's' : ''} matching "<span className="font-medium text-gray-800">{searchTerm}</span>"
+    </p>
+  )}
+</div>
+
 
         {/* Reports Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden">

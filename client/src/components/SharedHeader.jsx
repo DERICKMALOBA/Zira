@@ -52,7 +52,7 @@ const SharedHeader = ({ sidebarOpen, setSidebarOpen }) => {
           >
             <Bars3Icon className="h-5 w-5 group-hover:scale-110 transition-transform" />
           </button>
-          
+{/*           
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-sm">
               <span className="text-white font-bold text-sm">Z</span>
@@ -60,7 +60,7 @@ const SharedHeader = ({ sidebarOpen, setSidebarOpen }) => {
             <h1 className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
               Zira Lending
             </h1>
-          </div>
+          </div> */}
         </div>
 
         {/* Right Section - User Profile */}

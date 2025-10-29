@@ -14,7 +14,7 @@ const InactiveCustomers = () => {
       setLoading(true);
       setErrorMsg("");
 
-      // ✅ Call Supabase RPC function
+      //  Call Supabase RPC function
       const { data, error } = await supabase.rpc("get_inactive_customers", {
         days,
       });
@@ -36,29 +36,39 @@ const InactiveCustomers = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold text-gray-800">
-            Inactive Customers
-          </h1>
-          <div className="flex items-center space-x-2">
-            <label className="text-gray-600 text-sm">Inactivity Period:</label>
-            <select
-              value={days}
-              onChange={(e) => setDays(parseInt(e.target.value))}
-              className="border rounded-lg px-3 py-1.5 text-gray-700 focus:ring focus:ring-indigo-300"
-            >
-              <option value={30}>30 days</option>
-              <option value={60}>60 days</option>
-              <option value={90}>90 days</option>
-            </select>
-            <button
-              onClick={fetchInactiveCustomers}
-              className="flex items-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-            >
-              <Search size={16} className="mr-2" /> Refresh
-            </button>
-          </div>
-        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    {/* Title and Description */}
+    <div>
+      <h1 className="text-2xl font-bold text-emerald-600">Inactive Customers</h1>
+      <p className="text-sm text-gray-600 mt-1">
+        View customers who haven’t made transactions within a selected period
+      </p>
+    </div>
+
+    {/* Filters and Action */}
+    <div className="flex items-center flex-wrap gap-3">
+      <label className="text-gray-700 text-sm font-medium">Inactivity Period:</label>
+      <select
+        value={days}
+        onChange={(e) => setDays(parseInt(e.target.value))}
+        className="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 bg-white shadow-sm 
+                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+      >
+        <option value={30}>30 days</option>
+        <option value={60}>60 days</option>
+        <option value={90}>90 days</option>
+      </select>
+      <button
+        onClick={fetchInactiveCustomers}
+        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
+                   font-medium shadow-md transition-all"
+      >
+        <Search size={18} /> Refresh
+      </button>
+    </div>
+  </div>
+</div>
 
         {loading ? (
           <div className="flex justify-center items-center py-20 text-gray-500">

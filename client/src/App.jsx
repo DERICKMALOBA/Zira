@@ -99,6 +99,7 @@ import DisbursementLoansReport from "./pages/reports/DisbursementLoansReport";
 import CustomerAccountModal from "./pages/reports/CustomerAccountModal";
 import CustomerDraft from "./relationship-officer/components/CustomerDraft";
 import CustomerStatementModal from "./pages/reports/AccountList";
+import OutstandingLoanBalanceReportEOM from "./pages/reports/OLBatEOM";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -475,6 +476,17 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <CustomerStatementModal userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
+                        
+                  <Route
+                    path="/reports/outstandEOM"
+                    element={
+                      <ProtectedRoute>
+                        <OutstandingLoanBalanceReportEOM userRole={role} />
                       </ProtectedRoute>
                     }
                   />
