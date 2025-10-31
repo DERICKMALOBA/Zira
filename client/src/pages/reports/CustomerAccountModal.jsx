@@ -192,50 +192,6 @@ const CustomerAccountModal = () => {
     setShowStatementModal(true);
   }, []);
 
-
-  const exportToCSV = (data, filename) => {
-    if (data.length === 0) {
-      alert("No data to export");
-      return;
-    }
-
-    const headers = [
-      "#",
-      "Customer Details",
-      "Phone",
-      "Branch",
-      "Total Loan Applied",
-      "Loan Amount",
-      "Interest",
-      "Total Payable",
-      "Paid",
-      "Outstanding",
-      "Status",
-    ];
-
-    const rows = data.map((item, i) => [
-      i + 1,
-      `"${item.customerName}"`,
-      item.phone,
-      `"${item.branch}"`,
-      item.totalLoanApplied,
-      item.loanAmount,
-      item.interest,
-      item.totalPayable,
-      item.totalPaid,
-      item.outstanding,
-      item.status,
-    ]);
-
-    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-  };
-
   const formatCurrency = (num) =>
     new Intl.NumberFormat("en-KE", {
       style: "currency",
@@ -297,15 +253,6 @@ const CustomerAccountModal = () => {
         <span>Filters</span>
       </button>
 
-      <button
-        onClick={() =>
-          exportToCSV(filteredData, `customer_accounts_${Date.now()}.csv`)
-        }
-        className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 font-medium shadow-md transition-all"
-      >
-        <Download className="w-4 h-4" />
-        <span>Export CSV</span>
-      </button>
     </div>
   </div>
 </div>
