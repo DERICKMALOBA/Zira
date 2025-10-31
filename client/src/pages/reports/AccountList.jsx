@@ -74,7 +74,7 @@ useEffect(() => {
         .single();
 
       if (customerError || !customer) {
-        console.error("❌ Customer not found:", customerError?.message);
+        console.error(" Customer not found:", customerError?.message);
         setLoading(false);
         return;
       }
@@ -105,7 +105,7 @@ useEffect(() => {
         .order("paid_at", { ascending: true });
 
       if (loanPaymentsError) {
-        console.error("❌ Loan payments fetch failed:", loanPaymentsError.message);
+        console.error(" Loan payments fetch failed:", loanPaymentsError.message);
       }
 
       // Create a set of M-Pesa codes that are loan payments (to exclude from deposits)
@@ -113,7 +113,7 @@ useEffect(() => {
         loanPayments.map(p => p.mpesa_receipt).filter(Boolean)
       );
 
-      // 4️⃣ C2B Payments (excluding those already in loan_payments)
+      // 4️ C2B Payments (excluding those already in loan_payments)
       const normalizedMobile = customer.mobile?.replace(/^\+?254|^0/, "254");
 
       const { data: c2b = [], error: c2bError } = await supabase
@@ -125,14 +125,14 @@ useEffect(() => {
 
       if (c2bError) console.error("❌ C2B fetch error:", c2bError.message);
 
-      // 5️⃣ B2C Disbursements
+      // 5️ B2C Disbursements
       const { data: b2c = [] } = await supabase
         .from("mpesa_b2c_transactions")
         .select("id, amount, transaction_id, loan_id, created_at")
         .eq("status", "success")
         .order("created_at", { ascending: true });
 
-      // 6️⃣ Wallet credits with M-Pesa code
+      // 6️ Wallet credits with M-Pesa code
       const { data: walletCreditsData = [], error: walletError } = await supabase
         .from("customer_wallets")
         .select(`
@@ -153,7 +153,7 @@ useEffect(() => {
       const processedTransactionIds = new Set();
 
       // ========================================
-      // 📋 STEP 1: JOINING FEE (Customer Creation)
+      //  STEP 1: JOINING FEE (Customer Creation)
       // ========================================
       const regFee = loans[0]?.registration_fee || 0;
       
@@ -173,7 +173,7 @@ useEffect(() => {
       }
 
       // ========================================
-      // 📋 STEP 2: MOBILE MONEY DEPOSITS (excluding loan payments)
+      //  STEP 2: MOBILE MONEY DEPOSITS (excluding loan payments)
       // ========================================
       // Combine wallet and C2B deposits
       const walletDeposits = walletCreditsData.map(w => ({
