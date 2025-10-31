@@ -492,7 +492,7 @@ const MpesaRepaymentReports = () => {
                     </tr>
                   ))}
 
-                  {/* ✅ TOTAL ROW */}
+                  {/* TOTAL ROW */}
                   <tr className="bg-gray-50 font-bold text-gray-900">
                     <td colSpan="6" className="px-6 py-4 text-right">
                       Total Repayment:

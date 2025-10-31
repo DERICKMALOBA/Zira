@@ -32,14 +32,7 @@ const CustomerStatementModal = ({
   const [reportTimestamp, setReportTimestamp] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   
-  // Summary state
-  const [statementSummary, setStatementSummary] = useState({
-    totalLoanAmount: 0,
-    principal: 0,
-    interest: 0,
-    totalPaid: 0,
-    outstandingBalance: 0
-  });
+  
 
   // Statement period state
   const [statementPeriod, setStatementPeriod] = useState({
@@ -48,315 +41,395 @@ const CustomerStatementModal = ({
     period: ""
   });
 
-  // Set report timestamp when component mounts
+  // Set report timestamp on component mount
   useEffect(() => {
-    const now = new Date();
-    setReportTimestamp(
-      now.toLocaleString("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      })
-    );
+    setReportTimestamp(new Date().toLocaleString("en-KE"));
+    
+    // Set initial statement period
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    
+    setStatementPeriod({
+      startDate: firstDayOfMonth.toLocaleDateString("en-KE"),
+      endDate: lastDayOfMonth.toLocaleDateString("en-KE"),
+      period: "Monthly"
+    });
   }, []);
 
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        setLoading(true);
+useEffect(() => {
+  const fetchTransactions = async () => {
+    if (!customerId) return;
+    setLoading(true);
 
-        // 1️ Fetch customer creation date
-        const { data: customer, error: customerError } = await supabase
-          .from("customers")
-          .select("id, created_at")
-          .eq("id", customerId)
-          .single();
+    try {
+      const events = [];
+      let runningBalance = 0;
 
-        if (customerError) throw customerError;
+      // 1️⃣ Customer Info
+      const { data: customer, error: customerError } = await supabase
+        .from("customers")
+        .select("id, created_at, mobile")
+        .eq("id", customerId)
+        .single();
 
-        // 2️ Fetch customer loans
-        const { data: loans, error: loansError } = await supabase
-          .from("loans")
-          .select(
-            "id, customer_id, processing_fee, registration_fee, total_payable, scored_amount, total_interest, created_at, status"
+      if (customerError || !customer) {
+        console.error("❌ Customer not found:", customerError?.message);
+        setLoading(false);
+        return;
+      }
+
+      // 2️⃣ Loans
+      const { data: loans = [] } = await supabase
+        .from("loans")
+        .select("id, scored_amount, processing_fee, registration_fee, disbursed_at, disbursed_date, created_at")
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: true });
+
+      // 3️⃣ Loan Payments (fetch first to know which M-Pesa codes are payments)
+      const { data: loanPayments = [], error: loanPaymentsError } = await supabase
+        .from("loan_payments")
+        .select(`
+          id,
+          loan_id,
+          installment_id,
+          paid_amount,
+          balanceBefore,
+          balance_after,
+          mpesa_receipt,
+          phone_number,
+          paid_at,
+          payment_type
+        `)
+        .in("loan_id", loans.map(l => l.id))
+        .order("paid_at", { ascending: true });
+
+      if (loanPaymentsError) {
+        console.error("❌ Loan payments fetch failed:", loanPaymentsError.message);
+      }
+
+      // Create a set of M-Pesa codes that are loan payments (to exclude from deposits)
+      const loanPaymentMpesaCodes = new Set(
+        loanPayments.map(p => p.mpesa_receipt).filter(Boolean)
+      );
+
+      // 4️⃣ C2B Payments (excluding those already in loan_payments)
+      const normalizedMobile = customer.mobile?.replace(/^\+?254|^0/, "254");
+
+      const { data: c2b = [], error: c2bError } = await supabase
+        .from("mpesa_c2b_transactions")
+        .select("id, amount, transaction_time, transaction_id, loan_id, phone_number, status, payment_type, reference, billref")
+        .eq("status", "applied")
+        .in("phone_number", [customer.mobile, normalizedMobile])
+        .order("transaction_time", { ascending: true });
+
+      if (c2bError) console.error("❌ C2B fetch error:", c2bError.message);
+
+      // 5️⃣ B2C Disbursements
+      const { data: b2c = [] } = await supabase
+        .from("mpesa_b2c_transactions")
+        .select("id, amount, transaction_id, loan_id, created_at")
+        .eq("status", "success")
+        .order("created_at", { ascending: true });
+
+      // 6️⃣ Wallet credits with M-Pesa code
+      const { data: walletCreditsData = [], error: walletError } = await supabase
+        .from("customer_wallets")
+        .select(`
+          id,
+          amount,
+          created_at,
+          mpesa_c2b_transactions (
+            transaction_id
           )
-          .eq("customer_id", customerId);
+        `)
+        .eq("customer_id", customerId)
+        .eq("type", "credit")
+        .not("transaction_id", "is", null);
 
-        if (loansError) throw loansError;
+      if (walletError) console.error("❌ Wallet fetch failed:", walletError.message);
 
-        // Summary calculations
-        let totalLoanAmount = 0;
-        let totalPrincipal = 0;
-        let totalInterest = 0;
-        let totalPaid = 0;
+      // Track processed transaction IDs to prevent duplicates
+      const processedTransactionIds = new Set();
+
+      // ========================================
+      // 📋 STEP 1: JOINING FEE (Customer Creation)
+      // ========================================
+      const regFee = loans[0]?.registration_fee || 0;
       
+      if (regFee > 0) {
+        runningBalance -= regFee;
+        events.push({
+          id: `reg-fee-${customer.id}`,
+          date: new Date(customer.created_at),
+          description: "Joining Fee",
+          reference: "-",
+          debit: regFee,
+          credit: 0,
+          balance: runningBalance,
+          sequence: 0,
+          timestamp: new Date(customer.created_at).getTime(),
+        });
+      }
 
+      // ========================================
+      // 📋 STEP 2: MOBILE MONEY DEPOSITS (excluding loan payments)
+      // ========================================
+      // Combine wallet and C2B deposits
+      const walletDeposits = walletCreditsData.map(w => ({
+        id: w.id,
+        amount: w.amount,
+        date: new Date(w.created_at),
+        mpesaCode: w.mpesa_c2b_transactions?.transaction_id || "-",
+        type: "wallet",
+      }));
 
+      // Filter out C2B transactions that are loan payments
+      const c2bDeposits = c2b
+        .filter(c => !loanPaymentMpesaCodes.has(c.transaction_id))
+        .map(c => ({ 
+          id: c.id,
+          amount: c.amount, 
+          type: "c2b", 
+          date: new Date(c.transaction_time),
+          mpesaCode: c.transaction_id 
+        }));
 
-        if (loans?.length) {
-          loans.forEach((loan) => {
-            totalLoanAmount += Number(loan.total_payable) || 0;
-            totalPrincipal += Number(loan.scored_amount) || 0;
-            totalInterest += Number(loan.total_interest) || 0;
-          });
-        }
+      const allDeposits = [...walletDeposits, ...c2bDeposits]
+        .sort((a, b) => a.date - b.date);
 
-
-        // Calculate statement period (last 4 months)
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setMonth(endDate.getMonth() - 4);
+      // Process deposits
+      allDeposits.forEach(d => {
+        const transactionKey = `deposit-${d.mpesaCode}`;
         
-        setStatementPeriod({
-          startDate: startDate.toLocaleDateString('en-GB'),
-          endDate: endDate.toLocaleDateString('en-GB'),
-          period: "four-month"
+        // Skip if already processed
+        if (processedTransactionIds.has(transactionKey)) {
+          console.log(`⚠️ Skipping duplicate deposit: ${transactionKey}`);
+          return;
+        }
+        
+        processedTransactionIds.add(transactionKey);
+
+        const depositAmount = Number(d.amount);
+        runningBalance += depositAmount;
+
+        events.push({
+          id: `${d.type}-${d.id}`,
+          date: d.date,
+          description: "Mobile Money Deposit",
+          reference: d.mpesaCode,
+          debit: 0,
+          credit: depositAmount,
+          balance: runningBalance,
+          sequence: 1,
+          timestamp: d.date.getTime(),
+        });
+      });
+
+      // ========================================
+      // 📋 STEP 3: LOAN DISBURSEMENTS
+      // ========================================
+      loans.forEach(loan => {
+        const disb = b2c.find(b => b.loan_id === loan.id);
+        if (!disb) return;
+
+        const loanDate = new Date(disb.created_at);
+        const baseTimestamp = loanDate.getTime();
+
+        // 3a. Credit: Mobile Money Disbursement (loan amount coming in)
+        const disbAmount = Number(disb.amount);
+        runningBalance += disbAmount;
+        
+        events.push({
+          id: `b2c-credit-${disb.id}`,
+          date: loanDate,
+          description: "Mobile Money Disbursement",
+          reference: disb.transaction_id,
+          debit: 0,
+          credit: disbAmount,
+          balance: runningBalance,
+          sequence: 2,
+          timestamp: baseTimestamp + 1,
         });
 
-        const loanIds = loans?.map((l) => l.id) || [];
-
-        // 3️ Fetch related data
-        let installments = [];
-        let c2b = [];
-        let b2c = [];
-
-        if (loanIds.length > 0) {
-          const [
-            { data: installmentsData },
-            { data: c2bData },
-            { data: b2cData },
-          ] = await Promise.all([
-            supabase
-              .from("loan_installments")
-              .select("*")
-              .in("loan_id", loanIds)
-              .order("created_at", { ascending: true }),
-            supabase
-              .from("mpesa_c2b_transactions")
-              .select("*")
-              .in("loan_id", loanIds)
-              .eq("status", "applied")
-              .not("transaction_time", "is", null)
-              .order("transaction_time", { ascending: true }),
-            supabase
-              .from("mpesa_b2c_transactions")
-              .select("*")
-              .in("loan_id", loanIds)
-              .eq("status", "success")
-              .not("created_at", "is", null)
-              .order("created_at", { ascending: true }),
-          ]);
-
-          installments = installmentsData || [];
-          c2b = c2bData || [];
-          b2c = b2cData || [];
-        }
-
-        // 4️ Start building transaction events
-        let allEvents = [];
-        let runningBalance = 0;
-
-        // (1) JOINING FEE — debit at time customer was created
-        if (customer?.created_at) {
-          const joiningFee = 300; // default joining fee
-          runningBalance -= joiningFee;
-
-          allEvents.push({
-            id: `joining-fee-${customer.id}`,
-            date: new Date(customer.created_at),
-            description: "JOINING FEE",
+        // 3b. Debit: Processing Fee
+        if (loan.processing_fee > 0) {
+          const procFee = Number(loan.processing_fee);
+          runningBalance -= procFee;
+          
+          events.push({
+            id: `proc-fee-${loan.id}`,
+            date: loanDate,
+            description: "Processing Fee",
             reference: "-",
-            debit: -Math.abs(Number(joiningFee)),
+            debit: procFee,
             credit: 0,
-            balance: runningBalance,
-            sequence: 1,
-          });
-        }
-
-        // (2) Registration / Processing fee deposits (C2B)
-        c2b
-          .filter(
-            (tx) =>
-              tx.payment_type === "registration" ||
-              tx.payment_type === "processing"
-          )
-          .forEach((tx) => {
-            runningBalance += Number(tx.amount);
-            allEvents.push({
-              id: `deposit-${tx.id}`,
-              date: new Date(tx.transaction_time),
-              description: "Mobile Money Deposit",
-              reference: `Mpesa Deposit - ${tx.transaction_id || tx.reference || "-"}`,
-              debit: 0,
-              credit: Number(tx.amount),
-              balance: runningBalance,
-              sequence: 2,
-            });
-          });
-
-        // (3) Loan Disbursement (B2C)
-        b2c.forEach((disb) => {
-          const loan = loans.find((l) => l.id === disb.loan_id);
-          if (!loan) return;
-          const disbDate = new Date(disb.created_at);
-
-          // (a) Credit Loan amount
-          runningBalance += Number(loan.scored_amount);
-          allEvents.push({
-            id: `loan-disbursement-${disb.id}`,
-            date: disbDate,
-            description: "Loan Disbursement",
-            reference: disb.transaction_id || `Loan-${loan.id}`,
-            debit: 0,
-            credit: Number(loan.scored_amount),
             balance: runningBalance,
             sequence: 3,
+            timestamp: baseTimestamp + 2,
           });
+        }
 
-          // (b) Debit Loan processing fee
-          if (loan.processing_fee > 0) {
-            runningBalance -= Number(loan.processing_fee);
-            allEvents.push({
-              id: `processing-fee-${disb.id}`,
-              date: disbDate,
-              description: "LOAN PROCESSING FEE",
-              reference: "-",
-              debit: -Math.abs(Number(loan.processing_fee)),
-              credit: 0,
-              balance: runningBalance,
-              sequence: 4,
-            });
-          }
-
-          // (c) Debit actual mobile disbursement
-          runningBalance -= Number(disb.amount);
-          allEvents.push({
-            id: `mobile-disbursement-${disb.id}`,
-            date: disbDate,
-            description: "Mobile Money Disbursement",
-            reference: "-",
-            debit: -Math.abs(Number(disb.amount)),
-            credit: 0,
-            balance: runningBalance,
-            sequence: 5,
-          });
-        });
-
-        // (4) Loan Repayments (C2B)
-        c2b
-          .filter((tx) => tx.payment_type === "repayment")
-          .forEach((tx) => {
-            const payDate = new Date(tx.transaction_time);
-            const ref = tx.transaction_id || tx.reference || "-";
-            const relatedInstallments = installments
-              .filter((i) => i.loan_id === tx.loan_id)
-              .sort((a, b) => a.installment_number - b.installment_number);
-
-            // (a) Credit repayment amount
-            runningBalance += Number(tx.amount);
-            allEvents.push({
-              id: `repayment-credit-${tx.id}`,
-              date: payDate,
-              description: "Mobile Money Deposit",
-              reference: `Mpesa Deposit - ${ref}`,
-              debit: 0,
-              credit: Number(tx.amount),
-              balance: runningBalance,
-              sequence: 6,
-            });
-
-            // (b) Alternate: Interest then Principal per installment
-            for (const inst of relatedInstallments) {
-              const instInterestPaid = Number(inst.interest_paid) || 0;
-              const instPrincipalPaid = Number(inst.principal_paid) || 0;
-
-              // Interest first
-              if (instInterestPaid > 0) {
-                runningBalance -= instInterestPaid;
-                allEvents.push({
-                  id: `interest-repayment-${tx.id}-${inst.installment_number}`,
-                  date: payDate,
-                  description: `Interest Repayment`,
-                  reference: ref,
-                  debit: -Math.abs(instInterestPaid),
-                  credit: 0,
-                  balance: runningBalance,
-                  sequence: 7 + inst.installment_number * 2,
-                });
-              }
-
-              // Then principal
-              if (instPrincipalPaid > 0) {
-                runningBalance -= instPrincipalPaid;
-                allEvents.push({
-                  id: `principal-repayment-${tx.id}-${inst.installment_number}`,
-                  date: payDate,
-                  description: `Principal Repayment`,
-                  reference: ref,
-                  debit: -Math.abs(instPrincipalPaid),
-                  credit: 0,
-                  balance: runningBalance,
-                  sequence: 8 + inst.installment_number * 2,
-                });
-              }
-            }
-          });
-                  // Calculate total repayments from C2B transactions
-const totalRepayments = c2b
-  .filter((tx) => tx.payment_type === "repayment")
-  .reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-        totalPaid = totalRepayments;
-
-
-setStatementSummary({
-  totalLoanAmount,
-  principal: totalPrincipal,
-  interest: totalInterest,
-  totalPaid,
-  outstandingBalance: totalLoanAmount - totalPaid,
-});
-
-
-        // (5) Sort by date & sequence
-        allEvents.sort((a, b) => {
-          const dateDiff = new Date(a.date) - new Date(b.date);
-          return dateDiff !== 0 ? dateDiff : a.sequence - b.sequence;
-        });
-
-        allEvents.reverse();
-
-        // (6) Add Balance B/F
-        const balanceBF = {
-          id: "balance-bf",
-          date: new Date(),
-          description: "Balance B/F",
+        // 3c. Debit: Loan Disbursement (actual loan given out)
+        runningBalance -= disbAmount;
+        
+        events.push({
+          id: `loan-disb-${loan.id}`,
+          date: loanDate,
+          description: "Loan Disbursement",
           reference: "-",
-          debit: 0,
+          debit: disbAmount,
           credit: 0,
-          balance: 0,
-          isBalanceBF: true,
-        };
-        const finalList = [balanceBF, ...allEvents];
-        setTransactions(finalList);
-        applyFilters(finalList, "all");
-      } catch (err) {
-        console.error("Error fetching transactions:", err);
-        alert("Failed to load transactions. Please try again.");
-      } finally {
-        setLoading(false);
+          balance: runningBalance,
+          sequence: 4,
+          timestamp: baseTimestamp + 3,
+        });
+      });
+
+    
+// 📋 STEP 4: LOAN PAYMENTS (Grouped per M-Pesa code)
+// ========================================
+if (loanPayments.length > 0) {
+  // Group payments by mpesa_receipt
+  const groupedPayments = loanPayments.reduce((acc, payment) => {
+    const ref = payment.mpesa_receipt || "MPESA";
+    if (!acc[ref]) acc[ref] = [];
+    acc[ref].push(payment);
+    return acc;
+  }, {});
+
+  // Process each grouped transaction
+  for (const [ref, payments] of Object.entries(groupedPayments)) {
+    const paymentDate = new Date(payments[0].paid_at);
+    const baseTimestamp = paymentDate.getTime();
+    const totalPaid = payments.reduce((sum, p) => sum + Number(p.paid_amount || 0), 0);
+
+    // Skip duplicate credit by checking transaction reference
+    const transactionKey = `loanpayment-${ref}`;
+    if (processedTransactionIds.has(transactionKey)) continue;
+    processedTransactionIds.add(transactionKey);
+
+    // ✅ 4a. Credit once: Mobile Money Deposit
+    runningBalance += totalPaid;
+    events.push({
+      id: `payment-credit-${ref}`,
+      date: paymentDate,
+      description: "Mobile Money Deposit",
+      reference: ref,
+      debit: 0,
+      credit: totalPaid,
+      balance: runningBalance,
+      sequence: 5,
+      timestamp: baseTimestamp,
+    });
+
+    // ✅ 4b. Debit for each payment type (principal, interest, etc.)
+    payments.forEach((p, idx) => {
+      const amt = Number(p.paid_amount || 0);
+      if (!amt) return;
+
+      runningBalance -= amt;
+
+      let desc = "Loan Repayment";
+      if (p.payment_type === "principal") desc = "Principal Repayment";
+      else if (p.payment_type === "interest") desc = "Interest Repayment";
+
+      events.push({
+        id: `payment-debit-${p.id}`,
+        date: paymentDate,
+        description: desc,
+        reference: ref,
+        debit: amt,
+        credit: 0,
+        balance: runningBalance,
+        sequence: 6 + idx,
+        timestamp: baseTimestamp + (idx + 1),
+      });
+    });
+  }
+}
+
+
+      // ========================================
+      // 📋 STEP 5: SORT & ADD BALANCE B/F
+      // ========================================
+      // Sort chronologically (oldest first)
+      events.sort((a, b) => a.timestamp - b.timestamp);
+
+      // Add Balance B/F at the top (current date, showing final balance)
+      const balanceBF = {
+        id: "balance-bf",
+        date: new Date(),
+        description: "Balance B/F",
+        reference: "-",
+        debit: 0,
+        credit: 0,
+        balance: runningBalance,
+        sequence: 0,
+        timestamp: new Date().getTime(),
+        isBalanceBF: true
+      };
+
+      // Reverse to show newest first (Balance B/F on top)
+      const sortedEvents = [balanceBF, ...events.reverse()];
+
+      // Update statement period
+      if (events.length > 0) {
+        const transactionDates = events.map(t => new Date(t.date));
+        const minDate = new Date(Math.min(...transactionDates));
+        const maxDate = new Date(Math.max(...transactionDates));
+        
+        setStatementPeriod(prev => ({
+          ...prev,
+          startDate: minDate.toLocaleDateString("en-KE"),
+          endDate: maxDate.toLocaleDateString("en-KE")
+        }));
       }
-    };
 
-    if (customerId) fetchTransactions();
-  }, [customerId]);
+      // Calculate summary
+      const totalDebit = events.reduce((sum, e) => sum + e.debit, 0);
+      const totalCredit = events.reduce((sum, e) => sum + e.credit, 0);
+      const totalLoanAmount = loans.reduce((sum, loan) => sum + (loan.scored_amount || 0), 0);
+      const totalProcessingFees = loans.reduce((sum, loan) => sum + (loan.processing_fee || 0), 0);
+      const totalRegistrationFees = loans.reduce((sum, loan) => sum + (loan.registration_fee || 0), 0);
 
+      setStatementSummary({
+        totalLoanAmount,
+        principal: totalLoanAmount,
+        interest: totalProcessingFees + totalRegistrationFees,
+        totalPaid: totalCredit,
+        outstandingBalance: runningBalance,
+        totalDebit,
+        totalCredit,
+        closingBalance: runningBalance
+      });
 
+      setTransactions(sortedEvents);
+      setFilteredTransactions(sortedEvents);
 
+    } catch (err) {
+      console.error("❌ Statement generation failed:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchTransactions();
+}, [customerId]);
   // Enhanced Filtering & Sorting Helpers
+  
+  
+  // Summary state
+  const [statementSummary, setStatementSummary] = useState({
+    totalLoanAmount: 0,
+    principal: 0,
+    interest: 0,
+    totalPaid: 0,
+    outstandingBalance: 0
+  });
+  
+  
+  
   const getDateRange = (filter) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -793,207 +866,222 @@ setStatementSummary({
 
     return pages;
   };
-const handleFindTransaction = () => {
-  if (!searchTerm.trim()) {
-    alert("Please enter a transaction ID to search.");
-    return;
-  }
 
-  const found = transactions.find(
-    (tx) =>
-      tx.reference?.includes(searchTerm) ||
-      tx.description?.includes(searchTerm)
-  );
+  const handleFindTransaction = () => {
+    if (!searchTerm.trim()) {
+      alert("Please enter a transaction ID to search.");
+      return;
+    }
 
-  if (found) {
-    alert(`Transaction found: ${found.description} on ${new Date(found.date).toLocaleDateString()}`);
-    setFilteredData([found]); // show only that transaction
-  } else {
-    alert("Transaction not found.");
-  }
-};
+    const found = transactions.find(
+      (tx) =>
+        tx.reference?.includes(searchTerm) ||
+        tx.description?.includes(searchTerm)
+    );
 
-//  Share Report via Email (as PDF)
-const handleShareReport = async () => {
-  try {
-    const response = await fetch("/api/send-statement-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customerId,
-        customerName,
-        statementPeriod,
-      }),
-    });
+    if (found) {
+      alert(`Transaction found: ${found.description} on ${new Date(found.date).toLocaleDateString()}`);
+      setFilteredTransactions([found]); // show only that transaction
+    } else {
+      alert("Transaction not found.");
+      // Reset to show all transactions if not found
+      applyFilters(transactions, dateFilter);
+    }
+  };
 
-    if (!response.ok) throw new Error("Failed to send email");
-    alert("Report shared successfully via email!");
-  } catch (err) {
-    console.error(err);
-    alert("Error sharing report. Please try again.");
-  }
-};
+  // Reset search and show all transactions
+  const handleResetSearch = () => {
+    setSearchTerm("");
+    applyFilters(transactions, dateFilter);
+  };
 
+  // Share Report via Email (as PDF)
+  const handleShareReport = async () => {
+    try {
+      const response = await fetch("/api/send-statement-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId,
+          customerName,
+          statementPeriod,
+          reportTimestamp,
+          statementSummary
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to send email");
+      alert("Report shared successfully via email!");
+    } catch (err) {
+      console.error(err);
+      alert("Error sharing report. Please try again.");
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto">
       
-       {/* Header Section */}
-<div className="sticky top-0 bg-white border-b px-6 py-5 text-center">
-  {/* Customer Name + Title */}
-  <h2 className="text-2xl font-bold text-gray-800">
-    {customerName || "Customer Name"}
-  </h2>
-  <p className="text-lg font-semibold text-gray-600 mt-1">
-    Customer Account Statement
-  </p>
+        {/* Header Section */}
+        <div className="sticky top-0 bg-white border-b px-6 py-5 text-center">
+          <h2 className="text-2xl font-bold text-gray-800">
+            {customerName || "Customer Name"}
+          </h2>
+          <p className="text-lg font-semibold text-gray-600 mt-1">
+            Customer Account Statement 
+          </p>
 
-  {/* Dynamic Statement Period */}
-  <div className="mt-3  py-2 ">
-    <p className="text-sm text-gray-700">
-      This report is for the{" "}
-      <span className="font-medium text-blue-800">
-        {statementPeriod.period}
-      </span>{" "}
-      period, starting on{" "}
-      <span className="font-medium text-blue-800">
-        {statementPeriod.startDate}
-      </span>{" "}
-      and ending on{" "}
-      <span className="font-medium text-blue-800">
-        {statementPeriod.endDate}
-      </span>.
-    </p>
-  </div>
+          {/* Dynamic Statement Period */}
+          <div className="mt-3 py-2">
+            <p className="text-sm text-gray-700">
+              This report is for the{" "}
+              <span className="font-medium text-blue-800">
+                {statementPeriod.period}
+              </span>{" "}
+              period, starting on{" "}
+              <span className="font-medium text-blue-800">
+                {statementPeriod.startDate}
+              </span>{" "}
+              and ending on{" "}
+              <span className="font-medium text-blue-800">
+                {statementPeriod.endDate}
+              </span>.
+            </p>
+          </div>
 
-  {/* Close Button (top-right) */}
-  <button
-    onClick={onClose}
-    className="absolute right-6 top-5 p-2 rounded-lg hover:bg-gray-100"
-  >
-    <X className="w-5 h-5 text-gray-600" />
-  </button>
-</div>
-
-
-        {/* Filters and Export - Top Section */}
-       <div className="p-6 border-b bg-gray-50">
-  <div className="flex flex-wrap gap-4 items-center justify-between">
-    {/* Left Filters Section */}
-    <div className="flex flex-wrap gap-4 items-center">
-      {/* Date Filter */}
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-700">Filter by:</label>
-        <select
-          value={dateFilter}
-          onChange={(e) => handleDateFilterChange(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
-        >
-          <option value="all">All Time</option>
-          <option value="today">Today</option>
-          <option value="week">This Week</option>
-          <option value="month">This Month</option>
-          <option value="quarter">This Quarter</option>
-          <option value="year">This Year</option>
-          <option value="custom">Custom Range</option>
-        </select>
-      </div>
-
-      {/* Custom Date Range */}
-      {dateFilter === "custom" && (
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={customStartDate}
-            onChange={(e) => setCustomStartDate(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <span>to</span>
-          <input
-            type="date"
-            value={customEndDate}
-            onChange={(e) => setCustomEndDate(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          {/* Close Button */}
           <button
-            onClick={handleCustomDateApply}
-            className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700"
+            onClick={onClose}
+            className="absolute right-6 top-5 p-2 rounded-lg hover:bg-gray-100"
           >
-            Apply
+            <X className="w-5 h-5 text-gray-600" />
           </button>
         </div>
-      )}
 
-      {/* Items Per Page */}
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-700">Show:</label>
-        <select
-          value={itemsPerPage}
-          onChange={(e) => setItemsPerPage(Number(e.target.value))}
-          className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value={10}>10</option>
-          <option value={25}>25</option>
-          <option value={50}>50</option>
-          <option value={100}>100</option>
-        </select>
-      </div>
-    </div>
+        {/* Filters and Export - Top Section */}
+        <div className="p-6 border-b bg-gray-50">
+          <div className="flex flex-wrap gap-4 items-center justify-between">
+            {/* Left Filters Section */}
+            <div className="flex flex-wrap gap-4 items-center">
+              {/* Date Filter */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Filter by:</label>
+                <select
+                  value={dateFilter}
+                  onChange={(e) => handleDateFilterChange(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="quarter">This Quarter</option>
+                  <option value="year">This Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
 
-    {/* Right Action Buttons */}
-    <div className="flex items-center gap-2">
-      {/* Find Transaction */}
-      <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
-        <Search size={16} className="text-gray-600" />
-        <input
-          type="text"
-          placeholder="Find by M-Pesa Txn ID..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="text-sm focus:outline-none w-44"
-        />
-        <button
-          onClick={handleFindTransaction}
-          className="text-sm text-blue-600 hover:underline"
-        >
-          Find
-        </button>
-      </div>
+              {/* Custom Date Range */}
+              {dateFilter === "custom" && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span>to</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={handleCustomDateApply}
+                    className="bg-blue-600 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-700"
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
 
-      {/* Export Options */}
-      <select
-        value={exportFormat}
-        onChange={(e) => setExportFormat(e.target.value)}
-        className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="csv">CSV</option>
-        <option value="pdf">PDF</option>
-        <option value="excel">Excel</option>
-        <option value="word">Word</option>
-      </select>
-      <button
-        onClick={handleExport}
-        className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700"
-      >
-        <Download size={16} />
-        Export
-      </button>
+              {/* Items Per Page */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Show:</label>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
 
-      {/* Share Report */}
-      <button
-        onClick={handleShareReport}
-        className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
-      >
-        <Share2 size={16} />
-        Share
-      </button>
-    </div>
-  </div>
-</div>
+            {/* Right Action Buttons */}
+            <div className="flex items-center gap-2">
+              {/* Find Transaction */}
+              <div className="flex items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-white">
+                <Search size={16} className="text-gray-600" />
+                <input
+                  type="text"
+                  placeholder="Find by M-Pesa Txn ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="text-sm focus:outline-none w-44"
+                />
+                <button
+                  onClick={handleFindTransaction}
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  Find
+                </button>
+                {searchTerm && (
+                  <button
+                    onClick={handleResetSearch}
+                    className="text-sm text-gray-600 hover:underline"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
 
+              {/* Export Options */}
+              <select
+                value={exportFormat}
+                onChange={(e) => setExportFormat(e.target.value)}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="csv">CSV</option>
+                <option value="pdf">PDF</option>
+                <option value="excel">Excel</option>
+                <option value="word">Word</option>
+              </select>
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700"
+              >
+                <Download size={16} />
+                Export
+              </button>
 
-        {/* Summary Table - Positioned just above the transactions table */}
+              {/* Share Report */}
+              <button
+                onClick={handleShareReport}
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700"
+              >
+                <Share2 size={16} />
+                Share
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Table */}
         <div className="px-6 py-4 border-b">
           <div className="overflow-x-auto">
             <table className="w-full border border-gray-200">

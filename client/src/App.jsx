@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useState } from "react";
+import { useState,memo } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -191,13 +191,13 @@ function App() {
         return "/dashboard";
     }
   };
-
-
-  const ReportWrapper = ({ component: Component, userRole }) => (
-  <div className="mb-4">
-    <Component userRole={userRole} />
-  </div>
-);
+const ReportWrapper = memo(function ReportWrapper({ component: Component, userRole }) {
+  return (
+    <div className="mb-4">
+      {Component && <Component userRole={userRole} />}
+    </div>
+  );
+});
 
 
   return (

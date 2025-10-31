@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Download, Filter, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { supabase } from "../../supabaseClient";
-import CustomerStatementModal from "./AccountList"; // Import the new component
+import CustomerStatementModal from "./AccountList";
 
 const CustomerAccountModal = () => {
   const [customerAccountData, setCustomerAccountData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
   const [branches, setBranches] = useState([]);
   const [filters, setFilters] = useState({
     customerQuery: "",
@@ -24,7 +23,7 @@ const CustomerAccountModal = () => {
   const [showStatementModal, setShowStatementModal] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
-  // ✅ Fetch branches
+  // Fetch branches - only once on mount
   useEffect(() => {
     const fetchBranches = async () => {
       const { data, error } = await supabase.from("branches").select("id, name");
@@ -33,9 +32,10 @@ const CustomerAccountModal = () => {
     fetchBranches();
   }, []);
 
-  // Fetch customer loan data
-  
+  // Fetch customer loan data - only once on mount
   useEffect(() => {
+    let isMounted = true;
+
     const fetchCustomerAccounts = async () => {
       try {
         setLoading(true);
@@ -64,71 +64,80 @@ const CustomerAccountModal = () => {
 
         if (error) throw error;
 
-        const customerSummary = {};
+        // Only update state if component is still mounted
+        if (isMounted) {
+          const customerSummary = {};
 
-        loans.forEach((loan) => {
-          const cust = loan.customer || {};
-          const custId = cust.id;
-          const fullName = [cust.Firstname, cust.Middlename, cust.Surname]
-            .filter(Boolean)
-            .join(" ");
+          loans.forEach((loan) => {
+            const cust = loan.customer || {};
+            const custId = cust.id;
+            const fullName = [cust.Firstname, cust.Middlename, cust.Surname]
+              .filter(Boolean)
+              .join(" ");
 
-          const totalPaid = loan.installments?.reduce(
-            (sum, i) => sum + (i.paid_amount || 0),
-            0
-          );
+            const totalPaid = loan.installments?.reduce(
+              (sum, i) => sum + (i.paid_amount || 0),
+              0
+            );
 
-          const outstanding =
-            (loan.total_payable || 0) - totalPaid > 0
-              ? (loan.total_payable || 0) - totalPaid
-              : 0;
+            const outstanding =
+              (loan.total_payable || 0) - totalPaid > 0
+                ? (loan.total_payable || 0) - totalPaid
+                : 0;
 
-          if (!customerSummary[custId]) {
-            customerSummary[custId] = {
-              customerId: custId,
-              customerName: fullName || "N/A",
-              phone: cust.mobile || "N/A",
-              branch: cust.branch?.name || "N/A",
-              totalLoanApplied: 0,
-              loanAmount: 0,
-              interest: 0,
-              totalPayable: 0,
-              totalPaid: 0,
-              outstanding: 0,
-              latestDisbursed: loan.disbursed_date,
-              status: "Active",
-            };
-          }
+            if (!customerSummary[custId]) {
+              customerSummary[custId] = {
+                customerId: custId,
+                customerName: fullName || "N/A",
+                phone: cust.mobile || "N/A",
+                branch: cust.branch?.name || "N/A",
+                totalLoanApplied: 0,
+                loanAmount: 0,
+                interest: 0,
+                totalPayable: 0,
+                totalPaid: 0,
+                outstanding: 0,
+                latestDisbursed: loan.disbursed_date,
+                status: "Active",
+              };
+            }
 
-          const custRec = customerSummary[custId];
-          custRec.totalLoanApplied += loan.scored_amount || 0;
-          custRec.loanAmount += loan.scored_amount || 0;
-          custRec.interest += loan.total_interest || 0;
-          custRec.totalPayable += loan.total_payable || 0;
-          custRec.totalPaid += totalPaid;
-          custRec.outstanding += outstanding;
-        });
+            const custRec = customerSummary[custId];
+            custRec.totalLoanApplied += loan.scored_amount || 0;
+            custRec.loanAmount += loan.scored_amount || 0;
+            custRec.interest += loan.total_interest || 0;
+            custRec.totalPayable += loan.total_payable || 0;
+            custRec.totalPaid += totalPaid;
+            custRec.outstanding += outstanding;
+          });
 
-        const formatted = Object.values(customerSummary).map((c) => ({
-          ...c,
-          status: c.outstanding === 0 ? "Closed" : "Active",
-        }));
+          const formatted = Object.values(customerSummary).map((c) => ({
+            ...c,
+            status: c.outstanding === 0 ? "Closed" : "Active",
+          }));
 
-        setCustomerAccountData(formatted);
-        setFilteredData(formatted);
-        setCurrentPage(1);
+          setCustomerAccountData(formatted);
+          setCurrentPage(1);
+        }
       } catch (err) {
         console.error("Error fetching customer accounts:", err.message);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchCustomerAccounts();
-  }, []);
 
-  //  Filtering logic
-  useEffect(() => {
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Empty dependency array - runs only once
+
+  // Use useMemo for filtered data to prevent unnecessary re-renders
+  const filteredData = useMemo(() => {
     let result = [...customerAccountData];
 
     if (filters.customerQuery) {
@@ -150,6 +159,7 @@ const CustomerAccountModal = () => {
       const start = new Date(filters.startDate);
       const end = new Date(filters.endDate);
       result = result.filter((item) => {
+        if (!item.latestDisbursed) return false;
         const d = new Date(item.latestDisbursed);
         return d >= start && d <= end;
       });
@@ -165,20 +175,23 @@ const CustomerAccountModal = () => {
       });
     }
 
-    setFilteredData(result);
-    setCurrentPage(1);
-  }, [filters, sortConfig, customerAccountData]);
+    return result;
+  }, [customerAccountData, filters, sortConfig]);
 
-  const handleSort = (key) =>
+  // Memoize the sort handler
+  const handleSort = useCallback((key) => {
     setSortConfig((prev) => ({
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
+  }, []);
 
-  const handleViewStatement = (customer) => {
+  // Memoize the view statement handler
+  const handleViewStatement = useCallback((customer) => {
     setSelectedCustomer(customer);
     setShowStatementModal(true);
-  };
+  }, []);
+
 
   const exportToCSV = (data, filename) => {
     if (data.length === 0) {

@@ -13,7 +13,10 @@ import {
   BuildingStorefrontIcon,
   ClipboardDocumentCheckIcon,
   ClockIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  BanknotesIcon,
+  EyeIcon,
+  ChevronUpDownIcon
 } from "@heroicons/react/24/outline";
 import { toast } from "react-toastify";
 
@@ -26,6 +29,12 @@ const PendingLoans = () => {
   const [repaymentSchedule, setRepaymentSchedule] = useState([]);
   const [approvalTrail, setApprovalTrail] = useState([]);
   const [disbursing, setDisbursing] = useState(false);
+  const [walletInfo, setWalletInfo] = useState({
+    balance: 0,
+    registration_fee_paid: false,
+    processing_fee_paid: false,
+  });
+  const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'desc' });
   const { profile } = useAuth();
 
   useEffect(() => {
@@ -61,6 +70,32 @@ const PendingLoans = () => {
     }
   };
 
+  const fetchWalletAndFeeStatus = async (loanData) => {
+    try {
+      // Fetch wallet transactions
+      const { data: walletTxns, error } = await supabase
+        .from("customer_wallets")
+        .select("amount, type")
+        .eq("customer_id", loanData.customer_id);
+
+      if (error) throw error;
+
+      // Calculate wallet balance
+      const balance = walletTxns?.reduce(
+        (sum, t) => sum + (t.type === "credit" ? t.amount : -t.amount),
+        0
+      ) || 0;
+
+      setWalletInfo({
+        balance,
+        registration_fee_paid: loanData.registration_fee_paid || false,
+        processing_fee_paid: loanData.processing_fee_paid || false,
+      });
+    } catch (error) {
+      console.error("Error fetching wallet info:", error);
+    }
+  };
+
   const fetchLoanFullDetails = async (loanId) => {
     try {
       // Fetch loan with customer details
@@ -74,6 +109,9 @@ const PendingLoans = () => {
         .single();
 
       if (loanError) throw loanError;
+
+      // Fetch wallet info
+      await fetchWalletAndFeeStatus(loanData);
 
       // Fetch users involved in approval trail
       const userIds = [
@@ -188,129 +226,73 @@ const PendingLoans = () => {
     setRepaymentSchedule(schedule);
   };
 
+  // Check if all required fees are paid
+  const areFeesFullyPaid = () => {
+    if (!loanDetails) return false;
+    
+    // For new loans: both registration and processing fees must be paid
+    if (loanDetails.is_new_loan) {
+      return walletInfo.registration_fee_paid && walletInfo.processing_fee_paid;
+    }
+    
+    // For repeat loans: only processing fee must be paid
+    return walletInfo.processing_fee_paid;
+  };
+
   const handleDisbursement = async (loan) => {
-  try {
-    setDisbursing(true);
+    try {
+      setDisbursing(true);
 
-    if (!loan.customers || !loan.customers.mobile) {
-      toast.error("Customer mobile number is missing. Cannot process disbursement.");
-      return;
-    }
+      if (!loan.customers || !loan.customers.mobile) {
+        toast.error("Customer mobile number is missing. Cannot process disbursement.");
+        return;
+      }
 
-    const principal = loan.scored_amount;
-    if (!principal || principal <= 0) {
-      toast.error("Invalid loan amount. Cannot process disbursement.");
-      return;
-    }
+      const principal = loan.scored_amount;
+      if (!principal || principal <= 0) {
+        toast.error("Invalid loan amount. Cannot process disbursement.");
+        return;
+      }
 
-    //  Format mobile number to international
-    let mobileNumber = loan.customers.mobile.replace(/\D/g, "");
-    if (mobileNumber.startsWith("0")) mobileNumber = "254" + mobileNumber.substring(1);
-    else if (mobileNumber.startsWith("7")) mobileNumber = "254" + mobileNumber;
-    if (!mobileNumber.startsWith("254") || mobileNumber.length !== 12) {
-      toast.error("Invalid mobile number format.");
-      return;
-    }
+      // Check if fees are paid
+      if (!areFeesFullyPaid()) {
+        toast.error("Required fees are not fully paid. Cannot process disbursement.");
+        return;
+      }
 
-    const customerId = loan.customers.id;
+      // Format mobile number to international
+      let mobileNumber = loan.customers.mobile.replace(/\D/g, "");
+      if (mobileNumber.startsWith("0")) mobileNumber = "254" + mobileNumber.substring(1);
+      else if (mobileNumber.startsWith("7")) mobileNumber = "254" + mobileNumber;
+      if (!mobileNumber.startsWith("254") || mobileNumber.length !== 12) {
+        toast.error("Invalid mobile number format.");
+        return;
+      }
 
-    //  Fetch customer + loan latest payment statuses
-    const { data: customerData, error: customerError } = await supabase
-      .from("customers")
-      .select("registration_fee_paid, is_new_customer")
-      .eq("id", customerId)
-      .single();
+      const customerId = loan.customers.id;
 
-    const { data: loanData, error: loanError } = await supabase
-      .from("loans")
-      .select("processing_fee_paid, scored_amount")
-      .eq("id", loan.id)
-      .single();
+      console.log("=".repeat(60));
+      console.log("DISBURSEMENT INITIATED");
+      console.log("=".repeat(60));
+      console.log(` Loan ID: ${loan.id}`);
+      console.log(` Customer ID: ${customerId}`);
+      console.log(` Principal Amount: KES ${principal.toLocaleString()}`);
+      console.log(` Mobile Number: ${mobileNumber}`);
+      console.log("-".repeat(60));
 
-    if (customerError || loanError) throw new Error("Unable to verify customer/loan info.");
-
-    //  Calculate fees
-    const processingFee = loanData.scored_amount < 10000 ? 500 : loanData.scored_amount * 0.05;
-    const registrationFee = 300;
-
-    console.log("=".repeat(60));
-    console.log("DISBURSEMENT INITIATED");
-    console.log("=".repeat(60));
-    console.log(` Loan ID: ${loan.id}`);
-    console.log(` Customer ID: ${customerId}`);
-    console.log(` Principal Amount: KES ${principal.toLocaleString()}`);
-    console.log(` Mobile Number: ${mobileNumber}`);
-    console.log("-".repeat(60));
-    console.log("FEE STATUS CHECK:");
-    console.log(`   Is New Customer: ${customerData.is_new_customer ? "YES" : "NO"}`);
-    console.log(`   Registration Fee (KES ${registrationFee}): ${customerData.registration_fee_paid ? "✅ PAID" : "❌ UNPAID"}`);
-    console.log(`   Processing Fee (KES ${processingFee.toLocaleString()}): ${loanData.processing_fee_paid ? "✅ PAID" : "❌ UNPAID"}`);
-    console.log("-".repeat(60));
-
-    //  Track STK pushes
-    let stkTriggered = false;
-
-    // 1 Registration Fee (only new + unpaid)
-    if (customerData.is_new_customer && !customerData.registration_fee_paid) {
-      stkTriggered = true;
-      console.log(` TRIGGERING STK PUSH: Registration Fee (KES ${registrationFee})`);
-      
-      await axios.post("http://localhost:5000/mpesa/c2b/stkpush", {
-        amount: registrationFee,
-        phone: mobileNumber,
-        accountReference: "REGISTRATION",
-        transactionDesc: "Joining Fee Payment",
-        customerId,
-      });
-      
-      toast.info(`STK Push for KES ${registrationFee} sent for Registration Fee.`);
-      console.log(` Registration Fee STK Push sent successfully`);
-    } else if (customerData.is_new_customer) {
-      console.log(`✓ Registration Fee already paid - skipping STK Push`);
-    } else {
-      console.log(`✓ Existing customer - no Registration Fee required`);
-    }
-
-    // Processing Fee (unpaid only)
-    if (!loanData.processing_fee_paid) {
-      stkTriggered = true;
-      console.log(`TRIGGERING STK PUSH: Processing Fee (KES ${processingFee.toLocaleString()})`);
-      
-      await axios.post("http://localhost:5000/mpesa/c2b/stkpush", {
-        amount: processingFee,
-        phone: mobileNumber,
-        accountReference: "PROCESSING",
-        transactionDesc: "Processing Fee Payment",
-        loanId: loan.id,
-        customerId,
-      });
-      
-      toast.info(`STK Push for KES ${processingFee.toLocaleString()} sent for Processing Fee.`);
-      console.log(` Processing Fee STK Push sent successfully`);
-    } else {
-      console.log(` Processing Fee already paid - skipping STK Push`);
-    }
-
-    console.log("-".repeat(60));
-
-    //  Only disburse if both are already paid
-    if (!stkTriggered) {
-      console.log(" ALL FEES PAID - PROCEEDING WITH DISBURSEMENT");
-      console.log(` Disbursing KES ${loan.scored_amount.toLocaleString()} to ${mobileNumber}`);
-      
       const { data: b2cResponse } = await axios.post(
         "http://localhost:5000/mpesa/b2c/disburse",
-       { 
-    amount: loan.scored_amount,
-    phone: mobileNumber,       
-    loanId: loan.id,          
-    customerId: customerId     
-  }
+        { 
+          amount: loan.scored_amount,
+          phone: mobileNumber,       
+          loanId: loan.id,          
+          customerId: customerId     
+        }
       );
 
-      console.log("📤 B2C Response:", b2cResponse);
+      console.log(" B2C Response:", b2cResponse);
 
-      //  Update loan status
+      // Update loan status
       const { error: updateError } = await supabase
         .from("loans")
         .update({
@@ -328,32 +310,55 @@ const PendingLoans = () => {
       toast.success("Loan disbursed successfully!");
       fetchPendingDisbursementLoans();
       setSelectedLoan(null);
-    } else {
-      console.log("  DISBURSEMENT ON HOLD - WAITING FOR FEE PAYMENT(S)");
-      toast.warn(" Loan disbursement is on hold until required fees are paid.");
+
+      console.log("=".repeat(60));
+    } catch (err) {
+      console.error(" Disbursement error:", err);
+      console.error("Error details:", err.response?.data || err.message);
+      toast.error(`Failed to disburse loan: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setDisbursing(false);
     }
+  };
 
-    console.log("=".repeat(60));
-  } catch (err) {
-    console.error(" Disbursement error:", err);
-    console.error("Error details:", err.response?.data || err.message);
-    toast.error(`Failed to disburse loan: ${err.response?.data?.message || err.message}`);
-  } finally {
-    setDisbursing(false);
-  }
-};
+  // Check if selected loan is valid for disbursement
+  const isLoanValidForDisbursement = (loan) => {
+    return loan && 
+           loan.customers && 
+           loan.customers.mobile && 
+           loan.scored_amount && 
+           loan.scored_amount > 0 &&
+           areFeesFullyPaid();
+  };
 
-// Check if selected loan is valid for disbursement
-const isLoanValidForDisbursement = (loan) => {
-  return loan && 
-         loan.customers && 
-         loan.customers.mobile && 
-         loan.scored_amount && 
-         loan.scored_amount > 0;
-};
+  // Sort loans
+  const getNestedValue = (obj, path) => {
+    return path.split('.').reduce((current, key) => current?.[key], obj);
+  };
 
+  const handleSort = (key) => {
+    setSortConfig({
+      key,
+      direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc'
+    });
+  };
 
- 
+  const sortedLoans = [...loans].sort((a, b) => {
+    if (sortConfig.key) {
+      const aValue = getNestedValue(a, sortConfig.key);
+      const bValue = getNestedValue(b, sortConfig.key);
+      
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+    }
+    return 0;
+  });
+
+  const feesPaid = areFeesFullyPaid();
 
   if (loading) {
     return (
@@ -370,18 +375,21 @@ const isLoanValidForDisbursement = (loan) => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
+        <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-sm font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Loans Pending Disbursement
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+                Loans Ready for Disbursement
               </h1>
-              <p className="text-gray-600 mt-2">
-                Loans approved and ready for disbursement
+              <p className="text-gray-600 mt-1">
+                Review and process approved loans ready for disbursement
               </p>
             </div>
-            <div className="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-lg font-semibold">
-              {loans.length} Loans Pending
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-blue-100 border border-indigo-200">
+              <ClockIcon className="h-4 w-4 text-indigo-600" />
+              <span className="font-medium text-indigo-700">
+                {loans.length} Ready
+              </span>
             </div>
           </div>
         </div>
@@ -389,71 +397,160 @@ const isLoanValidForDisbursement = (loan) => {
         {loans.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
             <CheckCircleIcon className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Pending Disbursements</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Loans Ready for Disbursement</h3>
             <p className="text-gray-600">All loans have been disbursed. Great work!</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Loans List */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-lg border border-indigo-100">
-                <div className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-6 rounded-t-2xl">
-                  <h2 className="text-xl font-bold flex items-center">
-                    <ClipboardDocumentCheckIcon className="h-6 w-6 mr-2" />
-                    Pending Loans
-                  </h2>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {loans.map((loan) => (
-                    <div
-                      key={loan.id}
-                      className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-indigo-50 transition-colors ${
-                        selectedLoan?.id === loan.id ? 'bg-indigo-100 border-l-4 border-l-indigo-500' : ''
-                      }`}
-                      onClick={() => setSelectedLoan(loan)}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-gray-900">Loan #{loan.id}</span>
-                        <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                          Ready
-                        </span>
-                      </div>
-                      <p className="text-gray-900 font-medium">
-                        {loan.customers?.Firstname} {loan.customers?.Surname}
-                      </p>
-                      <p className="text-sm text-gray-600">ID: {loan.customers?.id_number}</p>
-                      
-                      <p className="text-sm text-gray-600">PHONE: {loan.customers?.mobile}</p>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-indigo-600 font-bold">
-                          KES {loan.scored_amount?.toLocaleString()}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {loan.duration_weeks} weeks
-                        </span>
-                      </div>
-                      
-                      {/* Validation indicators */}
-                      {(!loan.customers?.mobile || !loan.scored_amount) && (
-                        <div className="mt-2 text-xs text-red-600 flex items-center">
-                          <ExclamationTriangleIcon className="h-3 w-3 mr-1" />
-                          Missing required data
+          <div className="space-y-8">
+            {/* Loans Table - Full Width */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+              <div className="bg-gray-600 text-gray-200 p-6">
+                <h2 className="text-xl font-bold flex items-center">
+                  <ClipboardDocumentCheckIcon className="h-6 w-6 mr-2" />
+                  Loans Ready for Disbursement
+                </h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th 
+                        scope="col" 
+                        className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('id')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Loan ID
+                          <ChevronUpDownIcon className="h-4 w-4" />
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      </th>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Customer Details
+                      </th>
+                      <th 
+                        scope="col" 
+                        className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('scored_amount')}
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          Loan Amount
+                          <ChevronUpDownIcon className="h-4 w-4" />
+                        </div>
+                      </th>
+                      <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Loan Details
+                      </th>
+                      <th scope="col" className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th scope="col" className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {sortedLoans.map((loan) => (
+                      <tr 
+                        key={loan.id}
+                        className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+                          selectedLoan?.id === loan.id ? 'bg-indigo-50 border-l-4 border-l-indigo-500' : ''
+                        }`}
+                      >
+                        <td 
+                          className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900"
+                          onClick={() => setSelectedLoan(loan)}
+                        >
+                          <div className="font-mono text-lg">#{loan.id}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {new Date(loan.created_at).toLocaleDateString('en-GB')}
+                          </div>
+                        </td>
+                        <td 
+                          className="px-6 py-4 text-sm text-gray-900"
+                          onClick={() => setSelectedLoan(loan)}
+                        >
+                          <div className="font-semibold">
+                            {loan.customers?.Firstname} {loan.customers?.Surname}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            ID: {loan.customers?.id_number}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            📞 {loan.customers?.mobile}
+                          </div>
+                        </td>
+                        <td 
+                          className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900"
+                          onClick={() => setSelectedLoan(loan)}
+                        >
+                          <div className="font-bold text-indigo-600 text-lg">
+                            KES {loan.scored_amount?.toLocaleString()}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Weekly: KES {loan.weekly_payment?.toLocaleString()}
+                          </div>
+                        </td>
+                        <td 
+                          className="px-6 py-4 text-sm text-gray-900"
+                          onClick={() => setSelectedLoan(loan)}
+                        >
+                          <div className="flex flex-col gap-1">
+                            <span className="text-purple-600 font-semibold">
+                              {loan.product_name}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {loan.duration_weeks} weeks • {loan.is_new_loan ? 'New Loan' : 'Repeat Loan'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <CheckCircleIcon className="h-3 w-3 mr-1" />
+                            Ready
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => setSelectedLoan(loan)}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium ml-auto"
+                          >
+                            <EyeIcon className="h-4 w-4" />
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Table Footer */}
+              <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
+                <div className="text-xs text-gray-600">
+                  Showing {sortedLoans.length} of {loans.length} loans ready for disbursement
                 </div>
               </div>
             </div>
 
-            {/* Loan Details */}
-            <div className="lg:col-span-2">
-              {selectedLoan ? (
+            {/* Loan Details Panel - Opens when loan is selected */}
+            {selectedLoan && (
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Loan Details - #{selectedLoan.id}
+                  </h2>
+                  <button
+                    onClick={() => setSelectedLoan(null)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <XCircleIcon className="h-6 w-6" />
+                  </button>
+                </div>
+
                 <div className="space-y-6">
                   {/* Loan Summary Info */}
-                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-indigo-100">
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
-                      <DocumentTextIcon className="h-6 w-6 text-indigo-600 mr-3" />
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center mb-4">
+                      <DocumentTextIcon className="h-5 w-5 text-indigo-600 mr-3" />
                       Loan Summary Information
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -482,12 +579,6 @@ const isLoanValidForDisbursement = (loan) => {
                             customer?.mobile ? 'text-green-600' : 'text-red-600'
                           }`}>
                             {customer?.mobile || 'Missing'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600 font-medium">Product Type:</span>
-                          <span className="text-purple-600 font-semibold">
-                            {loanDetails?.product_name}
                           </span>
                         </div>
                       </div>
@@ -522,15 +613,77 @@ const isLoanValidForDisbursement = (loan) => {
                     </div>
                   </div>
 
+                  {/* Wallet & Fee Status Section */}
+                  <div className={`rounded-xl p-6 border ${
+                    feesPaid 
+                      ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200' 
+                      : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300'
+                  }`}>
+                    <h3 className="text-lg font-bold text-gray-600 flex items-center mb-6">
+                      <BanknotesIcon className="h-5 w-5 text-emerald-600 mr-3" />
+                      Wallet & Fee Payment Status
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-white rounded-xl p-5 shadow-sm">
+                        <div className="text-sm text-gray-600 mb-2">Wallet Balance</div>
+                        <div className="text-2xl font-bold text-indigo-600">
+                          KES {walletInfo.balance.toLocaleString()}
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white rounded-xl p-5 shadow-sm">
+                        <div className="text-sm text-gray-600 mb-2">Processing Fee</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-lg font-semibold text-gray-900">
+                            KES {loanDetails?.processing_fee?.toLocaleString()}
+                          </span>
+                          {walletInfo.processing_fee_paid ? (
+                            <div className="flex items-center gap-2">
+                              <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                              <span className="text-sm font-semibold text-green-600">Paid</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <ExclamationTriangleIcon className="h-5 w-5 text-amber-500" />
+                              <span className="text-sm font-semibold text-amber-600">Unpaid</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {loanDetails?.is_new_loan && (
+                        <div className="bg-white rounded-xl p-5 shadow-sm">
+                          <div className="text-sm text-gray-600 mb-2">Registration Fee</div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-lg font-semibold text-gray-900">
+                              KES {loanDetails?.registration_fee?.toLocaleString()}
+                            </span>
+                            {walletInfo.registration_fee_paid ? (
+                              <div className="flex items-center gap-2">
+                                <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                                <span className="text-sm font-semibold text-green-600">Paid</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <ExclamationTriangleIcon className="h-5 w-5 text-amber-500" />
+                                <span className="text-sm font-semibold text-amber-600">Unpaid</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Approval Trail */}
-                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-indigo-100">
-                    <h3 className="text-xl  text-gray-900 flex items-center mb-4">
-                      <IdentificationIcon className="h-6 w-6 text-blue-600 mr-3" />
-                      Approval  Audit
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center mb-4">
+                      <IdentificationIcon className="h-5 w-5 text-blue-600 mr-3" />
+                      Approval Audit Trail
                     </h3>
                     <div className="space-y-4">
                       {approvalTrail.map((step, index) => (
-                        <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
+                        <div key={index} className="flex items-start space-x-4 p-4 bg-white rounded-lg border border-gray-200">
                           <div className={`w-3 h-3 rounded-full mt-2 ${
                             step.decision === 'approved' ? 'bg-green-500' : 
                             step.decision === 'rejected' ? 'bg-red-500' : 'bg-blue-500'
@@ -561,14 +714,14 @@ const isLoanValidForDisbursement = (loan) => {
                   </div>
 
                   {/* Repayment Schedule */}
-                  <div className="bg-white rounded-2xl shadow-lg p-6 border border-indigo-100">
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
-                      <CalendarIcon className="h-6 w-6 text-green-600 mr-3" />
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center mb-4">
+                      <CalendarIcon className="h-5 w-5 text-green-600 mr-3" />
                       Repayment Schedule Preview
                     </h3>
                     <div className="overflow-x-auto">
                       <table className="min-w-full">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-100">
                           <tr>
                             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Week</th>
                             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Due Date</th>
@@ -605,25 +758,26 @@ const isLoanValidForDisbursement = (loan) => {
                   </div>
 
                   {/* Disbursement Action */}
-                  <div className={`rounded-2xl p-6 border ${
+                  <div className={`rounded-xl p-6 border ${
                     isLoanValidForDisbursement(selectedLoan) 
                       ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
                       : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200'
                   }`}>
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
-                      <CheckCircleIcon className="h-6 w-6 text-green-600 mr-3" />
+                    <h3 className="text-lg font-bold text-gray-900 flex items-center mb-4">
+                      <CheckCircleIcon className="h-5 w-5 text-green-600 mr-3" />
                       Ready for Disbursement
                     </h3>
                     
                     {!isLoanValidForDisbursement(selectedLoan) && (
                       <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                         <p className="text-red-700 font-medium flex items-center">
-                          <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
-                          Cannot process disbursement - Missing required data:
+                          <ExclamationTriangleIcon className="h-4 w-4 mr-2" />
+                          Cannot process disbursement - Missing requirements:
                         </p>
-                        <ul className="list-disc list-inside mt-2 text-red-600">
+                        <ul className="list-disc list-inside mt-2 text-red-600 text-sm">
                           {!selectedLoan.customers?.mobile && <li>Customer mobile number is missing</li>}
                           {!selectedLoan.scored_amount && <li>Loan amount is missing</li>}
+                          {!feesPaid && <li>Required fees are not fully paid</li>}
                         </ul>
                       </div>
                     )}
@@ -631,7 +785,7 @@ const isLoanValidForDisbursement = (loan) => {
                     <p className="text-gray-700 mb-4">
                       {isLoanValidForDisbursement(selectedLoan) 
                         ? "This loan has been fully approved and is ready for disbursement. Click the button below to process disbursement via M-Pesa B2C."
-                        : "Please ensure all required customer and loan data is complete before processing disbursement."
+                        : "Please ensure all requirements are met before processing disbursement."
                       }
                     </p>
                     
@@ -649,14 +803,8 @@ const isLoanValidForDisbursement = (loan) => {
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-                  <ExclamationTriangleIcon className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Select a Loan</h3>
-                  <p className="text-gray-600">Choose a loan from the list to view details and process disbursement</p>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
       </div>

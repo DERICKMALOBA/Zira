@@ -29,6 +29,11 @@ const ApproveLoan = ({ loan, onComplete }) => {
   const [bookedByUser, setBookedByUser] = useState(null);
   const [repaymentSchedule, setRepaymentSchedule] = useState([]);
   const [bmDecision, setBmDecision] = useState(null);
+  const [walletInfo, setWalletInfo] = useState({
+    balance: 0,
+    registration_fee_paid: false,
+    processing_fee_paid: false,
+  });
 
   // Check user roles
   const isBranchManager = profile?.role === "branch_manager";
@@ -38,53 +43,110 @@ const ApproveLoan = ({ loan, onComplete }) => {
     if (loan) fetchLoanDetails();
   }, [loan]);
 
-const fetchLoanDetails = async () => {
-  try {
-    const { data, error } = await supabase
-      .from("loans")
-      .select(`
-        *,
-        customers (*),
-        bm:users!loans_bm_id_fkey (id,full_name, role)   
-      `)
-      .eq("id", loan.id)
-      .single();
+  const fetchLoanDetails = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("loans")
+        .select(`
+          *,
+          customers (*),
+          bm:users!loans_bm_id_fkey (id,full_name, role)   
+        `)
+        .eq("id", loan.id)
+        .single();
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // Fetch the user who booked the loan (still separate because it's booked_by)
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("id,full_name, role")
-      .eq("id", data.booked_by)
-      .single();
+      // Fetch the user who booked the loan
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id,full_name, role")
+        .eq("id", data.booked_by)
+        .single();
 
-    if (userError) {
-      console.warn("Error fetching booked_by user:", userError);
+      if (userError) {
+        console.warn("Error fetching booked_by user:", userError);
+      }
+
+      // set states
+      setLoanDetails(data);
+      setCustomer(data.customers);
+      setBookedByUser(userData || null);
+      setBmDecision({
+        decision: data.bm_decision,
+        comment: data.bm_comment,
+        reviewed_at: data.bm_reviewed_at,
+        bm_id: data.bm_id,
+        bm_name: data.bm?.full_name || null,  
+        bm_role: data.bm?.role || null
+      });
+
+      if (data) {
+        generateRepaymentSchedule(data);
+        await fetchWalletAndFeeStatus(data);
+      }
+    } catch (error) {
+      console.error("Error fetching loan details:", error);
     }
+  };
 
-    // set states
-    setLoanDetails(data);
-    setCustomer(data.customers);
-    setBookedByUser(userData || null);
-    setBmDecision({
-      decision: data.bm_decision,
-      comment: data.bm_comment,
-      reviewed_at: data.bm_reviewed_at,
-      bm_id: data.bm_id,
-     bm_name: data.bm?.full_name || null,  
-      bm_role: data.bm?.role || null
-    });
+  const fetchWalletAndFeeStatus = async (loanData) => {
+    try {
+      // Fetch wallet transactions
+      const { data: walletTxns, error } = await supabase
+        .from("customer_wallets")
+        .select("amount, type")
+        .eq("customer_id", loanData.customer_id);
 
-    if (data) {
-      generateRepaymentSchedule(data);
+      if (error) throw error;
+
+      // Calculate wallet balance
+      const balance = walletTxns.reduce(
+        (sum, t) => sum + (t.type === "credit" ? t.amount : -t.amount),
+        0
+      );
+
+      setWalletInfo({
+        balance,
+        registration_fee_paid: loanData.registration_fee_paid || false,
+        processing_fee_paid: loanData.processing_fee_paid || false,
+      });
+    } catch (error) {
+      console.error("Error fetching wallet info:", error);
     }
-  } catch (error) {
-    console.error("Error fetching loan details:", error);
-  }
-};
-;
+  };
 
+  // Check if all required fees are paid
+  const areFeesFullyPaid = () => {
+    if (!loanDetails) return false;
+    
+    // For new loans: both registration and processing fees must be paid
+    if (loanDetails.is_new_loan) {
+      return walletInfo.registration_fee_paid && walletInfo.processing_fee_paid;
+    }
+    
+    // For repeat loans: only processing fee must be paid
+    return walletInfo.processing_fee_paid;
+  };
+
+  // Get fee payment status message
+  const getFeePaymentMessage = () => {
+    if (!loanDetails) return '';
+    
+    const unpaidFees = [];
+    
+    if (!walletInfo.processing_fee_paid) {
+      unpaidFees.push('Processing Fee');
+    }
+    
+    if (loanDetails.is_new_loan && !walletInfo.registration_fee_paid) {
+      unpaidFees.push('Registration Fee');
+    }
+    
+    if (unpaidFees.length === 0) return '';
+    
+    return `Cannot approve: ${unpaidFees.join(' and ')} not paid`;
+  };
 
   // Branch Manager Approval Logic
   const approveLoanBM = async (loanId, approved, comment, profile) => {
@@ -122,7 +184,6 @@ const fetchLoanDetails = async () => {
     if (approved) {
       newStatus = "ca_review";  // Approved loans go to Credit Analyst for disbursement
     }
-    // If rejected, status remains "rejected"
 
     const { error } = await supabase
       .from("loans")
@@ -149,6 +210,12 @@ const fetchLoanDetails = async () => {
 
     if (!profile?.id) {
       toast.error("User profile ID not found. Please log in again.");
+      return;
+    }
+
+    // Check fees only for approval, not rejection
+    if (approved && !areFeesFullyPaid()) {
+      toast.error(getFeePaymentMessage());
       return;
     }
 
@@ -224,6 +291,9 @@ const fetchLoanDetails = async () => {
     );
   }
 
+  const feesPaid = areFeesFullyPaid();
+  const feeMessage = getFeePaymentMessage();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
       <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -236,10 +306,8 @@ const fetchLoanDetails = async () => {
               </h1>
               <p className="text-sm text-gray-500 mt-1">
                 Role: {profile?.role?.replace(/_/g, " ").toUpperCase()} 
-               
               </p>
               <div className="mt-2 text-sm text-gray-600">
-               
                 {isRegionalManager && bmDecision?.decision && (
                   <span className="ml-4">
                     <span className="font-medium">BM Decision:</span> 
@@ -270,7 +338,33 @@ const fetchLoanDetails = async () => {
           </div>
         </div>
 
-       
+        {/* Fee Payment Alert */}
+        {!feesPaid && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 p-6 mb-8 rounded-lg shadow-md">
+            <div className="flex items-start">
+              <ExclamationTriangleIcon className="h-6 w-6 text-amber-600 mr-3 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-lg font-semibold text-amber-800 mb-1">
+                  Fee Payment Required
+                </h3>
+                <p className="text-amber-700 text-sm">
+                  {feeMessage}. The customer must pay all required fees before the loan can be approved.
+                </p>
+                <div className="mt-3 text-sm text-amber-600">
+                  <strong>Required Fees:</strong>
+                  <ul className="list-disc list-inside mt-1">
+                    {!walletInfo.processing_fee_paid && (
+                      <li>Processing Fee: KES {loanDetails.processing_fee?.toLocaleString()}</li>
+                    )}
+                    {loanDetails.is_new_loan && !walletInfo.registration_fee_paid && (
+                      <li>Registration Fee: KES {loanDetails.registration_fee?.toLocaleString()}</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Customer Information */}
@@ -356,6 +450,68 @@ const fetchLoanDetails = async () => {
           </div>
         </div>
 
+        {/* Wallet & Fee Status Section */}
+        <div className={`rounded-2xl shadow-lg p-6 border mt-8 ${
+          feesPaid 
+            ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200' 
+            : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300'
+        }`}>
+          <h3 className="text-xl font-bold text-gray-600 flex items-center mb-6">
+            <BanknotesIcon className="h-6 w-6 text-emerald-600 mr-3" />
+            Wallet & Fee Payment Status
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white rounded-xl p-5 shadow-sm">
+              <div className="text-sm text-gray-600 mb-2">Wallet Balance</div>
+              <div className="text-2xl font-bold text-indigo-600">
+                KES {walletInfo.balance.toLocaleString()}
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl p-5 shadow-sm">
+              <div className="text-sm text-gray-600 mb-2">Processing Fee</div>
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-semibold text-gray-900">
+                  KES {loanDetails.processing_fee?.toLocaleString()}
+                </span>
+                {walletInfo.processing_fee_paid ? (
+                  <div className="flex items-center gap-2">
+                    <CheckCircleIcon className="h-6 w-6 text-green-500" />
+                    <span className="text-sm font-semibold text-green-600">Paid</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <ExclamationTriangleIcon className="h-6 w-6 text-amber-500" />
+                    <span className="text-sm font-semibold text-amber-600">Unpaid</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {loanDetails.is_new_loan && (
+              <div className="bg-white rounded-xl p-5 shadow-sm">
+                <div className="text-sm text-gray-600 mb-2">Registration Fee</div>
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold text-gray-900">
+                    KES {loanDetails.registration_fee?.toLocaleString()}
+                  </span>
+                  {walletInfo.registration_fee_paid ? (
+                    <div className="flex items-center gap-2">
+                      <CheckCircleIcon className="h-6 w-6 text-green-500" />
+                      <span className="text-sm font-semibold text-green-600">Paid</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <ExclamationTriangleIcon className="h-6 w-6 text-amber-500" />
+                      <span className="text-sm font-semibold text-amber-600">Unpaid</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Branch Manager Decision (Visible to RM) */}
         {isRegionalManager && bmDecision && (
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 mt-8">
@@ -382,11 +538,10 @@ const fetchLoanDetails = async () => {
                   </div>
                 </div>
                 <div>
-                <span className="text-gray-600 font-medium">Branch Manager:</span>
-<div className="text-gray-900 font-semibold">
-  {bmDecision.bm_name || 'N/A'}
-</div>
-
+                  <span className="text-gray-600 font-medium">Branch Manager:</span>
+                  <div className="text-gray-900 font-semibold">
+                    {bmDecision.bm_name || 'N/A'}
+                  </div>
                 </div>
               </div>
               <div>
@@ -411,12 +566,6 @@ const fetchLoanDetails = async () => {
                 <span className="text-gray-600 font-medium">Name:</span>
                 <span className="text-gray-600 font-semibold">
                   {bookedByUser.full_name}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600 font-medium">Email:</span>
-                <span className="text-gray-600 font-semibold text-right text-sm">
-                  {bookedByUser.email}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -526,8 +675,9 @@ const fetchLoanDetails = async () => {
               
               <button
                 onClick={() => handleApprovalDecision(true)}
-                disabled={loading || !comment.trim()}
+                disabled={loading || !comment.trim() || !feesPaid}
                 className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                title={!feesPaid ? feeMessage : ''}
               >
                 {loading ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
