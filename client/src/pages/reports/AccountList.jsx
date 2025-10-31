@@ -82,7 +82,7 @@ useEffect(() => {
       // 2️⃣ Loans
       const { data: loans = [] } = await supabase
         .from("loans")
-        .select("id, scored_amount, processing_fee, registration_fee, disbursed_at, disbursed_date, created_at")
+        .select("id, scored_amount, processing_fee, registration_fee, disbursed_at, disbursed_date, created_at, total_payable, total_interest")
         .eq("customer_id", customerId)
         .order("created_at", { ascending: true });
 
@@ -386,24 +386,37 @@ if (loanPayments.length > 0) {
         }));
       }
 
-      // Calculate summary
-      const totalDebit = events.reduce((sum, e) => sum + e.debit, 0);
-      const totalCredit = events.reduce((sum, e) => sum + e.credit, 0);
-      const totalLoanAmount = loans.reduce((sum, loan) => sum + (loan.scored_amount || 0), 0);
-      const totalProcessingFees = loans.reduce((sum, loan) => sum + (loan.processing_fee || 0), 0);
-      const totalRegistrationFees = loans.reduce((sum, loan) => sum + (loan.registration_fee || 0), 0);
+  const customerLoans = loans || [];
 
-      setStatementSummary({
-        totalLoanAmount,
-        principal: totalLoanAmount,
-        interest: totalProcessingFees + totalRegistrationFees,
-        totalPaid: totalCredit,
-        outstandingBalance: runningBalance,
-        totalDebit,
-        totalCredit,
-        closingBalance: runningBalance
-      });
+// 1️⃣ Principal = total scored_amount for all this customer's loans
+const principal = customerLoans.reduce((sum, loan) => sum + (loan.scored_amount || 0), 0);
 
+// 2️⃣ Interest = total_interest for all this customer's loans
+const interest = customerLoans.reduce((sum, loan) => sum + (loan.total_interest || 0), 0);
+
+// 3️⃣ Total Payable (Loan Amount) = sum of total_payable (principal + interest)
+const totalLoanAmount = customerLoans.reduce((sum, loan) => sum + (loan.total_payable || 0), 0);
+
+// 4️⃣ Total Paid = sum of C2B transactions for this customer linked to repayment, principal, or interest
+const totalPaid = c2b
+  .filter(txn =>
+    ["repayment", "principal", "interest"].includes(txn.payment_type) &&
+    txn.status === "applied" &&
+    (txn.loan_id && customerLoans.some(loan => loan.id === txn.loan_id))
+  )
+  .reduce((sum, txn) => sum + Number(txn.amount || 0), 0);
+
+// 5️⃣ Outstanding Balance = Total Payable - Total Paid
+const outstandingBalance = totalLoanAmount - totalPaid;
+
+// ✅ Update summary
+setStatementSummary({
+  totalLoanAmount,   // total payable from loans table
+  principal,         // scored_amount
+  interest,          // total_interest
+  totalPaid,         // from c2b repayment/interest/principal
+  outstandingBalance // total payable - total paid
+});
       setTransactions(sortedEvents);
       setFilteredTransactions(sortedEvents);
 
