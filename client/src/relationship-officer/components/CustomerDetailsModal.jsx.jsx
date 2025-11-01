@@ -143,6 +143,9 @@ setSecurityItems(processedSecurityItems);
             ?.document_url || null,
       };
 
+
+      console.log("🪪 Customer Passport URL:", customerData?.passport_url);
+
       setExistingImages(imageData);
    
 
@@ -241,7 +244,7 @@ setSecurityItems(processedSecurityItems);
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text  bg-gradient-to-r from-gray-700 to-gray-700 bg-clip-text text-transparent">
-                Customer Details
+                Customer Details 
               </h1>
               <p className="text-gray-600 mt-2">Complete customer information and documents</p>
             </div>
