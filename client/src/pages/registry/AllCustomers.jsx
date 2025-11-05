@@ -22,9 +22,11 @@ import { useAuth } from "../../hooks/userAuth.js";
 import CustomerInteractions from "./CustomerInteractions.jsx";
 import PromiseToPay from "./PromiseToPay.jsx";
 import LoanDetails from "./LoanDetails.jsx";
-import Customer360View from "./360View.jsx";
+
+import { useNavigate } from "react-router-dom";
 
 const AllCustomers = () => {
+   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +40,6 @@ const AllCustomers = () => {
   const [showInteractions, setShowInteractions] = useState(false);
   const [showLoanDetails, setShowLoanDetails] = useState(false);
   const [showPromiseToPay, setShowPromiseToPay] = useState(false);
-  const [show360View, setShow360View] = useState(false);
   const [showForm, setShowForm] = useState(false);
   
   // Pagination state
@@ -62,9 +63,8 @@ const AllCustomers = () => {
     setShowPromiseToPay(true);
   };
 
-  const handleOpen360View = (customer) => {
-    setSelectedCustomer(customer);
-    setShow360View(true);
+ const handleOpen360View = (customer) => {
+    navigate(`/customer/${customer.id}/360`);
     setQuickSearchTerm(""); // Clear search when opening
   };
 
@@ -276,13 +276,10 @@ const filteredCustomers = customers.filter((c) => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-2">
       {/* Page Header with 360 View Search */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">All Customers</h1>
-        
-        </div>
+      <div className="mb-6 items-right ">
+       
         
         {/* 360 View Quick Search */}
         <div className="relative w-96">
@@ -774,13 +771,6 @@ const filteredCustomers = customers.filter((c) => {
         </div>
       </div>
 
-      {/* 360 View Modal */}
-      {show360View && selectedCustomer && (
-        <Customer360View
-          customer={selectedCustomer}
-          onClose={() => setShow360View(false)}
-        />
-      )}
 
       {/* Customer Details Modal */}
       {showDetailsModal && selectedCustomer && (

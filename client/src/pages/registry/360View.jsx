@@ -1,7 +1,7 @@
-// src/pages/registry/360View.jsx
 import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
-  XMarkIcon,
+  ArrowLeftIcon,
   UserCircleIcon,
   BanknotesIcon,
   WalletIcon,
@@ -20,13 +20,16 @@ import {
   ExclamationCircleIcon,
   HomeIcon,
   BriefcaseIcon,
-  DocumentCheckIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../supabaseClient.js";
 
-const Customer360View = ({ customer, onClose }) => {
+const Customer360View = () => {
+  const { customerId } = useParams();
+  const navigate = useNavigate();
+  
+  const [customer, setCustomer] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [loanDetails, setLoanDetails] = useState(null);
   const [loanInstallments, setLoanInstallments] = useState([]);
   const [loanPayments, setLoanPayments] = useState([]);
@@ -36,14 +39,31 @@ const Customer360View = ({ customer, onClose }) => {
   const [interactions, setInteractions] = useState([]);
 
   useEffect(() => {
-    if (customer) {
+    if (customerId) {
       fetchCustomerData();
     }
-  }, [customer]);
+  }, [customerId]);
 
   const fetchCustomerData = async () => {
     setLoading(true);
     try {
+      // Fetch customer details
+      const { data: customerData, error: customerError } = await supabase
+        .from("customers")
+        .select(`
+          *,
+          branches (name)
+        `)
+        .eq("id", customerId)
+        .single();
+
+      if (customerError) {
+        console.error("Error fetching customer:", customerError);
+        return;
+      }
+
+      setCustomer(customerData);
+
       // Fetch loan details with all relationships
       const { data: loan } = await supabase
         .from("loans")
@@ -52,7 +72,7 @@ const Customer360View = ({ customer, onClose }) => {
           branches (name),
           regions (name)
         `)
-        .eq("customer_id", customer.id)
+        .eq("customer_id", customerId)
         .eq("status", "disbursed")
         .maybeSingle();
 
@@ -82,7 +102,7 @@ const Customer360View = ({ customer, onClose }) => {
       const { data: walletTxns } = await supabase
         .from("customer_wallets")
         .select("*")
-        .eq("customer_id", customer.id)
+        .eq("customer_id", customerId)
         .order("created_at", { ascending: false });
 
       setWalletTransactions(walletTxns || []);
@@ -99,7 +119,7 @@ const Customer360View = ({ customer, onClose }) => {
       const { data: mpesaTxns } = await supabase
         .from("mpesa_c2b_transactions")
         .select("*")
-        .eq("phone_number", customer.mobile)
+        .eq("phone_number", customerData.mobile)
         .order("created_at", { ascending: false })
         .limit(20);
 
@@ -109,7 +129,7 @@ const Customer360View = ({ customer, onClose }) => {
       const { data: customerInteractions } = await supabase
         .from("customer_interactions")
         .select("*")
-        .eq("customer_id", customer.id)
+        .eq("customer_id", customerId)
         .order("interaction_date", { ascending: false })
         .limit(10);
 
@@ -131,15 +151,19 @@ const Customer360View = ({ customer, onClose }) => {
   ];
 
   const getInitials = () => {
-    const first = customer.Firstname?.[0] || "";
-    const last = customer.Surname?.[0] || "";
+    const first = customer?.Firstname?.[0] || "";
+    const last = customer?.Surname?.[0] || "";
     return `${first}${last}`.toUpperCase();
   };
 
   const formatCurrency = (amount) => {
     return `KES ${parseFloat(amount || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-  
+  };
+
+  const handleBack = () => {
+    navigate(-1); // Go back to previous page
+  };
+
   const renderOverview = () => {
   // Calculate outstanding balance
   const outstandingBalance = loanDetails 
@@ -466,6 +490,7 @@ const Customer360View = ({ customer, onClose }) => {
     </div>
   );
 };
+
 
   const renderLoanDetails = () => (
     <div className="space-y-6">
@@ -909,61 +934,68 @@ const Customer360View = ({ customer, onClose }) => {
       )}
     </div>
   );
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!customer) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">Customer not found</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white w-full max-w-7xl max-h-[95vh] overflow-hidden rounded-lg shadow-2xl flex flex-col">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-slate-600 to-slate-600 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Customer 360° View</h2>
-          <button
-            onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-full p-2 transition"
-          >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
-        </div>
+    <div className="p-4">
+      {/* Header with Back Button */}
+      <div className="mb-2">
+        <button
+          onClick={handleBack}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <ArrowLeftIcon className="h-5 w-5 mr-2" />
+          Back to Customers
+        </button>
+        
+      
+      </div>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200 bg-white px-6">
-          <nav className="flex space-x-1 overflow-x-auto" aria-label="Tabs">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition ${
-                    activeTab === tab.id
-                      ? "border-indigo-600 text-indigo-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-                >
-                  <Icon className="h-5 w-5 mr-2" />
-                  {tab.name}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="flex space-x-1 overflow-x-auto" aria-label="Tabs">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition ${
+                  activeTab === tab.id
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                <Icon className="h-5 w-5 mr-2" />
+                {tab.name}
+              </button>
+            );
+          })}
+        </nav>
+      </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-600"></div>
-            </div>
-          ) : (
-            <>
-              {activeTab === "overview" && renderOverview()}
-              {activeTab === "loan" && renderLoanDetails()}
-              {activeTab === "repayments" && renderRepaymentHistory()}
-              {activeTab === "wallet" && renderWallet()}
-              {activeTab === "statements" && renderStatements()}
-              {activeTab === "interactions" && renderInteractions()}
-            </>
-          )}
-        </div>
+      {/* Content */}
+      <div>
+        {activeTab === "overview" && renderOverview()}
+        {activeTab === "loan" && renderLoanDetails()}
+        {activeTab === "repayments" && renderRepaymentHistory()}
+        {activeTab === "wallet" && renderWallet()}
+        {activeTab === "statements" && renderStatements()}
+        {activeTab === "interactions" && renderInteractions()}
       </div>
     </div>
   );

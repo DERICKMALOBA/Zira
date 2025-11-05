@@ -100,6 +100,7 @@ import CustomerAccountModal from "./pages/reports/CustomerAccountModal";
 import CustomerDraft from "./relationship-officer/components/CustomerDraft";
 import CustomerStatementModal from "./pages/reports/AccountList";
 import OutstandingLoanBalanceReportEOM from "./pages/reports/OLBatEOM";
+import Customer360View from "./pages/registry/360View";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -450,6 +451,16 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
+
+
+                  <Route
+  path="/customer/:customerId/360"
+  element={
+    <ProtectedRoute>
+      <Customer360View userRole={role} />
+    </ProtectedRoute>
+  }
+/>
 
                   {/* Reports */}
                   <Route
