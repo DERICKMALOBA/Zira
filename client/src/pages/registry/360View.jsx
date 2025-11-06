@@ -176,7 +176,7 @@ const Customer360View = () => {
     <div className="space-y-6">
       {/* Customer Profile Card */}
       <div className="bg-white border-2 border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="bg-gradient-to-r from-gray-300 to-gray-400 p-6">
+        <div className=" from-indigo-50 to-blue-50 rounded-2xl p-8 mb-8 border border-indigo-100">
           <div className="flex items-start gap-6">
             {/* Left: Passport Photo and Basic Info */}
            <div className="flex-shrink-0">
@@ -227,10 +227,10 @@ const Customer360View = () => {
           customer.status === "approved"
             ? "bg-green-600 text-white border border-green-300/50"
             : customer.status === "bm_review"
-            ? "bg-yellow-500/30 text-white border border-yellow-300/50"
+            ? "bg-yellow-500 text-white border border-yellow-300"
             : customer.status === "rejected"
-            ? "bg-red-500/30 text-white border border-red-300/50"
-            : "bg-gray-500/30 text-white border border-gray-300/50"
+            ? "bg-red-500 text-white border border-red-300"
+            : "bg-gray-500 text-white border border-gray-300"
         }`}
       >
         {customer.status || "Pending"}
@@ -496,26 +496,26 @@ const Customer360View = () => {
     <div className="space-y-6">
       {loanDetails ? (
         <>
-          <div className="bg-gradient-to-r from-slate-500 to-slate-600 rounded-lg p-6 text-white">
+          <div className="bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg p-6 text-slate-600">
             <h3 className="text-xl font-semibold mb-2">Current Loan - {loanDetails.product_name || loanDetails.product}</h3>
             <p className="text-4xl font-bold">
               {formatCurrency(loanDetails.scored_amount)}
             </p>
             <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-blue-100 text-sm">Status</p>
+                <p className="text-slate-500 text-sm">Status</p>
                 <p className="font-semibold capitalize">{loanDetails.status}</p>
               </div>
               <div>
-                <p className="text-blue-100 text-sm">Repayment State</p>
+                <p className="text-slate-500 text-sm">Repayment State</p>
                 <p className="font-semibold capitalize">{loanDetails.repayment_state || "N/A"}</p>
               </div>
               <div>
-                <p className="text-blue-100 text-sm">Duration</p>
+                <p className="text-slate-500 text-sm">Duration</p>
                 <p className="font-semibold">{loanDetails.duration_weeks} weeks</p>
               </div>
               <div>
-                <p className="text-blue-100 text-sm">Product Type</p>
+                <p className="text-slate-500 text-sm">Product Type</p>
                 <p className="font-semibold capitalize">{loanDetails.product_type || "N/A"}</p>
               </div>
             </div>

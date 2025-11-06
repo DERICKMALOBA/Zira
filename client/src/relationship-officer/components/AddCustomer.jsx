@@ -1,4 +1,5 @@
 import { useState, memo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   UserCircleIcon,
   BuildingOffice2Icon,
@@ -15,7 +16,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   PlusIcon,
-  TrashIcon,
+  TrashIcon,ArrowLeftIcon ,
 } from "@heroicons/react/24/outline";
 
 import { supabase } from "../../supabaseClient";
@@ -111,6 +112,7 @@ const AddCustomer = ({ profile, onClose }) => {
   ]);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     prefix: "",
@@ -209,6 +211,10 @@ const AddCustomer = ({ profile, onClose }) => {
     { id: "documents", label: "Documents", icon: DocumentTextIcon },
   ];
 
+
+    const handleClose = () => {
+    navigate('/officer/customers'); // or wherever your customers list is
+  };
   // Fixed change handlers with useCallback to prevent re-renders
   const handleChange = useCallback(
     (e) => {
@@ -1493,6 +1499,7 @@ const handleSaveDraft = async () => {
         autoClose: 4000,
         theme: "colored",
       });
+      navigate('/officer/customers'); 
       onClose();
     } catch (error) {
       console.error(" Unexpected error:", error);
@@ -1505,28 +1512,30 @@ const handleSaveDraft = async () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex justify-center items-start overflow-auto">
-      <div className="bg-white w-full max-w-7xl mx-4 my-8 rounded-xl shadow-lg p-8">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Customer Application
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Complete customer onboarding and loan application
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
-              disabled={isSubmitting}
-            >
-              <XCircleIcon className="h-8 w-8" />
-            </button>
-          </div>
-        </div>
+      <div className=" bg-gradient-to-br from-indigo-50 via-white to-blue-50 p-3 border-b  rounded-t-lg">
+  <div className="flex items-center justify-between">
+    <div>
+      <h1 className="text-xl font-semibold text-gray-900">
+        Customer Application
+      </h1>
+      <p className="text-sm text-gray-500">
+        Complete customer onboarding and loan application
+      </p>
+    </div>
+    <button
+      onClick={handleClose}
+      className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
+      disabled={isSubmitting}
+    >
+      <ArrowLeftIcon className="h-5 w-5 mr-1" />
+      <span className="text-sm font-medium">Back to Customers</span>
+    </button>
+  </div>
+</div>
+
 
         {/* Navigation Tabs */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-indigo-100">
@@ -1537,8 +1546,8 @@ const handleSaveDraft = async () => {
                 onClick={() => setActiveSection(id)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                   activeSection === id
-                    ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md"
+                    ? "bg-gradient-to-r from-blue-300 to-blue-300 text-slate-600 shadow-lg"
+                    : "bg-gray-100 text-slate-700 hover:bg-gray-200 hover:shadow-md"
                 }`}
               >
                 <Icon Icon className="h-5 w-5" />
@@ -1555,7 +1564,7 @@ const handleSaveDraft = async () => {
             {activeSection === "personal" && (
               <div className="space-y-8">
                 <div className="border-b border-gray-200 pb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <h2 className="text-2xl font-bold text-gray-600 flex items-center">
                     <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
                     Personal Information
                   </h2>
@@ -1741,38 +1750,33 @@ const handleSaveDraft = async () => {
                           {file.label}
                         </label>
 
-                        <div className="flex flex-col sm:flex-row gap-3 w-full">
-                          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg shadow-sm cursor-pointer hover:bg-indigo-200 transition">
-                            <ArrowUpTrayIcon className="w-5 h-5" />
-                            <span className="text-sm font-medium">Upload</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) =>
-                                handleFileUpload(e, file.handler, file.key)
-                              }
-                              className="hidden"
-                              handleNestedChange={handleNestedChange}
-                            />
-                          </label>
+                       <div className="flex flex-col sm:flex-row gap-3 w-full">
+  {/* Upload Button */}
+  <label className="flex flex-1 items-center justify-center gap-2 px-4 py-3 bg-indigo-100 text-indigo-700 rounded-lg shadow-sm cursor-pointer hover:bg-indigo-200 transition-all duration-200 w-full sm:w-1/2">
+    <ArrowUpTrayIcon className="w-5 h-5" />
+    <span className="text-sm font-medium">Upload</span>
+    <input
+      type="file"
+      accept="image/*"
+      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+      className="hidden"
+    />
+  </label>
 
-                          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-indigo-700 transition">
-                            <CameraIcon className="w-5 h-5" />
-                            <span className="text-sm font-medium">Camera</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              capture={
-                                file.key === "passport" ? "user" : "environment"
-                              }
-                              onChange={(e) =>
-                                handleFileUpload(e, file.handler, file.key)
-                              }
-                              className="hidden"
-                              handleNestedChange={handleNestedChange}
-                            />
-                          </label>
-                        </div>
+  {/* Camera Button */}
+  <label className="flex flex-1 items-center justify-center gap-2 px-4 py-3 bg-blue-400 text-white rounded-lg shadow-sm cursor-pointer hover:bg-blue-500 transition-all duration-200 w-full sm:w-1/2">
+    <CameraIcon className="w-5 h-5" />
+    <span className="text-sm font-medium">Camera</span>
+    <input
+      type="file"
+      accept="image/*"
+      capture={file.key === "passport" ? "user" : "environment"}
+      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+      className="hidden"
+    />
+  </label>
+</div>
+
 
                         {previews[file.key] && (
                           <div className="mt-4 w-full relative">
@@ -1897,7 +1901,7 @@ const handleSaveDraft = async () => {
                     <h3 className="text-lg font-semibold text-gray-900">
                       Business Images
                     </h3>
-                    <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition-colors">
+                    <label className="flex items-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg cursor-pointer hover:bg-blue-500 transition-colors">
                       <PlusIcon className="h-4 w-4" />
                       Add Images
                       <input
@@ -2050,7 +2054,7 @@ const handleSaveDraft = async () => {
                 />
               </label>
 
-              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition">
+              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg cursor-pointer hover:bg-blue-500 transition">
                 <CameraIcon className="w-5 h-5" />
                 Camera
                 <input
@@ -2107,7 +2111,7 @@ const handleSaveDraft = async () => {
       <button
         type="button"
         onClick={addSecurityItem}
-        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
+        className="flex items-center gap-2 px-6 py-3 bg-blue-300 text-white rounded-lg hover:blue-500 transition-all shadow-md hover:shadow-lg"
       >
         <PlusIcon className="h-5 w-5" />
         Add Security Item
@@ -2362,7 +2366,7 @@ const handleSaveDraft = async () => {
                             />
                           </label>
 
-                          <label className="flex items-center justify-center gap-1 px-3 py-1 bg-indigo-600 text-white rounded cursor-pointer hover:bg-indigo-700">
+                          <label className="flex items-center justify-center gap-1 px-3 py-1 bg-blue-300 text-white rounded cursor-pointer hover:bg-blue-500">
                             <CameraIcon className="w-4 h-4" />
                             Camera
                             <input
@@ -2414,7 +2418,7 @@ const handleSaveDraft = async () => {
     
     <div className="border-b border-gray-200 pb-6">
       <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-        <ShieldCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
+        <ShieldCheckIcon className="h-8 w-8 text-blue-300 mr-3" />
         Guarantor Security Items
       </h2>
       <p className="text-gray-600 mt-2">
@@ -2523,7 +2527,7 @@ const handleSaveDraft = async () => {
                 />
               </label>
 
-              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg cursor-pointer hover:bg-purple-700 transition">
+              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg cursor-pointer hover:bg-blue-500 transition">
                 <CameraIcon className="w-5 h-5" />
                 Camera
                 <input
@@ -2582,7 +2586,7 @@ const handleSaveDraft = async () => {
       <button
         type="button"
         onClick={addGuarantorSecurityItem}
-        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-300 to-blue-400 text-white rounded-lg hover:from-blue-500 hover:to-blue-600 transition-all shadow-md hover:shadow-lg"
       >
         <PlusIcon className="h-5 w-5" />
         Add Guarantor Security Item
@@ -2701,7 +2705,7 @@ const handleSaveDraft = async () => {
               <div className="space-y-8">
                 <div className="border-b border-gray-200 pb-6">
                   <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                    <DocumentTextIcon className="h-8 w-8 text-indigo-600 mr-3" />
+                    <DocumentTextIcon className="h-8 w-8 text-blue-300 mr-3" />
                     Document Verification
                   </h2>
                   <p className="text-gray-600 mt-2">
@@ -2736,7 +2740,7 @@ const handleSaveDraft = async () => {
                       </label>
 
                       <div className="flex flex-col sm:flex-row gap-3 w-full">
-                        <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg shadow-sm cursor-pointer hover:bg-indigo-200 transition">
+                        <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-100 text-blue-700 rounded-lg shadow-sm cursor-pointer hover:bg-indigo-200 transition">
                           <ArrowUpTrayIcon className="w-5 h-5" />
                           <span className="text-sm font-medium">Upload</span>
                           <input
@@ -2749,7 +2753,7 @@ const handleSaveDraft = async () => {
                           />
                         </label>
 
-                        <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-indigo-700 transition">
+                        <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg shadow-sm cursor-pointer hover:bg-blue-500 transition">
                           <CameraIcon className="w-5 h-5" />
                           <span className="text-sm font-medium">Camera</span>
                           <input
@@ -2809,12 +2813,12 @@ const handleSaveDraft = async () => {
       </button>
     )}
 
-    {/* ✅ Save as Draft Button */}
+    {/*  Save as Draft Button */}
     <button
       type="button"
       onClick={handleSaveDraft}
       disabled={isSavingDraft || isSubmitting}
-      className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+      className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-700 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {isSavingDraft ? (
         <div className="flex items-center gap-2">
@@ -2846,7 +2850,7 @@ const handleSaveDraft = async () => {
       <button
         type="submit"
         disabled={isSubmitting || isSavingDraft}
-        className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-600 text-white rounded-lg hover:from-green-700 hover:to-green-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSubmitting ? (
           <div className="flex items-center gap-2">

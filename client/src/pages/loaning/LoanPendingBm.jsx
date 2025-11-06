@@ -156,7 +156,7 @@ const LoanPendingBm = () => {
             <table className="min-w-full border-collapse">
               {/* Table Header */}
               <thead>
-                <tr className="text-sm bg-gray-600 text-gray-200">
+                <tr className="text-sm bg-blue-300 text-slate-600">
                   <th className="px-6 py-3 text-left font-medium">Loan ID</th>
                   <th className="px-6 py-3 text-left font-medium">Customer</th>
                   {!isBranchManager && (

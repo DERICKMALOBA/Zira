@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
-import { Loader2, Plus, Calendar } from "lucide-react";
+import { Loader2, Plus, Calendar , ArrowLeftIcon } from "lucide-react";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 const PromiseToPay = ({ customer }) => {
   const [ptps, setPtps] = useState([]);
+    const navigate = useNavigate();
   const [loans, setLoans] = useState([]);
   const [installments, setInstallments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -234,6 +236,16 @@ const PromiseToPay = ({ customer }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+
+          <div className="mb-6">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-50 transition"
+        >
+          <ArrowLeftIcon className="h-5 w-5" />
+          <span className="font-medium">Back to Customers</span>
+        </button>
+      </div>
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -244,7 +256,7 @@ const PromiseToPay = ({ customer }) => {
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
         >
           <Plus className="h-5 w-5" />
           New Promise

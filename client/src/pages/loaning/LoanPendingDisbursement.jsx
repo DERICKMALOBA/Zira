@@ -368,7 +368,7 @@ const LoanPendingDisbursement = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
                 Loans Pending Disbursement
               </h1>
               <p className="text-gray-600 mt-1">

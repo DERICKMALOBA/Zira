@@ -17,11 +17,9 @@ import {
   ChevronDoubleRightIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../supabaseClient.js";
-import CustomerDetailsModal from "../../relationship-officer/components/CustomerDetailsModal.jsx.jsx";
+
 import { useAuth } from "../../hooks/userAuth.js";
-import CustomerInteractions from "./CustomerInteractions.jsx";
-import PromiseToPay from "./PromiseToPay.jsx";
-import LoanDetails from "./LoanDetails.jsx";
+
 
 import { useNavigate } from "react-router-dom";
 
@@ -35,38 +33,38 @@ const AllCustomers = () => {
   const [selectedBranch, setSelectedBranch] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [showInteractions, setShowInteractions] = useState(false);
-  const [showLoanDetails, setShowLoanDetails] = useState(false);
-  const [showPromiseToPay, setShowPromiseToPay] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
   const { profile } = useAuth();
-
-  const handleOpenInteractions = (customer) => {
-    setSelectedCustomer(customer);
-    setShowInteractions(true);
+const handleOpenInteractions = (customer) => {
+    navigate(`/customer/${customer.id}/interactions`);
+    setQuickSearchTerm(""); // Clear search when opening
   };
 
   const handleOpenLoanDetails = (customer) => {
-    setSelectedCustomer(customer);
-    setShowLoanDetails(true);
+    navigate(`/customer/${customer.id}/loan-details`);
+    setQuickSearchTerm(""); // Clear search when opening
   };
 
   const handleOpenPromiseToPay = (customer) => {
-    setSelectedCustomer(customer);
-    setShowPromiseToPay(true);
+    navigate(`/customer/${customer.id}/promise-to-pay`);
+    setQuickSearchTerm(""); // Clear search when opening
   };
 
- const handleOpen360View = (customer) => {
+  const handleOpen360View = (customer) => {
     navigate(`/customer/${customer.id}/360`);
     setQuickSearchTerm(""); // Clear search when opening
   };
+
+  const handleViewCustomer = (customer) => {
+    navigate(`/customer/${customer.id}/details`);
+    setQuickSearchTerm(""); // Clear search when opening
+  };
+
 
   // Fetch branches for the region
   const fetchBranches = async () => {
@@ -154,10 +152,7 @@ const AllCustomers = () => {
     }
   }, [profile?.region_id]);
 
-  const handleViewCustomer = (customer) => {
-    setSelectedCustomer(customer);
-    setShowForm(true);
-  };
+ 
 
   // Clear all filters
   const clearFilters = () => {
@@ -278,79 +273,84 @@ const filteredCustomers = customers.filter((c) => {
   return (
     <div className="p-2">
       {/* Page Header with 360 View Search */}
-      <div className="mb-6 items-right ">
+      <div className="mb-2 items-right ">
        
         
-        {/* 360 View Quick Search */}
-        <div className="relative w-96">
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            360° Customer View
-          </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search customer for 360° view..."
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-              value={quickSearchTerm}
-              onChange={(e) => setQuickSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          {/* Quick Search Results Dropdown */}
-          {quickSearchTerm && quickSearchResults.length > 0 && (
-            <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto">
-              {quickSearchResults.slice(0, 10).map((customer) => (
-                <div
-                  key={customer.id}
-                  onClick={() => handleOpen360View(customer)}
-                  className="p-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition"
+      {/* 360° Customer View Quick Search - Top Right */}
+<div className="flex justify-end mb-2">
+  <div className="relative w-72"> {/* smaller width */}
+    <label className="block text-xs font-medium text-gray-700 mb-1 text-right">
+      360° Customer View
+    </label>
+    <div className="relative">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
+      </div>
+      <input
+        type="text"
+        placeholder="Quick search..."
+        className="pl-9 pr-3 py-1.5 border border-gray-300 rounded-md w-full text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+        value={quickSearchTerm}
+        onChange={(e) => setQuickSearchTerm(e.target.value)}
+      />
+    </div>
+
+    {/* Quick Search Results Dropdown */}
+    {quickSearchTerm && quickSearchResults.length > 0 && (
+      <div className="absolute right-0 z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto">
+        {quickSearchResults.slice(0, 10).map((customer) => (
+          <div
+            key={customer.id}
+            onClick={() => handleOpen360View(customer)}
+            className="p-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition"
+          >
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-medium text-gray-900">
+                  {customer.Firstname} {customer.Surname}
+                </p>
+                <p className="text-sm text-gray-600">{customer.mobile}</p>
+                <p className="text-xs text-gray-500">ID: {customer.id_number}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-medium text-indigo-600">
+                  {customer.prequalifiedAmount
+                    ? `KES ${customer.prequalifiedAmount.toLocaleString()}`
+                    : "N/A"}
+                </p>
+                <span
+                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
+                    customer.status === "verified"
+                      ? "bg-green-100 text-green-800"
+                      : customer.status === "bm_review"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : customer.status === "rejected"
+                      ? "bg-red-100 text-red-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {customer.Firstname} {customer.Surname}
-                      </p>
-                      <p className="text-sm text-gray-600">{customer.mobile}</p>
-                      <p className="text-xs text-gray-500">ID: {customer.id_number}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-indigo-600">
-                        {customer.prequalifiedAmount
-                          ? `KES ${customer.prequalifiedAmount.toLocaleString()}`
-                          : "N/A"}
-                      </p>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
-                        customer.status === 'verified' 
-                          ? 'bg-green-100 text-green-800'
-                          : customer.status === 'bm_review'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : customer.status === 'rejected'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {customer.status || "N/A"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {quickSearchResults.length > 10 && (
-                <div className="p-2 text-center text-sm text-gray-500 bg-gray-50 border-t">
-                  Showing 10 of {quickSearchResults.length} results
-                </div>
-              )}
+                  {customer.status || "N/A"}
+                </span>
+              </div>
             </div>
-          )}
-          
-          {quickSearchTerm && quickSearchResults.length === 0 && (
-            <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl p-4 text-center text-gray-500">
-              No customers found
-            </div>
-          )}
-        </div>
+          </div>
+        ))}
+        {quickSearchResults.length > 10 && (
+          <div className="p-2 text-center text-xs text-gray-500 bg-gray-50 border-t">
+            Showing 10 of {quickSearchResults.length} results
+          </div>
+        )}
+      </div>
+    )}
+
+    {quickSearchTerm && quickSearchResults.length === 0 && (
+      <div className="absolute right-0 z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl p-3 text-center text-sm text-gray-500">
+        No customers found
+      </div>
+    )}
+  </div>
+</div>
+
       </div>
 
       {/* Filters and Search */}
@@ -582,48 +582,48 @@ const filteredCustomers = customers.filter((c) => {
                   <td className="px-3 py-2 text-sm text-gray-900 truncate" title={customer.branches?.name || "N/A"}>
                     {customer.branches?.name || "N/A"}
                   </td>
-                  <td className="px-3 py-2 text-sm font-medium space-x-1 flex items-center">
-                    {/* View Customer */}
-                    <button
-                      onClick={() => handleViewCustomer(customer)}
-                      className="p-1.5 rounded-md bg-green-50 border border-green-200 text-green-600 hover:bg-green-100 hover:text-green-700 transition"
-                      title="View Customer"
-                    >
-                      <EyeIcon className="h-4 w-4" />
-                    </button>
+                 <td className="px-3 py-2 text-sm font-medium space-x-1 flex items-center">
+        {/* View Customer */}
+        <button
+          onClick={() => handleViewCustomer(customer)}
+          className="p-1.5 rounded-md bg-green-50 border border-green-200 text-green-600 hover:bg-green-100 hover:text-green-700 transition"
+          title="View Customer"
+        >
+          <EyeIcon className="h-4 w-4" />
+        </button>
 
-                    {/* Interactions */}
-                    <button
-                      onClick={() => handleOpenInteractions(customer)}
-                      className="p-1.5 rounded-md bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition"
-                      title="Customer Interactions"
-                    >
-                      <ChatBubbleLeftRightIcon className="h-4 w-4" />
-                    </button>
+        {/* Interactions */}
+        <button
+          onClick={() => handleOpenInteractions(customer)}
+          className="p-1.5 rounded-md bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition"
+          title="Customer Interactions"
+        >
+          <ChatBubbleLeftRightIcon className="h-4 w-4" />
+        </button>
 
-                    {/* Loan Details (only if disbursed) */}
-                    {customer.hasDisbursedLoan && (
-                      <button
-                        onClick={() => handleOpenLoanDetails(customer)}
-                        className="p-1.5 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-600 hover:bg-yellow-100 hover:text-yellow-700 transition"
-                        title="Loan Details"
-                      >
-                        <BanknotesIcon className="h-4 w-4" />
-                      </button>
-                    )}
+        {/* Loan Details (only if disbursed) */}
+        {customer.hasDisbursedLoan && (
+          <button
+            onClick={() => handleOpenLoanDetails(customer)}
+            className="p-1.5 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-600 hover:bg-yellow-100 hover:text-yellow-700 transition"
+            title="Loan Details"
+          >
+            <BanknotesIcon className="h-4 w-4" />
+          </button>
+        )}
 
-                    {/* Promise to Pay (only if disbursed AND repayment_state is ongoing or partial) */}
-                    {customer.hasDisbursedLoan &&
-                      ["ongoing", "partial"].includes(customer.loanRepaymentState) && (
-                        <button
-                          onClick={() => handleOpenPromiseToPay(customer)}
-                          className="p-1.5 rounded-md bg-purple-50 border border-purple-200 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition"
-                          title="Promise to Pay"
-                        >
-                          <HandRaisedIcon className="h-4 w-4" />
-                        </button>
-                      )}
-                  </td>
+        {/* Promise to Pay (only if disbursed AND repayment_state is ongoing or partial) */}
+        {customer.hasDisbursedLoan &&
+          ["ongoing", "partial"].includes(customer.loanRepaymentState) && (
+            <button
+              onClick={() => handleOpenPromiseToPay(customer)}
+              className="p-1.5 rounded-md bg-purple-50 border border-purple-200 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition"
+              title="Promise to Pay"
+            >
+              <HandRaisedIcon className="h-4 w-4" />
+            </button>
+          )}
+      </td>
                 </tr>
               ))}
             </tbody>
@@ -772,81 +772,7 @@ const filteredCustomers = customers.filter((c) => {
       </div>
 
 
-      {/* Customer Details Modal */}
-      {showDetailsModal && selectedCustomer && (
-        <CustomerDetailsModal customer={selectedCustomer} onClose={() => setShowDetailsModal(false)} />
-      )}
-
-      {/* Customer Verification Form Modal */}
-      {showForm && selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white w-full h-full relative rounded-none shadow-xl">
-            {/* Close button */}
-            <button
-              onClick={() => setShowForm(false)}
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
-            >
-              ✕
-            </button>
-
-            {/* View customer takes the whole screen */}
-            <div className="p-6 h-full overflow-y-auto">
-              <CustomerDetailsModal customer={selectedCustomer} onClose={() => setShowForm(false)} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Customer Interactions Modal */}
-      {showInteractions && selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white w-full h-full relative rounded-none shadow-xl">
-            <button
-              onClick={() => setShowInteractions(false)}
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
-            >
-              ✕
-            </button>
-            <div className="p-6 h-full overflow-y-auto">
-              <CustomerInteractions customer={selectedCustomer} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Loan Details Modal */}
-      {showLoanDetails && selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white w-full h-full relative rounded-none shadow-xl">
-            <button
-              onClick={() => setShowLoanDetails(false)}
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
-            >
-              ✕
-            </button>
-            <div className="p-6 h-full overflow-y-auto">
-              <LoanDetails customer={selectedCustomer} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Promise to Pay Modal */}
-      {showPromiseToPay && selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white w-full h-full relative rounded-none shadow-xl">
-            <button
-              onClick={() => setShowPromiseToPay(false)}
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
-            >
-              ✕
-            </button>
-            <div className="p-6 h-full overflow-y-auto">
-              <PromiseToPay customer={selectedCustomer} />
-            </div>
-          </div>
-        </div>
-      )}
+    
     </div>
   );
 };

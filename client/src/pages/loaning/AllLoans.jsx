@@ -330,7 +330,7 @@ const AllLoans = () => {
         <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-x-auto">
           <table className="w-full border-collapse min-w-[1200px]">
             <thead>
-              <tr className="bg-gradient-to-r from-gray-500 to-gray-600 text-white text-sm">
+              <tr className="bg-gradient-to-r from-blue-100 to-blue-100 text-slate-700 text-sm">
                 <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Customer</th>
                 <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">ID Number</th>
                 <th className="px-3 py-3 text-left font-semibold whitespace-nowrap">Phone</th>

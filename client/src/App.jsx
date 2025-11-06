@@ -101,6 +101,11 @@ import CustomerDraft from "./relationship-officer/components/CustomerDraft";
 import CustomerStatementModal from "./pages/reports/AccountList";
 import OutstandingLoanBalanceReportEOM from "./pages/reports/OLBatEOM";
 import Customer360View from "./pages/registry/360View";
+import CustomerDetailsModal from "./relationship-officer/components/CustomerDetailsModal.jsx";
+import CustomerInteractions from "./pages/registry/CustomerInteractions";
+import LoanDetails from "./pages/registry/LoanDetails.jsx";
+import PromiseToPay from "./pages/registry/PromiseToPay.jsx";
+import AddCustomer from "./relationship-officer/components/AddCustomer.jsx";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -258,6 +263,16 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
+
+    <Route
+                    path="/officer/customers/add"
+                    element={
+                      <ProtectedRoute>
+                        <AddCustomer />
+                      </ProtectedRoute>
+                    }
+                  />
+
                   <Route
                     path="/officer/loans"
                     element={
@@ -462,6 +477,48 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
   }
 />
 
+
+// Add these routes to your App.jsx
+<Route
+  path="/customer/:customerId/360"
+  element={
+    <ProtectedRoute>
+      <Customer360View userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/customer/:customerId/details"
+  element={
+    <ProtectedRoute>
+      <CustomerDetailsModal />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/customer/:customerId/interactions"
+  element={
+    <ProtectedRoute>
+      <CustomerInteractions />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/customer/:customerId/loan-details"
+  element={
+    <ProtectedRoute>
+      <LoanDetails/>
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/customer/:customerId/promise-to-pay"
+  element={
+    <ProtectedRoute>
+      <PromiseToPay />
+    </ProtectedRoute>
+  }
+/>
                   {/* Reports */}
                   <Route
                     path="/reports"

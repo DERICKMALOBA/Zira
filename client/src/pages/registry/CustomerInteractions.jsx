@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import {
   ChatBubbleLeftRightIcon,
@@ -7,9 +8,14 @@ import {
   AdjustmentsHorizontalIcon,
   ChartBarSquareIcon,
   PencilSquareIcon,
+  ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
 
-const CustomerInteractions = ({ customer }) => {
+const CustomerInteractions = () => {
+  const { customerId } = useParams();
+  const navigate = useNavigate();
+  
+  const [customer, setCustomer] = useState(null);
   const [interactions, setInteractions] = useState([]);
   const [approvalHistory, setApprovalHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +26,7 @@ const CustomerInteractions = ({ customer }) => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("interactions");
   const [editingLimit, setEditingLimit] = useState(false);
-  const [newLimit, setNewLimit] = useState(customer?.loan_limit || 0);
+  const [newLimit, setNewLimit] = useState(0);
   const [limitComment, setLimitComment] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -40,102 +46,125 @@ const CustomerInteractions = ({ customer }) => {
     fetchUser();
   }, []);
 
-  // Fetch interactions
+  // Fetch customer data and interactions
   useEffect(() => {
-    const fetchInteractions = async () => {
+    const fetchCustomerData = async () => {
       try {
-        const { data, error } = await supabase
-          .from("customer_interactions")
-          .select(
-            `
-            id,
-            interaction_type,
-            notes,
-            created_at,
-            created_by,
-            profiles:created_by (
-              users:profiles_user_id_fkey (
-                full_name,
-                email
-              )
-            )
-          `
-          )
-          .eq("customer_id", customer.id)
-          .order("created_at", { ascending: false });
+        setLoading(true);
 
-        if (error) throw error;
-        setInteractions(data || []);
+        // Fetch customer
+        const { data: customerData, error: customerError } = await supabase
+          .from("customers")
+          .select("*")
+          .eq("id", customerId)
+          .single();
+
+        if (customerError) throw customerError;
+        setCustomer(customerData);
+        setNewLimit(customerData?.loan_limit || 0);
+
+        // Fetch interactions and approval history in parallel
+        await Promise.all([
+          fetchInteractions(customerId),
+          fetchApprovalHistory(customerId)
+        ]);
+
       } catch (error) {
-        console.error("Error fetching interactions:", error);
+        console.error("Error fetching customer data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (customer?.id) fetchInteractions();
-  }, [customer]);
+    if (customerId) fetchCustomerData();
+  }, [customerId]);
+
+  // Fetch interactions
+  const fetchInteractions = async (customerId) => {
+    try {
+      const { data, error } = await supabase
+        .from("customer_interactions")
+        .select(
+          `
+          id,
+          interaction_type,
+          notes,
+          created_at,
+          created_by,
+          profiles:created_by (
+            users:profiles_user_id_fkey (
+              full_name,
+              email
+            )
+          )
+        `
+        )
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setInteractions(data || []);
+    } catch (error) {
+      console.error("Error fetching interactions:", error);
+    }
+  };
 
   // Fetch approval history
-  useEffect(() => {
-    const fetchApprovalHistory = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("customer_verifications")
-          .select(
-            `
-            id,
-            created_at,
-            branch_manager_final_decision,
-            branch_manager_overall_comment,
-            branch_manager_verified_at,
-            branch_manager_verified_by,
-            branch_manager_loan_scored_amount,
-            branch_manager_loan_comment,
-            branch_manager_profile:branch_manager_verified_by (
-              users:profiles_user_id_fkey (
-                full_name,
-                email
-              )
-            ),
-            credit_analyst_officer_final_decision,
-            credit_analyst_officer_overall_comment,
-            credit_analyst_officer_verified_at,
-            credit_analyst_officer_verified_by,
-            credit_analyst_officer_loan_scored_amount,
-            credit_analyst_officer_loan_comment,
-            cao_profile:credit_analyst_officer_verified_by (
-              users:profiles_user_id_fkey (
-                full_name,
-                email
-              )
-            ),
-            co_final_decision,
-            co_overall_comment,
-            co_verified_at,
-            co_verified_by,
-            co_loan_scored_amount,
-            co_loan_comment,
-            co_profile:co_verified_by (
-              users:profiles_user_id_fkey (
-                full_name,
-                email
-              )
-            )
+  const fetchApprovalHistory = async (customerId) => {
+    try {
+      const { data, error } = await supabase
+        .from("customer_verifications")
+        .select(
           `
+          id,
+          created_at,
+          branch_manager_final_decision,
+          branch_manager_overall_comment,
+          branch_manager_verified_at,
+          branch_manager_verified_by,
+          branch_manager_loan_scored_amount,
+          branch_manager_loan_comment,
+          branch_manager_profile:branch_manager_verified_by (
+            users:profiles_user_id_fkey (
+              full_name,
+              email
+            )
+          ),
+          credit_analyst_officer_final_decision,
+          credit_analyst_officer_overall_comment,
+          credit_analyst_officer_verified_at,
+          credit_analyst_officer_verified_by,
+          credit_analyst_officer_loan_scored_amount,
+          credit_analyst_officer_loan_comment,
+          cao_profile:credit_analyst_officer_verified_by (
+            users:profiles_user_id_fkey (
+              full_name,
+              email
+            )
+          ),
+          co_final_decision,
+          co_overall_comment,
+          co_verified_at,
+          co_verified_by,
+          co_loan_scored_amount,
+          co_loan_comment,
+          co_profile:co_verified_by (
+            users:profiles_user_id_fkey (
+              full_name,
+              email
+            )
           )
-          .eq("customer_id", customer.id)
-          .order("created_at", { ascending: false });
+        `
+        )
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false });
 
-        if (error) throw error;
-        setApprovalHistory(data || []);
-      } catch (error) {
-        console.error("Error fetching approval history:", error);
-      }
-    };
-
-    if (customer?.id) fetchApprovalHistory();
-  }, [customer]);
+      if (error) throw error;
+      setApprovalHistory(data || []);
+    } catch (error) {
+      console.error("Error fetching approval history:", error);
+    }
+  };
 
   // Add new interaction
   const handleAddInteraction = async (e) => {
@@ -155,7 +184,7 @@ const CustomerInteractions = ({ customer }) => {
         .from("customer_interactions")
         .insert([
           {
-            customer_id: customer.id,
+            customer_id: customerId,
             interaction_type: newInteraction.interaction_type,
             notes: newInteraction.notes,
             created_by: user?.id,
@@ -203,7 +232,7 @@ const CustomerInteractions = ({ customer }) => {
       const { error: updateError } = await supabase
         .from("customers")
         .update({ loan_limit: newLimit })
-        .eq("id", customer.id);
+        .eq("id", customerId);
 
       if (updateError) throw updateError;
 
@@ -212,7 +241,7 @@ const CustomerInteractions = ({ customer }) => {
         .from("customer_interactions")
         .insert([
           {
-            customer_id: customer.id,
+            customer_id: customerId,
             interaction_type: "Limit Adjustment",
             notes: `Limit ${newLimit > customer.loan_limit ? 'increased' : 'decreased'} from ${customer.loan_limit} to ${newLimit}. Comment: ${limitComment}`,
             created_by: currentUser?.id,
@@ -224,7 +253,17 @@ const CustomerInteractions = ({ customer }) => {
       alert("Loan limit updated successfully!");
       setEditingLimit(false);
       setLimitComment("");
-      window.location.reload(); // Refresh to show updated limit
+      
+      // Refresh customer data to show updated limit
+      const { data: updatedCustomer } = await supabase
+        .from("customers")
+        .select("loan_limit")
+        .eq("id", customerId)
+        .single();
+      
+      setCustomer(prev => ({ ...prev, loan_limit: updatedCustomer.loan_limit }));
+      setNewLimit(updatedCustomer.loan_limit);
+      
     } catch (error) {
       console.error("Error updating limit:", error);
       alert("Failed to update limit");
@@ -232,10 +271,6 @@ const CustomerInteractions = ({ customer }) => {
       setSaving(false);
     }
   };
-
-  if (loading) {
-    return <p className="text-gray-500">Loading interactions...</p>;
-  }
 
   // Helper to render approval entry
   const renderApprovalEntry = (role, decision, comment, verifiedAt, verifiedBy, profile) => {
@@ -352,7 +387,7 @@ const CustomerInteractions = ({ customer }) => {
             <button
               type="submit"
               disabled={saving}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center justify-center hover:bg-indigo-700 transition disabled:opacity-50"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center justify-center hover:bg-green-700 transition disabled:opacity-50"
             >
               <PaperAirplaneIcon className="h-5 w-5 mr-1" />
               {saving ? "Saving..." : "Add"}
@@ -606,30 +641,78 @@ const CustomerInteractions = ({ customer }) => {
     },
   ];
 
-  return (
-    <div className="bg-white p-5 rounded-xl shadow-md">
-      <div className="flex flex-wrap gap-2 border-b mb-4">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-medium transition ${
-                active
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              <Icon className="h-5 w-5" />
-              {tab.name}
-            </button>
-          );
-        })}
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <p className="ml-3 text-gray-500">Loading interactions...</p>
       </div>
+    );
+  }
 
-      <div>{tabs.find((t) => t.id === activeTab)?.content}</div>
+  if (!customer) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 text-lg">Customer not found</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+     
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto py-2 sm:px-6 lg:px-8">
+      <div className="px-4 py-2 sm:px-0">
+  <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+    {/* Back Button */}
+    <div className="mb-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-50 transition"
+      >
+        <ArrowLeftIcon className="h-5 w-5" />
+        <span className="font-medium">Back to Customers</span>
+      </button>
+    </div>
+
+    {/* Tabs Section */}
+    <div className="flex flex-wrap gap-2 border-b mb-6">
+      {tabs.map((tab) => {
+        const Icon = tab.icon;
+        const active = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-medium transition ${
+              active
+                ? "bg-blue-200 text-slate-600"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <Icon className="h-5 w-5" />
+            {tab.name}
+          </button>
+        );
+      })}
+    </div>
+
+    {/* Active Tab Content */}
+    <div>{tabs.find((t) => t.id === activeTab)?.content}</div>
+  </div>
+</div>
+
+      </div>
     </div>
   );
 };

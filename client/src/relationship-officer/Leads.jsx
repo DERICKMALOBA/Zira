@@ -199,7 +199,7 @@ const Leads = () => {
     }
   };
 
-  // ✅ Sorting
+  // Sorting
   const handleSort = (key) => {
     let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
@@ -219,7 +219,7 @@ const Leads = () => {
     });
   };
 
-  // ✅ Filter + sort
+  //  Filter + sort
   const filteredLeads = leads.filter((lead) => {
     const matchesSearch =
       (lead.Firstname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -284,10 +284,10 @@ const Leads = () => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-4 border border-indigo-100">
+        <div className="bg-white rounded-2xl shadow-lg p-4 mb-2 border border-indigo-100">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className=" font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
+              <h1 className="  bg-gradient-to-r from-slate-700 to-slate-700 bg-clip-text text-transparent">
                 Lead Management
               </h1>
               <p className="text-gray-600 mt-2">Track and convert potential customers</p>
@@ -339,7 +339,7 @@ const Leads = () => {
             {/* Add Lead Button */}
             <button
               onClick={() => setShowLeadForm(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl hover:from-indigo-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl font-medium"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-600 text-white rounded-xl hover:from-green-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl font-medium"
             >
               <PlusIcon className="h-5 w-5" />
               Add Lead
@@ -379,88 +379,92 @@ const Leads = () => {
               </p>
               <button
                 onClick={() => setShowLeadForm(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl hover:from-indigo-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl font-medium"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-600 text-white rounded-xl hover:from-green-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl font-medium"
               >
                 <PlusIcon className="h-5 w-5" />
                 Add Your First Lead
               </button>
             </div>
           ) : (
-            <table className="w-full table-fixed">
-              <thead>
-                <tr className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100">
-                  <th className="w-[12%] p-4 text-left">
-                    <SortButton column="Firstname" label="First Name" icon={UserCircleIcon} />
-                  </th>
-                  <th className="w-[12%] p-4 text-left">
-                    <SortButton column="Surname" label="Surname" icon={UserCircleIcon} />
-                  </th>
-                  <th className="w-[12%] p-4 text-left">
-                    <SortButton column="mobile" label="Phone" icon={DevicePhoneMobileIcon} />
-                  </th>
-                  <th className="w-[15%] p-4 text-left">
-                    <SortButton column="business_name" label="Business" icon={BuildingOffice2Icon} />
-                  </th>
-                  <th className="w-[12%] p-4 text-left">
-                    <SortButton column="business_type" label="Type" icon={TagIcon} />
-                  </th>
-                  <th className="w-[15%] p-4 text-left">
-                    <SortButton column="business_location" label="Location" icon={MapPinIcon} />
-                  </th>
-                  <th className="w-[10%] p-4 text-left">
-                    <SortButton column="status" label="Status" icon={TagIcon} />
-                  </th>
-                  <th className="w-[12%] p-4 text-center">
-                    <span className="text-gray-700 font-medium">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {sortedLeads.map((lead) => (
-                  <tr
-                    key={lead.id}
-                    className="hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-200"
-                  >
-                    <td className="p-4 truncate" title={lead.Firstname}>
-                      {lead.Firstname}
-                    </td>
-                    <td className="p-4 truncate" title={lead.Surname}>
-                      {lead.Surname}
-                    </td>
-                    <td className="p-4 truncate" title={lead.mobile}>
-                      {lead.mobile}
-                    </td>
-                    <td className="p-4 truncate" title={lead.business_name}>
-                      {lead.business_name}
-                    </td>
-                    <td className="p-4 truncate" title={lead.business_type}>
-                      {lead.business_type}
-                    </td>
-                    <td className="p-4 truncate" title={lead.business_location}>
-                      {lead.business_location}
-                    </td>
-                    <td className="p-4">
-                      <div className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(lead.status)}`}>
-                        {getStatusIcon(lead.status)}
-                        {lead.status}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex justify-center">
-                        <button
-                          onClick={() => handleConvertToCustomer(lead)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg hover:from-emerald-700 hover:to-green-700 transition-all text-xs font-medium shadow-sm hover:shadow-md"
-                          title="Convert to Customer"
-                        >
-                          <ArrowPathIcon className="h-3 w-3" />
-                          Convert
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+           <table className="w-full table-auto border-collapse text-sm text-gray-700">
+  <thead>
+    <tr className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100 text-xs uppercase tracking-wide text-gray-600">
+      <th className="p-4 font-semibold text-left whitespace-nowrap">
+        <SortButton column="Firstname" label="First Name" icon={UserCircleIcon} />
+      </th>
+      <th className="p-4 font-semibold text-left whitespace-nowrap">
+        <SortButton column="Surname" label="Surname" icon={UserCircleIcon} />
+      </th>
+      <th className="p-4 font-semibold text-left whitespace-nowrap">
+        <SortButton column="mobile" label="Phone" icon={DevicePhoneMobileIcon} />
+      </th>
+      <th className="p-4 font-semibold text-left whitespace-nowrap">
+        <SortButton column="business_name" label="Business" icon={BuildingOffice2Icon} />
+      </th>
+      <th className="p-4 font-semibold text-left whitespace-nowrap">
+        <SortButton column="business_type" label="Type" icon={TagIcon} />
+      </th>
+      <th className="p-4 font-semibold text-left whitespace-nowrap">
+        <SortButton column="business_location" label="Location" icon={MapPinIcon} />
+      </th>
+      <th className="p-4 font-semibold text-left whitespace-nowrap">
+        <SortButton column="status" label="Status" icon={TagIcon} />
+      </th>
+      <th className="p-4 font-semibold text-center whitespace-nowrap">
+        Actions
+      </th>
+    </tr>
+  </thead>
+
+  <tbody className="divide-y divide-gray-100">
+    {sortedLeads.map((lead) => (
+      <tr
+        key={lead.id}
+        className="hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-200 text-sm"
+      >
+        <td className="p-4 truncate whitespace-nowrap" title={lead.Firstname}>
+          {lead.Firstname}
+        </td>
+        <td className="p-4 truncate whitespace-nowrap" title={lead.Surname}>
+          {lead.Surname}
+        </td>
+        <td className="p-4 truncate whitespace-nowrap" title={lead.mobile}>
+          {lead.mobile}
+        </td>
+        <td className="p-4 truncate whitespace-nowrap" title={lead.business_name}>
+          {lead.business_name}
+        </td>
+        <td className="p-4 truncate whitespace-nowrap" title={lead.business_type}>
+          {lead.business_type}
+        </td>
+        <td className="p-4 truncate whitespace-nowrap" title={lead.business_location}>
+          {lead.business_location}
+        </td>
+        <td className="p-4 whitespace-nowrap">
+          <div
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+              lead.status
+            )}`}
+          >
+            {getStatusIcon(lead.status)}
+            {lead.status}
+          </div>
+        </td>
+        <td className="p-4 whitespace-nowrap text-center">
+          <button
+            onClick={() => handleConvertToCustomer(lead)}
+            className="inline-flex items-center gap-1 px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-full hover:from-emerald-700 hover:to-green-700 transition-all text-xs font-medium shadow-sm hover:shadow-md"
+            title="Convert to Customer"
+          >
+            <ArrowPathIcon className="h-3.5 w-3.5" />
+            Convert
+          </button>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
           )}
         </div>
 
@@ -469,7 +473,7 @@ const Leads = () => {
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
             <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-8 m-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
+                <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-700 to-slate-700 bg-clip-text text-transparent">
                   Add New Lead
                 </h2>
                 <button
@@ -492,7 +496,7 @@ const Leads = () => {
                       value={newLead.Firstname}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       placeholder="Enter first name"
                     />
                   </div>
@@ -537,9 +541,9 @@ const Leads = () => {
                       onChange={handleChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     >
-                      <option value="Hot">🔥 Hot</option>
-                      <option value="Warm">☀️ Warm</option>
-                      <option value="Cold">❄️ Cold</option>
+                      <option value="Hot"> Hot</option>
+                      <option value="Warm"> Warm</option>
+                      <option value="Cold">Cold</option>
                     </select>
                   </div>
 
@@ -603,7 +607,7 @@ const Leads = () => {
                     className={`flex items-center gap-2 px-6 py-3 text-white rounded-xl font-medium transition-all ${
                       isSaving
                         ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-lg hover:shadow-xl"
+                        : "bg-gradient-to-r from-green-600 to-green-600 hover:from-green-700 hover:to-green-700 shadow-lg hover:shadow-xl"
                     }`}
                   >
                     {isSaving ? (

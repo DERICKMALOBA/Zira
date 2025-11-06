@@ -62,9 +62,7 @@ const OfficerHeader = ({ sidebarOpen, setSidebarOpen }) => {
             >
               <Menu className="h-5 w-5 group-hover:scale-110 transition-transform" />
             </button>
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-sm">Z</span>
-            </div>
+           
           </div>
           <div className="animate-pulse">
             <div className="h-8 w-32 bg-gray-200 rounded-lg"></div>
@@ -86,21 +84,7 @@ const OfficerHeader = ({ sidebarOpen, setSidebarOpen }) => {
             <Menu className="h-5 w-5 group-hover:scale-110 transition-transform" />
           </button>
           
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-sm">
-              <span className="text-white font-bold text-sm">Z</span>
-            </div>
-            <div>
-              <h1 className="text-lg font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                Officer Portal
-              </h1>
-              <p className="text-xs text-gray-500">
-                {profile.role === 'relationship_officer' ? 'Relationship Management' : 
-                 profile.role === 'manager' ? 'Branch Management' : 
-                 profile.role === 'regional_manager' ? 'Regional Oversight' : 'Administration'}
-              </p>
-            </div>
-          </div>
+       
         </div>
 
         {/* Right Section - Profile */}
