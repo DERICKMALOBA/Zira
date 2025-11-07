@@ -1,4 +1,8 @@
-function AmendmentDetailsModal({ amendment, onClose }) {
+import { useNavigate } from 'react-router-dom';
+
+function AmendmentDetailsPage({ amendment }) {
+  const navigate = useNavigate();
+
   // Helper function to get status badge
   const getStatusBadge = (status) => {
     if (status === null || status === undefined) {
@@ -352,26 +356,34 @@ function AmendmentDetailsModal({ amendment, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-white flex justify-between items-center p-6 border-b border-gray-200 rounded-t-2xl">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Verification Details</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Customer: {amendment.customers?.Firstname} {amendment.customers?.Surname} 
-              {amendment.customers?.mobile && ` • ${amendment.customers.mobile}`}
-            </p>
+    <div className="min-h-screen bg-gray-50 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header with back navigation */}
+        <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-600 hover:text-gray-800"
+                aria-label="Go back"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-600">Verification Details</h1>
+                <p className="text-sm text-gray-600 mt-1">
+                  Customer: {amendment.customers?.Firstname} {amendment.customers?.Surname} 
+                  {amendment.customers?.mobile && ` • ${amendment.customers.mobile}`}
+                </p>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors text-3xl leading-none hover:bg-gray-100 rounded-full w-10 h-10 flex items-center justify-center"
-          >
-            &times;
-          </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        {/* Content */}
+        <div className="space-y-6">
           {/* Branch Manager Verification */}
           {renderVerificationSection('bm', bmData, 'Branch Manager')}
           
@@ -381,19 +393,9 @@ function AmendmentDetailsModal({ amendment, onClose }) {
           {/* Credit Analyst Officer Verification */}
           {renderVerificationSection('credit_analyst', creditAnalystData, 'Credit Analyst Officer')}
         </div>
-
-        {/* Footer */}
-        <div className="sticky bottom-0 bg-white flex justify-end gap-3 p-6 border-t border-gray-200 rounded-b-2xl">
-          <button
-            onClick={onClose}
-            className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );
 }
 
-export default AmendmentDetailsModal;
+export default AmendmentDetailsPage;

@@ -106,6 +106,9 @@ import CustomerInteractions from "./pages/registry/CustomerInteractions";
 import LoanDetails from "./pages/registry/LoanDetails.jsx";
 import PromiseToPay from "./pages/registry/PromiseToPay.jsx";
 import AddCustomer from "./relationship-officer/components/AddCustomer.jsx";
+import EditAmendment from "./relationship-officer/amendments/EditAmendment.jsx";
+import AmendmentDetailsModal from "./relationship-officer/amendments/AmendmentDetailsModal.jsx"
+import AmendmentDetailsPage from "./relationship-officer/amendments/AmendmentDetailsPage.jsx";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -330,6 +333,19 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
+
+
+<Route
+  path="/officer/:customerId/details"
+  element={
+    <ProtectedRoute>
+      <CustomerDetailsModal />
+    </ProtectedRoute>
+  }
+/>
+
+
+
                   <Route
                     path="/officer/conversions"
                     element={
@@ -338,7 +354,12 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-                </>
+
+
+
+            
+<Route path="/officer/editamendments/:customerId" element={<EditAmendment />} />
+<Route path="/officer/viewamendments/:amendmentId" element={<AmendmentDetailsPage />} />                </>
               )}
 
               {/* Shared Routes for RM, BM, CA, CSO */}
@@ -468,17 +489,10 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                   />
 
 
-                  <Route
-  path="/customer/:customerId/360"
-  element={
-    <ProtectedRoute>
-      <Customer360View userRole={role} />
-    </ProtectedRoute>
-  }
-/>
 
 
-// Add these routes to your App.jsx
+
+
 <Route
   path="/customer/:customerId/360"
   element={

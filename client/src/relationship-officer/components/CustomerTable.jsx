@@ -10,14 +10,13 @@ import {
   ArrowDownIcon,
   PlusIcon,
 } from "@heroicons/react/24/outline";
-import AddCustomer from "./AddCustomer";
-import CustomerDetailsModal from "./CustomerDetailsModal.jsx";
 
-function CustomersTable({ customers, loading, profile }) {
+
+function CustomersTable({ customers, loading}) {
   const [searchTerm, setSearchTerm] = useState("");
 
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  
   const [showFilters, setShowFilters] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("");
    const navigate = useNavigate();
@@ -26,7 +25,10 @@ function CustomersTable({ customers, loading, profile }) {
   const [currentPage, setCurrentPage] = useState(1);
   const customersPerPage = 10;
 
-  const handleView = (customer) => setSelectedCustomer(customer);
+  const handleView = (customer) => {
+  navigate(`/officer/${customer.id}/details`);
+};
+
 
     const handleAddCustomer = () => {
     navigate('/officer/customers/add');
@@ -226,7 +228,7 @@ function CustomersTable({ customers, loading, profile }) {
         </div>
       </div>
 
-      {/* ✅ Pagination Controls */}
+      {/*  Pagination Controls */}
       {totalPages > 1 && (
         <div className="flex justify-between items-center mt-4">
           <button

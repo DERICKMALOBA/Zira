@@ -14,21 +14,22 @@ function Customers() {
   const [userId, setUserId] = useState(null);
   const { profile } = useAuth();
 
-  // ✅ Get logged-in user's ID
+  //  Get logged-in user's ID
   const fetchUser = async () => {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error) console.error("Error fetching user:", error.message);
     else setUserId(user.id);
   };
 
-  // ✅ Fetch customers created by the logged-in Relationship Officer
+  //  Fetch customers created by the logged-in Relationship Officer
   const fetchCustomers = async () => {
     if (!userId) return; // wait until userId is set
     setLoading(true);
     const { data, error } = await supabase
       .from("customers")
       .select("*")
-      .eq("created_by", userId) // only customers created by this RO
+      .eq("created_by", userId)
+       .eq("form_status", "submitted") 
       .order("created_at", { ascending: false });
     if (error) console.error("Error fetching customers:", error.message);
     else setCustomers(data);

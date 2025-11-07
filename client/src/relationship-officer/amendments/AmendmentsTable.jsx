@@ -34,7 +34,7 @@ function AmendmentsTable({ amendments, loading, onEdit, onView, onRefresh }) {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {amendments.map((amendment) => (
-              <tr key={amendment.id} className="hover:bg-gray-50">
+              <tr key={amendment.id || amendment.customer_id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 whitespace-nowrap">
                   {amendment.customers?.Firstname} {amendment.customers?.Surname}
                 </td>
@@ -43,16 +43,26 @@ function AmendmentsTable({ amendments, loading, onEdit, onView, onRefresh }) {
                 <td className="px-6 py-4 whitespace-nowrap">{amendment.customers?.business_name}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                    ${amendment.final_decision === 'approved' ? 'bg-green-100 text-green-800' : 
-                      amendment.final_decision === 'rejected' ? 'bg-red-100 text-red-800' : 
+                    ${amendment.customers?.status === 'sent_back_by_bm' ? 'bg-orange-100 text-orange-800' : 
+                      amendment.customers?.status === 'sent_back_by_ca' ? 'bg-red-100 text-red-800' :
+                      amendment.customers?.status === 'sent_back_by_cso' ? 'bg-purple-100 text-purple-800' :
                       'bg-yellow-100 text-yellow-800'}`}>
-                    {amendment.final_decision || 'Pending'}
+                    {amendment.customers?.status?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Pending'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button onClick={() => onView(amendment.id)} className="mr-3 text-indigo-600 hover:text-indigo-900">View</button>
-                  <button onClick={() => onEdit(amendment)} className="mr-3 text-green-600 hover:text-green-900">Edit</button>
-                 
+                  <button 
+                    onClick={() => onView(amendment)} 
+                    className="mr-3 text-indigo-600 hover:text-indigo-900 transition-colors"
+                  >
+                    View
+                  </button>
+                  <button 
+                    onClick={() => onEdit(amendment)} 
+                    className="mr-3 text-green-600 hover:text-green-900 transition-colors"
+                  >
+                    Edit
+                  </button>
                 </td>
               </tr>
             ))}

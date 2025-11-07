@@ -324,66 +324,88 @@ const Dashboard = () => {
       return 0;
     }
   };
-
   const fetchLeadsConversionRate = async (
   regionId,
   branchId,
   role,
   userId,
   selectedRegion = "all",
-  selectedBranch = "all"
+  selectedBranch = "all",
+  selectedRO = "all"
 ) => {
   try {
-    // Helper to apply filters dynamically
-    const applyFilters = (query) => {
-      if (role === "branch_manager") query = query.eq("branch_id", branchId);
-      else if (role === "regional_manager") query = query.eq("region_id", regionId);
-      else if (role === "relationship_officer") query = query.eq("created_by", userId);
-      else if (role === "credit_analyst_officer" || role === "customer_service_officer") {
-        if (selectedRegion !== "all") query = query.eq("region_id", selectedRegion);
-        if (selectedBranch !== "all") query = query.eq("branch_id", selectedBranch);
-      }
-      return query;
-    };
+    // === Helper: Apply correct filters ===
+   const applyFilters = (query, table = "customers") => {
+  if (role === "branch_manager") {
+    query = query.eq("branch_id", branchId);
+  } 
+  else if (role === "regional_manager") {
+    if (selectedRegion !== "all") {
+      query = query.eq("region_id", selectedRegion);
+    } else {
+      //  All regions = no filter at all
+    }
 
-    // === Step 1: Fetch current leads ===
+    if (selectedBranch !== "all") {
+      query = query.eq("branch_id", selectedBranch);
+    }
+  } 
+  else if (role === "relationship_officer") {
+    query = query.eq("created_by", userId);
+  } 
+  else if (role === "credit_analyst_officer" || role === "customer_service_officer") {
+    //  Allow all filter combinations properly
+    if (selectedRegion !== "all") query = query.eq("region_id", selectedRegion);
+    if (selectedBranch !== "all") query = query.eq("branch_id", selectedBranch);
+    if (selectedRO !== "all") query = query.eq("created_by", selectedRO);
+  }
+
+  return query;
+};
+
+
+    // === Fetch all leads ===
     let leadsQuery = applyFilters(supabase.from("leads").select("id, created_at"));
     const { data: leads, error: leadsError } = await leadsQuery;
     if (leadsError) throw leadsError;
 
-    const unconvertedLeads = leads?.length || 0;
+    // === Fetch converted leads (customers) ===
+    let customersQuery = applyFilters(
+      supabase.from("customers").select("id, created_at, form_status")
+    );
+    customersQuery = customersQuery.neq("form_status", "draft");
 
-    // === Step 2: Fetch customers ===
-    let customersQuery = applyFilters(supabase.from("customers").select("id, created_at"));
     const { data: customers, error: customersError } = await customersQuery;
     if (customersError) throw customersError;
 
+    // === Totals ===
+    const totalLeads = (leads?.length || 0) + (customers?.length || 0);
     const convertedLeads = customers?.length || 0;
-
-    // === Step 3: Total Conversion Rate ===
-    const totalLeads = unconvertedLeads + convertedLeads;
     const conversionRate =
       totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
 
-    // === Step 4: Conversion Rate for Current Month ===
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+    // === Monthly ===
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
     const leadsThisMonth = leads.filter(
-      (l) => new Date(l.created_at).getMonth() === currentMonth &&
-             new Date(l.created_at).getFullYear() === currentYear
+      (l) =>
+        new Date(l.created_at).getMonth() === currentMonth &&
+        new Date(l.created_at).getFullYear() === currentYear
     ).length;
 
     const customersThisMonth = customers.filter(
-      (c) => new Date(c.created_at).getMonth() === currentMonth &&
-             new Date(c.created_at).getFullYear() === currentYear
+      (c) =>
+        new Date(c.created_at).getMonth() === currentMonth &&
+        new Date(c.created_at).getFullYear() === currentYear
     ).length;
 
     const totalThisMonth = leadsThisMonth + customersThisMonth;
     const conversionRateMonth =
       totalThisMonth > 0 ? Math.round((customersThisMonth / totalThisMonth) * 100) : 0;
 
-    // === Step 5: Conversion Rate for Current Year ===
+    // === Yearly ===
     const leadsThisYear = leads.filter(
       (l) => new Date(l.created_at).getFullYear() === currentYear
     ).length;
@@ -396,14 +418,16 @@ const Dashboard = () => {
     const conversionRateYear =
       totalThisYear > 0 ? Math.round((customersThisYear / totalThisYear) * 100) : 0;
 
-    return {
-      totalLeads,
-      convertedLeads,
-      conversionRate,
-      conversionRateMonth,
-      conversionRateYear,
-    };
+    // Safe numeric return
+    const safe = (val) => (isNaN(val) || val === null ? 0 : Number(val));
 
+    return {
+      totalLeads: safe(totalLeads),
+      convertedLeads: safe(convertedLeads),
+      conversionRate: safe(conversionRate),
+      conversionRateMonth: safe(conversionRateMonth),
+      conversionRateYear: safe(conversionRateYear),
+    };
   } catch (error) {
     console.error("Error fetching leads conversion rate:", error);
     return {
@@ -415,6 +439,8 @@ const Dashboard = () => {
     };
   }
 };
+
+
 
 
 
@@ -575,7 +601,16 @@ const Dashboard = () => {
     ).length;
 
     // Lead conversion
-    const leadConversionRate = await fetchLeadsConversionRate(regionId, branchId, role);
+   const leadConversionRate = await fetchLeadsConversionRate(
+  regionId,
+  branchId,
+  role,
+  profile?.id ,
+  selectedRegion,
+  selectedBranch,
+  selectedRO
+);
+
 
     // Loan overview
     const disbursedLoans = filteredLoans.filter(loan => loan.status === "disbursed");
@@ -676,8 +711,14 @@ const fetchDashboardData = async () => {
     setAvailableROs([{ id: "all", full_name: "All ROs" }, ...relationshipOfficers]);
 
     // Fetch customers and loans based on role
-    let customersQuery = supabase.from("customers").select("*");
-    let loansQuery = supabase.from("loans").select("*");
+ let customersQuery = supabase
+  .from("customers")
+   .select("*, form_status")
+  .neq("form_status", "draft"); 
+
+let loansQuery = supabase
+  .from("loans")
+  .select("*");
 
     if (role === "branch_manager") {
       customersQuery = customersQuery.eq("branch_id", branchId);
@@ -699,19 +740,28 @@ const fetchDashboardData = async () => {
     setLoans(loansData || []);
     setBranches(branchesData || []);
 
-    // ✅ Fetch lead conversion metrics (monthly + yearly)
-    const { 
-      totalLeads, 
-      convertedLeads, 
-      conversionRate, 
-      conversionRateMonth, 
-      conversionRateYear 
-    } = await fetchLeadsConversionRate(regionId, branchId, role, userId);
+    //  Fetch lead conversion metrics (monthly + yearly)
+const { 
+  totalLeads, 
+  convertedLeads, 
+  conversionRate, 
+  conversionRateMonth, 
+  conversionRateYear 
+} = await fetchLeadsConversionRate(
+  regionId,
+  branchId,
+  role,
+  userId,
+  selectedRegion,
+  selectedBranch,
+  selectedRO
+);
+
 
     // Calculate other dashboard metrics (your existing function)
     const metrics = await calculateDashboardMetrics(loansData || [], customersData || [], profile);
 
-    // ✅ Merge conversion metrics into dashboard state
+    // Merge conversion metrics into dashboard state
 setDashboardMetrics({
   ...metrics,
   customerOverview: {
@@ -1049,19 +1099,25 @@ setDashboardMetrics({
 
 <div className="grid grid-cols-2 gap-4 mt-4">
   <div className="flex flex-col items-center justify-center p-4 bg-purple-50 rounded-lg h-full">
-    <p className="text-2xl font-bold text-purple-600">
-   {Number(dashboardMetrics.customerOverview.leadConversionRateMonth ?? 0)}%
+  <p className="text-2xl font-bold text-purple-600">
+  {isNaN(Number(dashboardMetrics.customerOverview.leadConversionRateMonth))
+    ? 0
+    : Number(dashboardMetrics.customerOverview.leadConversionRateMonth)}%
+</p>
 
-    </p>
+
     <p className="text-sm text-gray-600 whitespace-nowrap">
       Conversion Rate (This Month)
     </p>
   </div>
 
   <div className="flex flex-col items-center justify-center p-4 bg-indigo-50 rounded-lg h-full">
-    <p className="text-2xl font-bold text-indigo-600">
-      {dashboardMetrics.customerOverview.leadConversionRateYear ?? 0}%
-    </p>
+   <p className="text-2xl font-bold text-indigo-600">
+  {isNaN(Number(dashboardMetrics.customerOverview.leadConversionRateYear))
+    ? 0
+    : Number(dashboardMetrics.customerOverview.leadConversionRateYear)}%
+</p>
+
     <p className="text-sm text-gray-600 whitespace-nowrap">
       Conversion Rate (This Year)
     </p>

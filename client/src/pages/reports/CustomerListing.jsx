@@ -52,6 +52,7 @@ const CustomerListing = () => {
             branch:branch_id(name),
             ro:created_by(full_name)
           `)
+           .eq("form_status", "submitted")
           .order("created_at", { ascending: false });
 
         if (error) throw error;

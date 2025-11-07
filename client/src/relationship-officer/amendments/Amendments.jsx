@@ -1,21 +1,19 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
 import AmendmentsTable from "./AmendmentsTable";
-import AmendmentDetailsModal from "./AmendmentDetailsModal";
 import EditAmendment from "./EditAmendment";
-import LoanBookingForm from "../loans/LoanBooking";
 import { useAuth } from "../../hooks/userAuth";
 
 function Amendments() {
   const [amendments, setAmendments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editAmendment, setEditAmendment] = useState(null);
-  const [viewAmendment, setViewAmendment] = useState(null);
   const [bookLoan, setBookLoan] = useState(null);
+  const [editingCustomerId, setEditingCustomerId] = useState(null);
   const { profile } = useAuth();
+  const navigate = useNavigate();
 
-   const fetchAmendments = async () => {
+  const fetchAmendments = async () => {
     if (!profile?.id || profile.role !== "relationship_officer") {
       setLoading(false);
       return;
@@ -30,6 +28,7 @@ function Amendments() {
         .select("*")
         .eq("created_by", profile.id)
         .in("status", ["sent_back_by_bm", "sent_back_by_ca", "sent_back_by_cso", "pending"])
+        .neq("form_status", "draft")
         .order("updated_at", { ascending: false });
 
       if (customersError) {
@@ -124,30 +123,6 @@ function Amendments() {
       });
 
       console.log("Merged amendments data:", mergedData);
-
-      // Debug: Check data preservation for each role
-      mergedData.forEach(item => {
-        const bmFields = Object.keys(item).filter(key => 
-          key.includes('branch_manager') && item[key] !== null
-        );
-        const csoFields = Object.keys(item).filter(key => 
-          key.includes('co_') && item[key] !== null
-        );
-        const caFields = Object.keys(item).filter(key => 
-          key.includes('credit_analyst') && item[key] !== null
-        );
-
-        console.log(`Customer ${item.customer_id} (${item.customers?.status}):`, {
-          totalRecords: verifications.filter(v => v.customer_id === item.customer_id).length,
-          bmFields: bmFields.length,
-          csoFields: csoFields.length,
-          caFields: caFields.length,
-          hasBMDecision: !!item.branch_manager_final_decision,
-          hasCSODecision: !!item.co_final_decision,
-          hasCADecision: !!item.credit_analyst_final_decision
-        });
-      });
-
       setAmendments(mergedData);
 
     } catch (err) {
@@ -158,103 +133,40 @@ function Amendments() {
     }
   };
 
-
   useEffect(() => {
     if (profile) {
       fetchAmendments();
     }
   }, [profile]);
 
-   // Enhanced fetchAmendmentDetails to show complete merged history
-  const fetchAmendmentDetails = async (id) => {
-    try {
-      if (!id) {
-        console.log("No verification ID provided");
-        return;
-      }
-
-      // Get the specific amendment first
-      const { data: amendment, error: amendmentError } = await supabase
-        .from("customer_verifications")
-        .select(`
-          *,
-          customers:customer_id (
-            id_number,
-            Firstname,
-            Surname,
-            mobile,
-            created_by,
-            status
-          )
-        `)
-        .eq("id", id)
-        .single();
-
-      if (amendmentError) {
-        console.error("Error fetching amendment:", amendmentError.message);
-        return;
-      }
-
-      // Verify the customer belongs to this RO
-      if (amendment.customers?.created_by !== profile?.id) {
-        console.error("Amendment does not belong to current user");
-        return;
-      }
-
-      // Get ALL verification records for this customer to merge
-      const { data: allVerifications, error: historyError } = await supabase
-        .from("customer_verifications")
-        .select("*")
-        .eq("customer_id", amendment.customer_id)
-        .order("created_at", { ascending: true });
-
-      if (historyError) {
-        console.error("Error fetching verification history:", historyError);
-        setViewAmendment(amendment);
-        return;
-      }
-
-      if (allVerifications && allVerifications.length > 0) {
-        // Merge all records into one comprehensive object
-        const mergedAmendment = allVerifications.reduce((acc, verification) => {
-          Object.keys(verification).forEach(key => {
-            if (verification[key] !== null && verification[key] !== undefined) {
-              // For timestamps, keep the latest
-              if (key.includes('_at') && acc[key]) {
-                const newDate = new Date(verification[key]);
-                const existingDate = new Date(acc[key]);
-                if (newDate > existingDate) {
-                  acc[key] = verification[key];
-                }
-              } else {
-                acc[key] = verification[key];
-              }
-            }
-          });
-          return acc;
-        }, {});
-
-        // Add customer data and metadata
-        mergedAmendment.id = amendment.id;
-        mergedAmendment.customer_id = amendment.customer_id;
-        mergedAmendment.customers = amendment.customers;
-        mergedAmendment.customer_data = amendment.customers;
-        mergedAmendment.verification_history = allVerifications; // Include full history for debugging
-
-        console.log("Complete merged amendment for details view:", {
-          merged: mergedAmendment,
-          history: allVerifications
-        });
-
-        setViewAmendment(mergedAmendment);
-      } else {
-        setViewAmendment(amendment);
-      }
-
-    } catch (err) {
-      console.error("Error in fetchAmendmentDetails:", err);
+  const handleEdit = (amendment) => {
+    const customerId = amendment.customer_id || amendment.customers?.id;
+    console.log("Opening edit for customer ID:", customerId);
+    if (customerId) {
+      setEditingCustomerId(customerId);
+    } else {
+      console.error("No customer ID found in amendment");
     }
   };
+
+  const handleCloseEdit = () => {
+    setEditingCustomerId(null);
+    fetchAmendments(); // Refresh the list after editing
+  };
+
+  const handleView = (amendment) => {
+    if (amendment.id) {
+      navigate(`/officer/viewamendments/${amendment.id}`);
+    } else {
+      console.log("No verification ID available for this amendment");
+      // You might want to show a toast message here
+    }
+  };
+
+  // If editing, show the EditAmendment component
+  if (editingCustomerId) {
+    return <EditAmendment customerId={editingCustomerId} onClose={handleCloseEdit} />;
+  }
 
   return (
     <div className="p-6">
@@ -262,39 +174,13 @@ function Amendments() {
       <AmendmentsTable
         amendments={amendments}
         loading={loading}
-        onEdit={(a) => {
-          setEditAmendment(a); 
-          setShowForm(true);
-        }}
-        onView={fetchAmendmentDetails}
+        onEdit={handleEdit}
+        onView={handleView}
         onBookLoan={(a) => setBookLoan(a)}
         onRefresh={fetchAmendments}
       />
 
-      {showForm && (
-        <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 overflow-y-auto">
-          <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <EditAmendment
-              amendmentId={editAmendment.id}
-              customerId={editAmendment.customer_id || editAmendment.customers?.id}
-              onClose={() => {
-                setShowForm(false);
-                fetchAmendments();
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* View Amendment */}
-      {viewAmendment && (
-        <AmendmentDetailsModal
-          amendment={viewAmendment}
-          onClose={() => setViewAmendment(null)}
-        />
-      )}
-
-      {/* Loan Booking */}
+      {/* Loan Booking (keep as modal for now) */}
       {bookLoan && (
         <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
           <LoanBookingForm

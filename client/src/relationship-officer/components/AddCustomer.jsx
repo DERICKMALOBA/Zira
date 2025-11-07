@@ -23,6 +23,7 @@ import { supabase } from "../../supabaseClient";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { checkUniqueValue } from "../../utils/Unique";
+import { useAuth } from "../../hooks/userAuth";
 const FormField = memo(
   ({
     label,
@@ -102,7 +103,7 @@ const FormField = memo(
 );
 
 
-const AddCustomer = ({ profile, onClose }) => {
+const AddCustomer = ({  onClose }) => {
   const [activeSection, setActiveSection] = useState("personal");
   const [securityItems, setSecurityItems] = useState([
     { item: "", description: "", identification: "", value: "" },
@@ -173,6 +174,7 @@ const AddCustomer = ({ profile, onClose }) => {
       cityTown: "",
     },
   });
+    const { profile } = useAuth();
 
   // File upload state
   const [passportFile, setPassportFile] = useState(null);
@@ -1072,7 +1074,8 @@ const handleSaveDraft = async () => {
     toast.success("Draft saved successfully!", {
       position: "top-right",
       autoClose: 3000,
-    });
+      
+    });   navigate('/officer/customers'); 
   } catch (error) {
     console.error("Error saving draft:", error);
     toast.error("Failed to save draft. Please try again.", {

@@ -109,6 +109,7 @@ const handleOpenInteractions = (customer) => {
           )
         `)
         .eq("region_id", profile.region_id)
+         .eq("form_status", "submitted")
         .order("created_at", { ascending: false });
 
       if (error) {
