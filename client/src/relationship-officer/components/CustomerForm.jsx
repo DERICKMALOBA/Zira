@@ -15,13 +15,15 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   PlusIcon,
-  TrashIcon,
+  TrashIcon,ArrowLeftIcon ,
 } from "@heroicons/react/24/outline";
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import { supabase } from "../../supabaseClient";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { checkUniqueValue } from "../../utils/Unique";
+import { useAuth } from "../../hooks/userAuth";
 
 const FormField = memo(
   ({
@@ -106,7 +108,18 @@ const FormField = memo(
   }
 );
 
-const CustomerForm = ({ profile, onClose, leadData }) => {
+
+
+const CustomerForm = ({leadData: propLeadData,  onClose }) => {
+
+  
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { profile } = useAuth();
+
+  // receive data from props OR from navigation state
+  const leadData = propLeadData || location.state?.leadData || null;
+
   const [activeSection, setActiveSection] = useState("personal");
   const [securityItems, setSecurityItems] = useState([
     { item: "", description: "", identification: "", value: "" },
@@ -193,6 +206,7 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
   const [bothOfficersImage, setBothOfficersImage] = useState(null);
   const [previews, setPreviews] = useState({});
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+
 
   // Navigation sections with proper icons
   const sections = [
@@ -1675,28 +1689,34 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex justify-center items-start overflow-auto">
-      <div className="bg-white w-full max-w-7xl mx-4 my-8 rounded-xl shadow-lg p-8">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Customer Application
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Complete customer onboarding and loan application
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
-              disabled={isSubmitting}
-            >
-              <XCircleIcon className="h-8 w-8" />
-            </button>
-          </div>
-        </div>
+       <div className="bg-white rounded-xl shadow-md p-4 mb-6 border border-indigo-100">
+  <div className="flex items-center justify-between">
+    {/* Back Button */}
+    <button
+      onClick={() => navigate(-1)}
+      className="flex items-center gap-1 text-gray-600 hover:text-indigo-700 transition-colors"
+      disabled={isSubmitting}
+    >
+      <ArrowLeftIcon className="h-5 w-5" />
+      <span className="text-sm font-medium">Back</span>
+    </button>
+
+    {/* Title Section */}
+    <div className="text-start">
+      <h1 className="text-lg font-semibold  bg-clip-text text-slate-600">
+        Customer Application
+      </h1>
+     
+    </div>
+
+    {/* Placeholder for layout balance */}
+    <div className="w-[60px]" />
+  </div>
+</div>
+
 
         {/* Navigation Tabs */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-indigo-100">
@@ -1707,7 +1727,7 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
                 onClick={() => setActiveSection(id)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                   activeSection === id
-                    ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg"
+                    ? "bg-blue-300 text-white shadow-lg"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md"
                 }`}
               >
@@ -1910,39 +1930,34 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
                         <label className="block text-sm font-medium text-indigo-800 mb-3">
                           {file.label}
                         </label>
+<div className="flex w-full flex-col sm:flex-row gap-3">
+  {/* Upload Button */}
+  <label className="flex flex-1 items-center justify-center gap-2 px-3 py-2 bg-indigo-100 text-indigo-700 rounded-lg shadow-sm cursor-pointer hover:bg-indigo-200 transition-all overflow-hidden">
+    <ArrowUpTrayIcon className="w-5 h-5 flex-shrink-0" />
+    <span className="text-sm font-medium whitespace-nowrap">Upload</span>
+    <input
+      type="file"
+      accept="image/*"
+      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+      className="hidden"
+    />
+  </label>
 
-                        <div className="flex flex-col sm:flex-row gap-3 w-full">
-                          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg shadow-sm cursor-pointer hover:bg-indigo-200 transition">
-                            <ArrowUpTrayIcon className="w-5 h-5" />
-                            <span className="text-sm font-medium">Upload</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) =>
-                                handleFileUpload(e, file.handler, file.key)
-                              }
-                              className="hidden"
-                              handleNestedChange={handleNestedChange}
-                            />
-                          </label>
+  {/* Camera Button */}
+  <label className="flex flex-1 items-center justify-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg shadow-sm cursor-pointer hover:bg-blue-200 transition-all overflow-hidden">
+    <CameraIcon className="w-5 h-5 flex-shrink-0" />
+    <span className="text-sm font-medium whitespace-nowrap">Camera</span>
+    <input
+      type="file"
+      accept="image/*"
+      capture={file.key === "passport" ? "user" : "environment"}
+      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+      className="hidden"
+    />
+  </label>
+</div>
 
-                          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-indigo-700 transition">
-                            <CameraIcon className="w-5 h-5" />
-                            <span className="text-sm font-medium">Camera</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              capture={
-                                file.key === "passport" ? "user" : "environment"
-                              }
-                              onChange={(e) =>
-                                handleFileUpload(e, file.handler, file.key)
-                              }
-                              className="hidden"
-                              handleNestedChange={handleNestedChange}
-                            />
-                          </label>
-                        </div>
+
 
                         {previews[file.key] && (
                           <div className="mt-4 w-full relative">
@@ -2067,7 +2082,7 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
                     <h3 className="text-lg font-semibold text-gray-900">
                       Business Images
                     </h3>
-                    <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition-colors">
+                    <label className="flex items-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg cursor-pointer hover:bg-blue-500 transition-colors">
                       <PlusIcon className="h-4 w-4" />
                       Add Images
                       <input
@@ -2210,7 +2225,7 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
                             />
                           </label>
 
-                          <label className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition">
+                          <label className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg cursor-pointer hover:bg-blue-500 transition">
                             <CameraIcon className="w-5 h-5" />
                             Camera
                             <input
@@ -2269,7 +2284,7 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
                   <button
                     type="button"
                     onClick={addSecurityItem}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-300 text-slate-600 rounded-lg hover:bg-blue-500 transition-all shadow-md hover:shadow-lg"
                   >
                     <PlusIcon className="h-5 w-5" />
                     Add Security Item
@@ -2524,7 +2539,7 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
                             />
                           </label>
 
-                          <label className="flex items-center justify-center gap-1 px-3 py-1 bg-indigo-600 text-white rounded cursor-pointer hover:bg-indigo-700">
+                          <label className="flex items-center justify-center gap-1 px-3 py-1 bg-blue-300 text-slate-600 rounded cursor-pointer hover:bg-blue-500">
                             <CameraIcon className="w-4 h-4" />
                             Camera
                             <input
@@ -2683,7 +2698,7 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
                             />
                           </label>
 
-                          <label className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg cursor-pointer hover:bg-purple-700 transition">
+                          <label className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-slate-600 rounded-lg cursor-pointer hover:bg-blue-500 transition">
                             <CameraIcon className="w-5 h-5" />
                             Camera
                             <input
@@ -2746,7 +2761,7 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
                   <button
                     type="button"
                     onClick={addGuarantorSecurityItem}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-300 hover:bg-blue-500 transition-all shadow-md hover:shadow-lg"
                   >
                     <PlusIcon className="h-5 w-5" />
                     Add Guarantor Security Item
@@ -2913,7 +2928,7 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
                           />
                         </label>
 
-                        <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-indigo-700 transition">
+                        <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-slate-600 rounded-lg shadow-sm cursor-pointer hover:bg-blue-500 transition">
                           <CameraIcon className="w-5 h-5" />
                           <span className="text-sm font-medium">Camera</span>
                           <input
@@ -3011,7 +3026,7 @@ const CustomerForm = ({ profile, onClose, leadData }) => {
                   <button
                     type="submit"
                     disabled={isSubmitting || isSavingDraft}
-                    className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? (
                       <div className="flex items-center gap-2">

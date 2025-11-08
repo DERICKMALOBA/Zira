@@ -111,6 +111,7 @@ import AmendmentDetailsModal from "./relationship-officer/amendments/AmendmentDe
 import AmendmentDetailsPage from "./relationship-officer/amendments/AmendmentDetailsPage.jsx";
 import OfficerDrafts from "./relationship-officer/components/OfficerDrafts.jsx";
 import LoanBookingForm from "./relationship-officer/loans/LoanBooking.jsx";
+import CustomerForm from "./relationship-officer/components/CustomerForm.jsx";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -295,6 +296,16 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
           </ProtectedRoute>
         }
       />
+
+
+          <Route
+          path="/officer/customer-form"
+          element={
+            <ProtectedRoute allowedRoles={['relationship_officer']}>
+              <CustomerForm />
+            </ProtectedRoute>
+          }
+        />
                   <Route
                     path="/officer/loans/applications"
                     element={

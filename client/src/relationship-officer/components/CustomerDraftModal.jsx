@@ -2154,7 +2154,7 @@ if (guarantorId) {
             </label>
             <div className="flex gap-3 mb-3">
               {/* Upload */}
-              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg cursor-pointer hover:bg-purple-200 transition">
+              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-blue-500 rounded-lg cursor-pointer hover:bg-purple-200 transition">
                 <Upload className="w-5 h-5" />
                 Upload
                 <input
@@ -2176,7 +2176,7 @@ if (guarantorId) {
               </label>
 
               {/* Camera */}
-              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg cursor-pointer hover:bg-purple-700 transition">
+              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg cursor-pointer hover:bg-blue-500 transition">
                 <Camera className="w-5 h-5" />
                 Camera
                 <input
@@ -2598,7 +2598,7 @@ if (guarantorId) {
           handleSubmit(e); 
         }}
         disabled={isSubmitting || isSavingDraft}
-        className="px-6 py-3 bg-blue-300 text-slate-600 rounded-lg hover:bg-blue-500 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSubmitting ? (
           <div className="flex items-center gap-2">

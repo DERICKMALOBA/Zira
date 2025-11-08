@@ -21,14 +21,14 @@ import { useAuth } from "../hooks/userAuth";
 import { supabase } from "../supabaseClient";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import CustomerForm from "./components/CustomerForm"; // Import the actual CustomerForm component
+import { useNavigate } from 'react-router-dom';
+import CustomerForm from "./components/CustomerForm"; 
 
 const Leads = () => {
   const [leads, setLeads] = useState([]);
   const { profile } = useAuth();
-  const [selectedLead, setSelectedLead] = useState(null);
+   const navigate = useNavigate();
   const [showLeadForm, setShowLeadForm] = useState(false);
-  const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
@@ -43,6 +43,15 @@ const Leads = () => {
     status: "Cold",
   });
 
+
+    const handleConvertToCustomer = (lead) => {
+    navigate('/officer/customer-form', { 
+      state: { 
+        leadData: lead,
+        fromLeads: true 
+      } 
+    });
+  }; 
   //  Fetch leads for logged-in officer
   const fetchLeads = async () => {
     try {
@@ -176,28 +185,8 @@ const Leads = () => {
     }
   };
 
-  const handleConvertToCustomer = (lead) => {
-    setSelectedLead(lead);
-    setShowCustomerForm(true);
-  };
 
-  const handleCustomerConversionSuccess = async (leadId) => {
-    try {
-      const { error } = await supabase.from("leads").delete().eq("id", leadId);
-
-      if (error) {
-        console.error("Error deleting lead:", error);
-        toast.error("Failed to remove lead after conversion");
-        return;
-      }
-
-      setLeads(leads.filter((lead) => lead.id !== leadId));
-      toast.success("Lead successfully converted to customer");
-    } catch (err) {
-      console.error("Error handling lead conversion:", err);
-      toast.error("Error processing lead conversion");
-    }
-  };
+ 
 
   // Sorting
   const handleSort = (key) => {
@@ -628,19 +617,7 @@ const Leads = () => {
           </div>
         )}
 
-        {/* Customer Form - Using the actual imported component */}
-        {showCustomerForm && selectedLead && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-              <CustomerForm
-                profile={profile}
-                leadData={selectedLead}
-                onClose={() => setShowCustomerForm(false)}
-                onConversionSuccess={handleCustomerConversionSuccess}
-              />
-            </div>
-          </div>
-        )}
+       
       </div>
     </div>
   );

@@ -2191,7 +2191,7 @@ function EditAmendment({ customerId, onClose }) {
               </label>
 
               {/* Camera */}
-              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg cursor-pointer hover:bg-purple-700 transition">
+              <label className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg cursor-pointer hover:bg-blue-500 transition">
                 <Camera className="w-5 h-5" />
                 Camera
                 <input
