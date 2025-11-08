@@ -97,7 +97,7 @@ import CustomerListing from "./pages/reports/CustomerListing";
 import LoanDueReport from "./pages/reports/LoanDueReport";
 import DisbursementLoansReport from "./pages/reports/DisbursementLoansReport";
 import CustomerAccountModal from "./pages/reports/CustomerAccountModal";
-import CustomerDraft from "./relationship-officer/components/CustomerDraft";
+import CustomerDraft from "./relationship-officer/components/CustomerDraftModal.jsx";
 import CustomerStatementModal from "./pages/reports/AccountList";
 import OutstandingLoanBalanceReportEOM from "./pages/reports/OLBatEOM";
 import Customer360View from "./pages/registry/360View";
@@ -109,6 +109,8 @@ import AddCustomer from "./relationship-officer/components/AddCustomer.jsx";
 import EditAmendment from "./relationship-officer/amendments/EditAmendment.jsx";
 import AmendmentDetailsModal from "./relationship-officer/amendments/AmendmentDetailsModal.jsx"
 import AmendmentDetailsPage from "./relationship-officer/amendments/AmendmentDetailsPage.jsx";
+import OfficerDrafts from "./relationship-officer/components/OfficerDrafts.jsx";
+import LoanBookingForm from "./relationship-officer/loans/LoanBooking.jsx";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -284,6 +286,15 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
+
+                     <Route
+        path="/officer/loan-booking/:customerId"
+        element={
+          <ProtectedRoute>
+            <LoanBookingForm />
+          </ProtectedRoute>
+        }
+      />
                   <Route
                     path="/officer/loans/applications"
                     element={
@@ -321,7 +332,7 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                     path="/officer/customers/drafts"
                     element={
                       <ProtectedRoute>
-                        <CustomerDraft />
+                        <OfficerDrafts/>
                       </ProtectedRoute>
                     }
                   />
@@ -340,6 +351,17 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
   element={
     <ProtectedRoute>
       <CustomerDetailsModal />
+    </ProtectedRoute>
+  }
+/>
+
+
+
+<Route
+  path="/officer/drafts/view/:draftId"
+  element={
+    <ProtectedRoute>
+      <CustomerDraft />
     </ProtectedRoute>
   }
 />

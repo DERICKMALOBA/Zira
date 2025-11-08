@@ -10,12 +10,20 @@ import {
   CheckCircleIcon,
   ClockIcon,
   TagIcon,
-  PencilIcon,
+  PencilIcon, ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
+
+import { useNavigate,useLocation  } from 'react-router-dom';
 
 const LoanBookingForm = ({ customerData, onComplete }) => {
   const [duration, setDuration] = useState(4);
-  const [principalAmount, setPrincipalAmount] = useState(0);
+ const location = useLocation();
+  const navigate = useNavigate();
+  const customer = customerData || location.state?.customerData;
+  
+  // Get customerData from navigation state
+  
+  const [principalAmount, setPrincipalAmount] = useState("");
   const [calculated, setCalculated] = useState({});
   const [repaymentSchedule, setRepaymentSchedule] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -33,12 +41,12 @@ const LoanBookingForm = ({ customerData, onComplete }) => {
     mobile,
     bmScoredAmount,
     caScoredAmount,
-  } = customerData || {};
+  } = customer || {};
 
   //  RM takes precedence → use RM if available, else BM
   const approved_amount = caScoredAmount ?? bmScoredAmount ?? 0;
 
-  const handleClose = () => onComplete();
+
 
   // Product types configuration
   const productTypes = {
@@ -214,14 +222,23 @@ const LoanBookingForm = ({ customerData, onComplete }) => {
   };
 
   //  enforce principal <= approved_amount
-  const handlePrincipalChange = (e) => {
-    const value = parseFloat(e.target.value) || 0;
-    if (value <= approved_amount) {
-      setPrincipalAmount(value);
-    } else {
-      setPrincipalAmount(approved_amount);
-    }
-  };
+const handlePrincipalChange = (e) => {
+  const value = e.target.value;
+
+  if (value === '') {
+    setPrincipalAmount(''); // allow empty input
+    return;
+  }
+
+  const num = parseFloat(value);
+
+  if (num <= approved_amount) {
+    setPrincipalAmount(num);
+  } else {
+    setPrincipalAmount(approved_amount);
+  }
+};
+
 
   // Handle product type selection
   const handleProductTypeChange = (e) => {
@@ -301,7 +318,7 @@ const handleBookLoan = async () => {
 };
 
 
-  if (!customerData) {
+  if (!customer) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center">
@@ -316,42 +333,44 @@ const handleBookLoan = async () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
-      <div className="fixed top-4 right-4 z-50">
-        <button
-          onClick={handleClose}
-          className="p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
-          aria-label="Close"
-        >
-          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
+    
       
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-4 border border-indigo-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className=" font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                Loan Booking Confirmation
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Review and confirm loan disbursement details
-              </p>
-            </div>
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${
-              isValidAmount() 
-                ? 'bg-gradient-to-r from-emerald-100 to-green-100 border-emerald-200' 
-                : 'bg-gradient-to-r from-amber-100 to-yellow-100 border-amber-200'
-            }`}>
-              <CheckCircleIcon className={`h-5 w-5 ${isValidAmount() ? 'text-emerald-600' : 'text-amber-600'}`} />
-              <span className={`font-medium ${isValidAmount() ? 'text-emerald-700' : 'text-amber-700'}`}>
-                {isValidAmount() ? 'Ready to Book' : 'Check Amount & Product'}
-              </span>
-            </div>
-          </div>
-        </div>
+        <div className="bg-white rounded-xl shadow-md p-4 mb-4 border border-indigo-100 flex items-center justify-between">
+      {/* Back Button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+      >
+        <ArrowLeftIcon className="w-5 h-5" />
+        <span className="text-sm font-medium">Back</span>
+      </button>
+
+      {/* Title & Subtitle */}
+      <div className=" text-center">
+        <h1 className="text-lg font-bold bg-gradient-to-r from-gray-700 to-gray-700 bg-clip-text text-transparent">
+          Loan Booking Confirmation
+        </h1>
+        <p className="text-gray-600 text-sm mt-1">
+          Review and confirm loan disbursement details
+        </p>
+      </div>
+
+      {/* Status Badge */}
+      <div
+        className={`flex items-center gap-2 px-3 py-1 rounded-lg border text-sm ${
+          isValidAmount()
+            ? 'bg-gradient-to-r from-emerald-100 to-green-100 border-emerald-200 text-emerald-700'
+            : 'bg-gradient-to-r from-amber-100 to-yellow-100 border-amber-200 text-amber-700'
+        }`}
+      >
+        <CheckCircleIcon
+          className={`h-5 w-5 ${isValidAmount() ? 'text-emerald-600' : 'text-amber-600'}`}
+        />
+        <span>{isValidAmount() ? 'Ready to Book' : 'Check Amount & Product'}</span>
+      </div>
+    </div>
 
         {/* Main Content */}
         <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden">
@@ -554,7 +573,7 @@ const handleBookLoan = async () => {
                   <div className="overflow-x-auto">
                     <table className="min-w-full">
                       <thead>
-                        <tr className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
+                        <tr className="bg-blue-300 text-slate-600">
                           <th className="px-6 py-4 text-left font-semibold">Week</th>
                           <th className="px-6 py-4 text-left font-semibold">Due Date</th>
                           <th className="px-6 py-4 text-right font-semibold">Principal</th>

@@ -1,13 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import LoanBookingForm from './LoanBooking';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../../hooks/userAuth";
 
 function LoanApplication() {
   const [customers, setCustomers] = useState([]);
+    const navigate = useNavigate();
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [bookLoan, setBookLoan] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { profile } = useAuth();
   const [lastFetchTime, setLastFetchTime] = useState(0);
@@ -260,9 +261,13 @@ function LoanApplication() {
                       </button>
                     ) : (
                       <button
-                        onClick={() => setBookLoan(application)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
-                      >
+          onClick={() =>
+    navigate(`/officer/loan-booking/${application.id}`, {
+      state: { customerData: application },
+    })
+  }
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
+          >
                         <svg
                           className="w-4 h-4 mr-1"
                           fill="none"
@@ -298,19 +303,6 @@ function LoanApplication() {
         )}
       </div>
 
-      {/* Loan Booking Modal */}
-      {bookLoan && (
-        <div className="fixed inset-0 z-50 bg-white overflow-y-auto">
-          <LoanBookingForm
-            amendment={bookLoan}
-            customerData={bookLoan}
-            onComplete={() => {
-              setBookLoan(null);
-              fetchApprovedCustomers();
-            }}
-          />
-        </div>
-      )}
     </div>
   );
 }

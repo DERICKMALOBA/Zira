@@ -2,6 +2,7 @@ import { useState, memo, useEffect,useCallback } from "react";
 import "react-toastify/dist/ReactToastify.css";
 import { supabase } from "../../supabaseClient";
 import { toast } from "react-toastify";
+import { useParams, useNavigate } from "react-router-dom";
 import { Upload, Camera, XIcon } from "lucide-react";
 import {
   UserCircleIcon,
@@ -96,7 +97,10 @@ const FormField = memo(
 
 FormField.displayName = 'FormField';
 
-const CustomerDraft = ({ profile, onClose, customerId }) => { 
+const CustomerDraft = ({ profile, onClose }) => { 
+   const { draftId } = useParams();
+  const navigate = useNavigate();
+  const customerId = draftId;
   const [activeSection, setActiveSection] = useState("personal");
   const [securityItems, setSecurityItems] = useState([
     { item: "", description: "", identification: "", value: "" },
@@ -218,7 +222,7 @@ const loadCustomerData = async (id) => {
     setIsLoading(true);
     console.log("Loading full customer data for ID:", id);
 
-    // 1️⃣ Fetch customer
+    // 1️ Fetch customer
     const { data: customer, error: customerError } = await supabase
       .from("customers")
       .select("*")
@@ -228,7 +232,7 @@ const loadCustomerData = async (id) => {
     if (customerError) throw customerError;
     console.log("Customer data loaded:", customer);
 
-    // 2️⃣ Parallel fetch of related tables
+    // 2️ Parallel fetch of related tables
     const [
       { data: guarantor },
       { data: nextOfKin },
@@ -249,7 +253,7 @@ const loadCustomerData = async (id) => {
         .eq("customer_id", id),
     ]);
 
-    // 3️⃣ Fetch guarantor security if guarantor exists
+    // 3️ Fetch guarantor security if guarantor exists
     let guarantorSecurityData = [];
     if (guarantor?.id) {
       const { data } = await supabase
@@ -259,7 +263,7 @@ const loadCustomerData = async (id) => {
       guarantorSecurityData = data || [];
     }
 
-    // 4️⃣ Build form data
+    // 4️ Build form data
     const updatedFormData = {
       prefix: customer?.prefix || "",
       Firstname: customer?.Firstname || "",
@@ -337,7 +341,7 @@ const loadCustomerData = async (id) => {
     setFormData(updatedFormData);
     console.log("Form data set:", updatedFormData);
 
-    // 5️⃣ Security items
+    // 5️Security items
     const processedSecurityItems =
       securityItemsData?.map((item) => ({
         id: item.id,
@@ -355,7 +359,7 @@ const loadCustomerData = async (id) => {
     );
     setSecurityItemImages(securityImages || []);
 
-    // 6️⃣ Guarantor security items
+    // 6️ Guarantor security items
     const processedGuarantorSecurity =
       guarantorSecurityData?.map((item) => ({
         id: item.id,
@@ -373,7 +377,7 @@ const loadCustomerData = async (id) => {
     );
     setGuarantorSecurityImages(guarantorSecurityImages || []);
 
-    // 7️⃣ Image previews
+    // 7️ Image previews
     const imageData = {
       passport: customer?.passport_url || null,
       idFront: customer?.id_front_url || null,
@@ -402,10 +406,7 @@ const loadCustomerData = async (id) => {
     setPreviews(imageData);
     console.log("Images set:", imageData);
 
-    toast.success("Customer data loaded successfully!", {
-      position: "top-right",
-      autoClose: 2000,
-    });
+   
   } catch (error) {
     console.error("Error loading customer data:", error);
     toast.error("Failed to load customer data. Please try again.", {
@@ -416,6 +417,15 @@ const loadCustomerData = async (id) => {
   }
 };
 
+
+
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose();
+    } else {
+      navigate(-1); // Go back to previous page when used as route
+    }
+  }, [onClose, navigate])
 
   
   // Navigation sections with proper icons
@@ -921,7 +931,7 @@ if (guarantorId) {
       await documentUpload(bothOfficersImage, "Both Officers Image");
 
       toast.success("Customer information updated successfully!");
-      onClose();
+    handleClose();
     } catch (error) {
       console.error("Error updating customer:", error);
       toast.error(`Failed to update customer: ${error.message}`);
@@ -1095,52 +1105,36 @@ if (guarantorId) {
   }
 };
 
-  // Add loading indicator to your JSX
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex justify-center items-center">
-        <div className="bg-white rounded-2xl shadow-lg p-8 flex flex-col items-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-          <p className="text-gray-600">Loading customer data...</p>
-        </div>
-      </div>
-    );
-  }
+
+
 
 
 
   return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex justify-center items-start overflow-auto">
-      <div className="bg-white w-full max-w-7xl mx-4 my-8 rounded-xl shadow-lg p-8">
+ <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex justify-center py-10 px-4">
+  <div className="bg-white w-full max-w-6xl rounded-xl shadow-md p-8">
+
         {/* Header - Show if editing existing draft */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                {customerId ? "Edit Customer Draft" : "New Customer Application"}
-              </h1>
-              <p className="text-gray-600 mt-2">
-                {customerId 
-                  ? "Editing existing customer draft" 
-                  : "Complete customer onboarding and loan application"
-                }
-              </p>
-              {customerId && (
-                <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
-                  <CheckCircleIcon className="h-4 w-4" />
-                  <span>Existing draft loaded</span>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
-              disabled={isSubmitting || isSavingDraft}
-            >
-              <XCircleIcon className="h-8 w-8" />
-            </button>
-          </div>
-        </div>
+      
+<div className="flex items-center justify-between mb-6">
+  <button
+    onClick={() => navigate(-1)} // navigates back to the previous page
+    className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+  >
+    <ChevronLeftIcon className="h-5 w-5" />
+    <span className="text-sm font-medium">Back</span>
+  </button>
+
+  <div className=" flex-1 pl-2">
+    <h1 className="text-lg font-semibold bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
+      {customerId ? "Edit Customer Draft" : "New Customer Application"}
+    </h1>
+  
+   
+  </div>
+
+</div>
+
 
           {/* Navigation Tabs */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-indigo-100">
@@ -1151,7 +1145,7 @@ if (guarantorId) {
                 onClick={() => setActiveSection(id)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                   activeSection === id
-                    ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg"
+                    ? "bg-gradient-to-r from-blue-300 to-blue-300 text-white shadow-lg"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md"
                 }`}
               >
@@ -1364,35 +1358,39 @@ if (guarantorId) {
                           {file.label}
                         </label>
 
-                        {/* Upload / Camera buttons */}
-                        <div className="flex flex-col sm:flex-row gap-3 w-full">
-                          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg shadow-sm cursor-pointer hover:bg-blue-200 transition">
-                            <ArrowUpTrayIcon className="w-5 h-5" />
-                            <span className="text-sm font-medium">Upload</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) =>
-                                handleFileUpload(e, file.handler, file.key)
-                              }
-                              className="hidden"
-                            />
-                          </label>
 
-                          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-blue-700 transition">
-                            <CameraIcon className="w-5 h-5" />
-                            <span className="text-sm font-medium">Camera</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              capture="environment"
-                              onChange={(e) =>
-                                handleFileUpload(e, file.handler, file.key)
-                              }
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
+{/* Upload / Camera buttons */}
+<div className="flex flex-wrap gap-4 w-full max-w-md mx-auto">
+  {/* Upload Button */}
+  <label className="flex-1 max-w-[calc(50%-0.5rem)] flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg shadow-sm cursor-pointer hover:bg-blue-200 transition">
+    <ArrowUpTrayIcon className="w-4 h-4" />
+    <span className="text-sm font-medium">Upload</span>
+    <input
+      type="file"
+      accept="image/*"
+      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+      className="hidden"
+    />
+  </label>
+
+  {/* Camera Button */}
+  <label className="flex-1 max-w-[calc(50%-0.5rem)] flex items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-slate-600 rounded-lg shadow-sm cursor-pointer hover:bg-blue-500 transition">
+    <CameraIcon className="w-4 h-4" />
+    <span className="text-sm font-medium">Camera</span>
+    <input
+      type="file"
+      accept="image/*"
+      capture="environment"
+      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+      className="hidden"
+    />
+  </label>
+</div>
+
+
+
+
+
 
                         {/* Preview */}
                         {(file.preview || file.existing) && (
@@ -1518,7 +1516,7 @@ if (guarantorId) {
                     <h3 className="text-lg font-semibold text-gray-900">
                       Business Images
                     </h3>
-                    <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition-colors">
+                    <label className="flex items-center gap-2 px-4 py-2 bg-blue-300 text-slate-600 rounded-lg cursor-pointer hover:bg-blue-400 transition-colors">
                       <PlusIcon className="h-4 w-4" />
                       Add Images
                       <input
@@ -1639,7 +1637,7 @@ if (guarantorId) {
                       {/* Header */}
                       <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                          <ShieldCheckIcon className="h-5 w-5 text-indigo-600 mr-2" />
+                          <ShieldCheckIcon className="h-5 w-5 text-blue-500 mr-2" />
                           Security Item {index + 1}
                         </h3>
                         {securityItems.length > 1 && (
@@ -1712,7 +1710,7 @@ if (guarantorId) {
                           </label>
 
                           {/* Camera */}
-                          <label className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg cursor-pointer hover:bg-indigo-700 transition">
+                          <label className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg cursor-pointer hover:bg-blue-500 transition">
                             <Camera className="w-5 h-5" />
                             Camera
                             <input
@@ -1778,7 +1776,8 @@ if (guarantorId) {
                   <button
                     type="button"
                     onClick={addSecurityItem}
-                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-300 text-slate-600 rounded-lg hover:bg-blue-500
+ transition-all shadow-md hover:shadow-lg"
                   >
                     <PlusIcon className="h-5 w-5" />
                     Add Security Item
@@ -2018,7 +2017,7 @@ if (guarantorId) {
                           </label>
 
                           {/* Camera button */}
-                          <label className="flex items-center justify-center gap-1 px-3 py-1 bg-indigo-600 text-white rounded cursor-pointer hover:bg-indigo-700">
+                          <label className="flex items-center justify-center gap-1 px-3 py-1 bg-blue-300 text-slate-600 rounded cursor-pointer hover:bg-blue-500">
                             <Camera size={16} />
                             Camera
                             <input
@@ -2286,7 +2285,7 @@ if (guarantorId) {
           setGuarantorSecurityItems((prev) => [...prev, newItem]);
           setGuarantorSecurityImages((prev) => [...prev, []]);
         }}
-        className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+        className="flex items-center gap-2 px-6 py-3 bg-blue-300  text-slate-600 rounded-lg hover:bg-blue-500 transition-all shadow-md hover:shadow-lg"
       >
         <PlusIcon className="h-5 w-5" />
         Add Guarantor Security Item
@@ -2459,7 +2458,7 @@ if (guarantorId) {
               />
             </label>
 
-            <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-blue-700 transition">
+            <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-blue-300 text-slate-600 rounded-lg shadow-sm cursor-pointer hover:bg-blue-500 transition">
               <CameraIcon className="w-5 h-5" />
               <span className="text-sm font-medium">Camera</span>
               <input
@@ -2558,7 +2557,7 @@ if (guarantorId) {
       type="button"
       onClick={handleSaveDraft}
       disabled={isSavingDraft || isSubmitting}
-      className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+      className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {isSavingDraft ? (
         <div className="flex items-center gap-2">
@@ -2578,7 +2577,7 @@ if (guarantorId) {
       <button
         type="button"
         onClick={(e) => {
-          e.preventDefault(); // 🛑 Prevent any accidental form submission
+          e.preventDefault(); //  Prevent any accidental form submission
           const currentIndex = sections.findIndex((s) => s.id === activeSection);
           const nextIndex = currentIndex + 1;
           if (nextIndex < sections.length) {
@@ -2596,10 +2595,10 @@ if (guarantorId) {
         type="button"
         onClick={(e) => {
           e.preventDefault();
-          handleSubmit(e); // ✅ Explicitly call your handleSubmit instead of auto form submission
+          handleSubmit(e); 
         }}
         disabled={isSubmitting || isSavingDraft}
-        className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-6 py-3 bg-blue-300 text-slate-600 rounded-lg hover:bg-blue-500 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSubmitting ? (
           <div className="flex items-center gap-2">

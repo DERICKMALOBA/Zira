@@ -18,8 +18,10 @@ import {
   DevicePhoneMobileIcon,
   PhotoIcon,
   PlusIcon,
-  TrashIcon,
+  TrashIcon, ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
+import { useAuth } from "../../hooks/userAuth";
+import { useNavigate } from "react-router-dom";
 
 import { Upload, Camera, XIcon } from "lucide-react";
 
@@ -93,6 +95,8 @@ function EditAmendment({ customerId, onClose }) {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+     const { profile } = useAuth();
+      const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     prefix: "",
@@ -166,6 +170,7 @@ function EditAmendment({ customerId, onClose }) {
   const [guarantorIdBackFile, setGuarantorIdBackFile] = useState(null);
   const [guarantorSecurityImages, setGuarantorSecurityImages] = useState([]);
   const [previews, setPreviews] = useState({});
+   const [isSavingDraft, setIsSavingDraft] = useState(false);
 
   // Document verification states
   const [officerClientImage1, setOfficerClientImage1] = useState(null);
@@ -955,6 +960,195 @@ function EditAmendment({ customerId, onClose }) {
     }
   };
 
+  // Upload file helper function (keep the same)
+  const uploadFile = async (file, path, bucket = "customers") => {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(path, file, { upsert: true });
+
+      if (error) throw error;
+
+      const { data: urlData, error: urlError } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(data.path);
+
+      if (urlError) throw urlError;
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error(`Failed to upload file: ${error.message}`);
+      return null;
+    }
+  };
+  const handleSaveDraft = async () => {
+    setIsSavingDraft(true);
+  
+    try {
+      // Determine if this is an update (existing form) or a new draft
+      const existingCustomerId = formData?.id || null;
+  
+      // Upload available files (optional)
+      let passportUrl = formData.passport_url || null;
+      let idFrontUrl = formData.id_front_url || null;
+      let idBackUrl = formData.id_back_url || null;
+      let houseImageUrl = formData.house_image_url || null;
+  
+      if (passportFile)
+        passportUrl = await uploadFile(
+          passportFile,
+          `personal/${Date.now()}_passport_${passportFile.name}`,
+          "customers"
+        );
+  
+      if (idFrontFile)
+        idFrontUrl = await uploadFile(
+          idFrontFile,
+          `personal/${Date.now()}_id_front_${idFrontFile.name}`,
+          "customers"
+        );
+  
+      if (idBackFile)
+        idBackUrl = await uploadFile(
+          idBackFile,
+          `personal/${Date.now()}_id_back_${idBackFile.name}`,
+          "customers"
+        );
+  
+      if (houseImageFile)
+        houseImageUrl = await uploadFile(
+          houseImageFile,
+          `personal/${Date.now()}_house_${houseImageFile.name}`,
+          "customers"
+        );
+  
+      // --- Prepare the payload ---
+      const customerPayload = {
+        prefix: formData.prefix || null,
+        Firstname: formData.Firstname || null,
+        Surname: formData.Surname || null,
+        Middlename: formData.Middlename || null,
+        marital_status: formData.maritalStatus || null,
+        residence_status: formData.residenceStatus || null,
+        mobile: formData.mobile || null,
+        alternative_mobile: formData.alternativeMobile || null,
+        occupation: formData.occupation || null,
+        date_of_birth: formData.dateOfBirth || null,
+        gender: formData.gender || null,
+        id_number: formData.idNumber ? parseInt(formData.idNumber) : null,
+        postal_address: formData.postalAddress || null,
+        code: formData.code ? parseInt(formData.code) : null,
+        town: formData.town || null,
+        county: formData.county || null,
+        business_name: formData.businessName || null,
+        business_type: formData.businessType || null,
+        daily_Sales: formData.daily_Sales
+          ? parseFloat(formData.daily_Sales)
+          : null,
+        year_established: formData.yearEstablished 
+    ? new Date(formData.yearEstablished) 
+    : null,
+  
+        business_location: formData.businessLocation || null,
+        road: formData.road || null,
+        landmark: formData.landmark || null,
+        has_local_authority_license:
+          formData.hasLocalAuthorityLicense === "Yes",
+        prequalifiedAmount: formData.prequalifiedAmount
+          ? parseFloat(formData.prequalifiedAmount)
+          : null,
+        passport_url: passportUrl,
+        id_front_url: idFrontUrl,
+        id_back_url: idBackUrl,
+        house_image_url: houseImageUrl,
+        form_status: "draft",
+        status: "pending",
+        created_by: profile?.id,
+        branch_id: profile?.branch_id,
+        region_id: profile?.region_id,
+        updated_at: new Date().toISOString(),
+      };
+  
+      let draftResult;
+  
+      if (existingCustomerId) {
+        // Update existing record
+        draftResult = await supabase
+          .from("customers")
+          .update(customerPayload)
+          .eq("id", existingCustomerId)
+          .select("id")
+          .single();
+      } else {
+        // Insert new record
+        draftResult = await supabase
+          .from("customers")
+          .insert([{ ...customerPayload, created_at: new Date().toISOString() }])
+          .select("id")
+          .single();
+      }
+  
+      if (draftResult.error) throw draftResult.error;
+      const customerId = draftResult.data.id;
+  
+      // --- Save related data ---
+      const nextOfKin = formData.nextOfKin || {};
+      if (Object.values(nextOfKin).some((val) => val))
+        await supabase.from("next_of_kin").upsert(
+          {
+            customer_id: customerId,
+            ...nextOfKin,
+            created_by: profile?.id,
+            branch_id: profile?.branch_id,
+            region_id: profile?.region_id,
+          },
+          { onConflict: "customer_id" }
+        );
+  
+      const guarantor = formData.guarantor || {};
+      if (Object.values(guarantor).some((val) => val))
+        await supabase.from("guarantors").upsert(
+          {
+            customer_id: customerId,
+            ...guarantor,
+            created_by: profile?.id,
+            branch_id: profile?.branch_id,
+            region_id: profile?.region_id,
+          },
+          { onConflict: "customer_id" }
+        );
+  
+      if (securityItems.length > 0) {
+        const itemsToInsert = securityItems.map((s) => ({
+          customer_id: customerId,
+          item: s.item || null,
+          description: s.description || null,
+          identification: s.identification || null,
+          value: s.value ? parseFloat(s.value) : null,
+          created_by: profile?.id,
+          branch_id: profile?.branch_id,
+          region_id: profile?.region_id,
+        }));
+        await supabase.from("security_items").insert(itemsToInsert);
+      }
+  
+      toast.success("Draft saved successfully!", {
+        position: "top-right",
+        autoClose: 3000,
+        
+      });   navigate('/officer/customers'); 
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      toast.error("Failed to save draft. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center">
@@ -990,25 +1184,25 @@ function EditAmendment({ customerId, onClose }) {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className=" p-8 mb-0 ">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-green-700 to-green-700 bg-clip-text text-transparent">
-                Edit Customer Information
-              </h1>
-              <p className="text-gray-600 mt-2">
-                Update and modify customer application details
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
-              disabled={isSubmitting}
-            >
-              <XCircleIcon className="h-8 w-8" />
-            </button>
-          </div>
-        </div>
+       <div className="p-4 border-b border-gray-100 mb-4">
+  <div className="flex items-center gap-3">
+    <button
+      onClick={onClose}
+      className="text-gray-600 hover:text-green-700 transition"
+      disabled={isSubmitting}
+    >
+      <ArrowLeftIcon className="h-6 w-6" />
+    </button>
+    <div>
+      <h1 className="text-lg font-semibold text-gray-800">
+        Edit Customer Information
+      </h1>
+      <p className="text-sm text-gray-500">
+        Update and modify customer application details
+      </p>
+    </div>
+  </div>
+</div>
 
         {/* Navigation Tabs */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-indigo-100">
@@ -1019,7 +1213,7 @@ function EditAmendment({ customerId, onClose }) {
                 onClick={() => setActiveSection(id)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                   activeSection === id
-                    ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg"
+                    ? "bg-gradient-to-r from-blue-300 to-blue-300 text-slate-700 shadow-lg"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md"
                 }`}
               >
@@ -1210,34 +1404,34 @@ function EditAmendment({ customerId, onClose }) {
                         </label>
 
                         {/* Upload / Camera buttons */}
-                        <div className="flex flex-col sm:flex-row gap-3 w-full">
-                          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg shadow-sm cursor-pointer hover:bg-blue-200 transition">
-                            <ArrowUpTrayIcon className="w-5 h-5" />
-                            <span className="text-sm font-medium">Upload</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) =>
-                                handleFileUpload(e, file.handler, file.key)
-                              }
-                              className="hidden"
-                            />
-                          </label>
+ <div className="flex items-center justify-between w-full px-2">
+  {/* Upload Button - Left */}
+  <label className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg shadow-sm cursor-pointer hover:bg-blue-200 transition w-[45%] sm:w-[40%]">
+    <ArrowUpTrayIcon className="w-5 h-5" />
+    <span className="text-sm font-medium">Upload</span>
+    <input
+      type="file"
+      accept="image/*"
+      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+      className="hidden"
+    />
+  </label>
 
-                          <label className="flex flex-1 items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-blue-700 transition">
-                            <CameraIcon className="w-5 h-5" />
-                            <span className="text-sm font-medium">Camera</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              capture="environment"
-                              onChange={(e) =>
-                                handleFileUpload(e, file.handler, file.key)
-                              }
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
+  {/* Camera Button - Right */}
+  <label className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm cursor-pointer hover:bg-blue-700 transition w-[45%] sm:w-[40%]">
+    <CameraIcon className="w-5 h-5" />
+    <span className="text-sm font-medium">Camera</span>
+    <input
+      type="file"
+      accept="image/*"
+      capture="environment"
+      onChange={(e) => handleFileUpload(e, file.handler, file.key)}
+      className="hidden"
+    />
+  </label>
+</div>
+
+
 
                         {/* Preview */}
                         {(file.preview || file.existing) && (
@@ -2343,68 +2537,79 @@ function EditAmendment({ customerId, onClose }) {
 )}
 
             {/* Action Buttons */}
-            <div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
-              <div className="flex gap-4">
-                {/* Single Previous button */}
-                {activeSection !== sections[0].id && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const currentIndex = sections.findIndex(
-                        (s) => s.id === activeSection
-                      );
-                      setActiveSection(sections[currentIndex - 1].id);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    <ChevronLeftIcon className="h-4 w-4" />
-                    Previous
-                  </button>
-                )}
+          <div className="flex justify-between items-center pt-8 mt-8 border-t border-gray-200">
+  {/* Left Section - Previous */}
+  <div className="w-1/3 flex justify-start">
+    {activeSection !== sections[0].id && (
+      <button
+        type="button"
+        onClick={() => {
+          const currentIndex = sections.findIndex((s) => s.id === activeSection);
+          setActiveSection(sections[currentIndex - 1].id);
+        }}
+        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+      >
+        <ChevronLeftIcon className="h-4 w-4" />
+        Previous
+      </button>
+    )}
+  </div>
 
-                {/* Single Next button */}
-                {activeSection !== sections[sections.length - 1].id && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const currentIndex = sections.findIndex(
-                        (s) => s.id === activeSection
-                      );
-                      setActiveSection(sections[currentIndex + 1].id);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Next
-                    <ChevronRightIcon className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+  {/* Center Section - Save as Draft */}
+  <div className="w-1/3 flex justify-center">
+    <button
+      type="button"
+      onClick={handleSaveDraft}
+      disabled={isSavingDraft || isSubmitting}
+      className="flex items-center gap-2 px-5 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-700 transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {isSavingDraft ? (
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+          Saving Draft...
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <DocumentTextIcon className="h-4 w-4" />
+          Save as Draft
+        </div>
+      )}
+    </button>
+  </div>
 
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      Saving Changes...
-                    </div>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </button>
-              </div>
-            </div>
+  {/* Right Section - Next and Save */}
+  <div className="w-1/3 flex justify-end gap-3">
+    {activeSection !== sections[sections.length - 1].id && (
+      <button
+        type="button"
+        onClick={() => {
+          const currentIndex = sections.findIndex((s) => s.id === activeSection);
+          setActiveSection(sections[currentIndex + 1].id);
+        }}
+        className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+      >
+        Next
+        <ChevronRightIcon className="h-4 w-4" />
+      </button>
+    )}
+
+    <button
+      type="submit"
+      disabled={isSubmitting}
+      className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-green-600 to-green-600 text-white rounded-lg hover:from-green-700 hover:to-green-700 transition-all shadow-md hover:shadow-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {isSubmitting ? (
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+          Saving...
+        </div>
+      ) : (
+        "Save"
+      )}
+    </button>
+  </div>
+</div>
+
           </form>
         </div>
       </div>

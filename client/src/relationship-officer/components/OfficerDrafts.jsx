@@ -2,15 +2,16 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { Eye, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
-import { useAuth } from "../../hooks/userAuth"; //  Import the auth hook
-import CustomerDraft from "./CustomerDraftModal";
+import { useAuth } from "../../hooks/userAuth"; 
+import { useNavigate } from "react-router-dom";
 
-const CustomerDrafts = () => {
-  const { profile, loading: authLoading } = useAuth(); // Get profile from auth
+
+const OfficerDrafts = () => {
+  const { profile, loading: authLoading } = useAuth(); 
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDraft, setSelectedDraft] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+   const navigate = useNavigate();
 
   // Fetch drafts
   const fetchDrafts = async () => {
@@ -51,9 +52,8 @@ const CustomerDrafts = () => {
     if (!authLoading && profile?.id) fetchDrafts();
   }, [profile, authLoading]);
 
-  const handleViewDraft = (draft) => {
-    setSelectedDraft(draft);
-    setIsModalOpen(true);
+  const handleViewDraft = (draftId) => {
+    navigate(`/officer/drafts/view/${draftId}`);
   };
 
   // Extract the nested ternary into a separate variable
@@ -100,7 +100,8 @@ const CustomerDrafts = () => {
                 <td className="px-4 py-2">{draft.business_location || "N/A"}</td>
                 <td className="px-4 py-2 text-center">
                   <button
-                    onClick={() => handleViewDraft(draft)}
+                   onClick={() => handleViewDraft(draft.id)}
+
                     className="inline-flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                   >
                     <Eye className="h-4 w-4" /> View
@@ -130,19 +131,8 @@ const CustomerDrafts = () => {
 
       {renderContent()}
 
-      {isModalOpen && selectedDraft && (
-        <CustomerDraft
-          profile={profile}
-          customerId={selectedDraft.id}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedDraft(null);
-            fetchDrafts();
-          }}
-        />
-      )}
     </div>
   );
 };
 
-export default CustomerDrafts;
+export default OfficerDrafts;
