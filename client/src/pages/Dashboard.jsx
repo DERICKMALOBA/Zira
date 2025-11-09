@@ -8,6 +8,7 @@ const Dashboard = () => {
   const [userRole, setUserRole] = useState(null);
   const [userBranchId, setUserBranchId] = useState(null);
   const [userRegionId, setUserRegionId] = useState(null);
+  const [recentActivity, setRecentActivity] = useState([]);
   const navigate = useNavigate();
 
   // Dashboard metrics state
@@ -30,12 +31,18 @@ const Dashboard = () => {
       disbursedLoansAmount: 0,
       disbursedLoansCount: 0,
       loansDueToday: 0,
-      outstandingArrears: 0
+      outstandingArrears: 0,
+      monthToDateArrears: 0,
+      totalLoanArrears: 0
     },
     collectionOverview: {
       todayCollectionAmount: 0,
       todayCollectionRate: 0,
       tomorrowCollection: 0,
+      monthlyCollectionAmount: 0,
+      monthlyCollectionRate: 0,
+      prepaymentAmount: 0,
+      prepaymentRate: 0,
       par: 0
     },
     pendingActions: {
@@ -48,7 +55,6 @@ const Dashboard = () => {
     }
   });
 
-  const [recentActivity, setRecentActivity] = useState([]);
   const [branches, setBranches] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loans, setLoans] = useState([]);
@@ -102,6 +108,7 @@ const Dashboard = () => {
           branchId: profileData?.branch_id,
           regionName: profileData?.regions?.name,
           branchName: profileData?.branches?.name,
+          id: user.id,
         };
       }
     } catch (error) {
@@ -134,7 +141,6 @@ const Dashboard = () => {
         .select("id, name, code, address, region_id")
         .order("name");
 
-      // Filter by selected region if not "all"
       if (regionFilter !== "all") {
         query = query.eq("region_id", regionFilter);
       }
@@ -171,22 +177,15 @@ const Dashboard = () => {
         .eq("users.role", "relationship_officer")
         .order("users(full_name)");
 
-      // Branch Manager → ROs in their own branch only
       if (userRole === "branch_manager" && userBranchId) {
         query = query.eq("branch_id", userBranchId);
-      }
-      // Regional Manager → show ROs in selected branch or all ROs in region
-      else if (userRole === "regional_manager") {
+      } else if (userRole === "regional_manager") {
         if (branchFilter !== "all") {
-          // Show ROs from selected branch
           query = query.eq("branch_id", branchFilter);
         } else {
-          // Show all ROs in the region
           query = query.eq("region_id", userRegionId);
         }
-      }
-      // Credit Analyst / Customer Service → branch filter as usual
-      else if (branchFilter !== "all") {
+      } else if (branchFilter !== "all") {
         query = query.eq("branch_id", branchFilter);
       }
 
@@ -228,7 +227,6 @@ const Dashboard = () => {
         .order("created_at", { ascending: false })
         .limit(10);
 
-      // Apply role-based filters
       if (role === "branch_manager") {
         loansQuery = loansQuery.eq("branch_id", branchId);
       } else if (role === "regional_manager") {
@@ -238,7 +236,6 @@ const Dashboard = () => {
       const { data: recentLoans, error: loansError } = await loansQuery;
       if (loansError) throw loansError;
 
-      // Format activities
       const activities = recentLoans?.map(loan => {
         const customerName = `${loan.customers.Firstname} ${loan.customers.Surname}`;
         const timeAgo = getTimeAgo(new Date(loan.created_at));
@@ -324,126 +321,206 @@ const Dashboard = () => {
       return 0;
     }
   };
-  const fetchLeadsConversionRate = async (
-  regionId,
-  branchId,
-  role,
-  userId,
-  selectedRegion = "all",
-  selectedBranch = "all",
-  selectedRO = "all"
-) => {
+
+const fetchMonthlyCollectionData = async (loanIds) => {
+  if (!loanIds || loanIds.length === 0)
+    return { monthlyAmount: 0, monthlyRate: 0 };
+
   try {
-    // === Helper: Apply correct filters ===
-   const applyFilters = (query, table = "customers") => {
-  if (role === "branch_manager") {
-    query = query.eq("branch_id", branchId);
-  } 
-  else if (role === "regional_manager") {
-    if (selectedRegion !== "all") {
-      query = query.eq("region_id", selectedRegion);
-    } else {
-      //  All regions = no filter at all
-    }
-
-    if (selectedBranch !== "all") {
-      query = query.eq("branch_id", selectedBranch);
-    }
-  } 
-  else if (role === "relationship_officer") {
-    query = query.eq("created_by", userId);
-  } 
-  else if (role === "credit_analyst_officer" || role === "customer_service_officer") {
-    //  Allow all filter combinations properly
-    if (selectedRegion !== "all") query = query.eq("region_id", selectedRegion);
-    if (selectedBranch !== "all") query = query.eq("branch_id", selectedBranch);
-    if (selectedRO !== "all") query = query.eq("created_by", selectedRO);
-  }
-
-  return query;
-};
-
-
-    // === Fetch all leads ===
-    let leadsQuery = applyFilters(supabase.from("leads").select("id, created_at"));
-    const { data: leads, error: leadsError } = await leadsQuery;
-    if (leadsError) throw leadsError;
-
-    // === Fetch converted leads (customers) ===
-    let customersQuery = applyFilters(
-      supabase.from("customers").select("id, created_at, form_status")
-    );
-    customersQuery = customersQuery.neq("form_status", "draft");
-
-    const { data: customers, error: customersError } = await customersQuery;
-    if (customersError) throw customersError;
-
-    // === Totals ===
-    const totalLeads = (leads?.length || 0) + (customers?.length || 0);
-    const convertedLeads = customers?.length || 0;
-    const conversionRate =
-      totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
-
-    // === Monthly ===
     const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
 
-    const leadsThisMonth = leads.filter(
-      (l) =>
-        new Date(l.created_at).getMonth() === currentMonth &&
-        new Date(l.created_at).getFullYear() === currentYear
-    ).length;
+    //  Fetch total repayments received this month
+    const { data: repayments, error: repayError } = await supabase
+      .from("mpesa_c2b_transactions")
+      .select("amount, loan_id, created_at")
+      .in("loan_id", loanIds)
+      .eq("status", "applied")
+      .eq("payment_type", "repayment")
+      .gte("created_at", startOfMonth)
+      .lte("created_at", endOfMonth);
 
-    const customersThisMonth = customers.filter(
-      (c) =>
-        new Date(c.created_at).getMonth() === currentMonth &&
-        new Date(c.created_at).getFullYear() === currentYear
-    ).length;
+    if (repayError) throw repayError;
 
-    const totalThisMonth = leadsThisMonth + customersThisMonth;
-    const conversionRateMonth =
-      totalThisMonth > 0 ? Math.round((customersThisMonth / totalThisMonth) * 100) : 0;
+    const monthlyAmount = repayments?.reduce(
+      (sum, r) => sum + (parseFloat(r.amount) || 0),
+      0
+    );
 
-    // === Yearly ===
-    const leadsThisYear = leads.filter(
-      (l) => new Date(l.created_at).getFullYear() === currentYear
-    ).length;
+    //  Fetch expected installments for this month
+    const { data: installments, error: instError } = await supabase
+      .from("loan_installments")
+      .select("due_amount")
+      .in("loan_id", loanIds)
+      .gte("due_date", startOfMonth)
+      .lte("due_date", endOfMonth);
 
-    const customersThisYear = customers.filter(
-      (c) => new Date(c.created_at).getFullYear() === currentYear
-    ).length;
+    if (instError) throw instError;
 
-    const totalThisYear = leadsThisYear + customersThisYear;
-    const conversionRateYear =
-      totalThisYear > 0 ? Math.round((customersThisYear / totalThisYear) * 100) : 0;
+    const totalMonthlyExpected = installments?.reduce(
+      (sum, inst) => sum + (parseFloat(inst.due_amount) || 0),
+      0
+    );
 
-    // Safe numeric return
-    const safe = (val) => (isNaN(val) || val === null ? 0 : Number(val));
+    //  Calculate Monthly Collection Rate
+    const monthlyRate =
+      totalMonthlyExpected > 0
+        ? Math.round((monthlyAmount / totalMonthlyExpected) * 100)
+        : 0;
 
-    return {
-      totalLeads: safe(totalLeads),
-      convertedLeads: safe(convertedLeads),
-      conversionRate: safe(conversionRate),
-      conversionRateMonth: safe(conversionRateMonth),
-      conversionRateYear: safe(conversionRateYear),
-    };
+    return { monthlyAmount, monthlyRate };
   } catch (error) {
-    console.error("Error fetching leads conversion rate:", error);
-    return {
-      totalLeads: 0,
-      convertedLeads: 0,
-      conversionRate: 0,
-      conversionRateMonth: 0,
-      conversionRateYear: 0,
-    };
+    console.error("Error fetching monthly collection data:", error);
+    return { monthlyAmount: 0, monthlyRate: 0 };
   }
 };
 
 
 
+  // Fetch prepayment data
+  const fetchPrepaymentData = async (loanIds) => {
+    if (!loanIds || loanIds.length === 0) return { prepaymentAmount: 0, prepaymentRate: 0 };
+    
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      
+      const { data: tomorrowInstallments, error } = await supabase
+        .from("loan_installments")
+        .select("due_amount, loan_id")
+        .in("loan_id", loanIds)
+        .eq("due_date", tomorrowStr);
 
+      if (error) throw error;
+      
+      const totalDueTomorrow = tomorrowInstallments?.reduce((sum, inst) => sum + (parseFloat(inst.due_amount) || 0), 0) || 0;
+      
+      // Calculate prepayments made today for tomorrow's installments
+      const { data: prepayments, error: prepayError } = await supabase
+        .from("mpesa_c2b_transactions")
+        .select("amount, loan_id")
+        .in("loan_id", loanIds)
+        .eq("status", "applied")
+        .eq("payment_type", "repayment")
+        .gte("created_at", new Date().toISOString().split('T')[0]);
 
+      if (prepayError) throw prepayError;
+      
+      const prepaymentAmount = prepayments?.reduce((sum, transaction) => sum + (parseFloat(transaction.amount) || 0), 0) || 0;
+      const prepaymentRate = totalDueTomorrow > 0 ? Math.round((prepaymentAmount / totalDueTomorrow) * 100) : 0;
+
+      return { 
+        prepaymentAmount, 
+        prepaymentRate,
+        totalDueTomorrow 
+      };
+    } catch (error) {
+      console.error("Error fetching prepayment data:", error);
+      return { prepaymentAmount: 0, prepaymentRate: 0, totalDueTomorrow: 0 };
+    }
+  };
+
+  const fetchLeadsConversionRate = async (
+    regionId,
+    branchId,
+    role,
+    userId,
+    selectedRegion = "all",
+    selectedBranch = "all",
+    selectedRO = "all"
+  ) => {
+    try {
+      const applyFilters = (query) => {
+        if (role === "branch_manager") {
+          query = query.eq("branch_id", branchId);
+        } else if (role === "regional_manager") {
+          if (selectedRegion !== "all") {
+            query = query.eq("region_id", selectedRegion);
+          }
+          if (selectedBranch !== "all") {
+            query = query.eq("branch_id", selectedBranch);
+          }
+        } else if (role === "relationship_officer") {
+          query = query.eq("created_by", userId);
+        } else if (role === "credit_analyst_officer" || role === "customer_service_officer") {
+          if (selectedRegion !== "all") query = query.eq("region_id", selectedRegion);
+          if (selectedBranch !== "all") query = query.eq("branch_id", selectedBranch);
+          if (selectedRO !== "all") query = query.eq("created_by", selectedRO);
+        }
+        return query;
+      };
+
+      let leadsQuery = applyFilters(supabase.from("leads").select("id, created_at"));
+      const { data: leads, error: leadsError } = await leadsQuery;
+      if (leadsError) throw leadsError;
+
+      let customersQuery = applyFilters(
+        supabase.from("customers").select("id, created_at, form_status")
+      );
+      customersQuery = customersQuery.neq("form_status", "draft");
+
+      const { data: customers, error: customersError } = await customersQuery;
+      if (customersError) throw customersError;
+
+      const totalLeads = (leads?.length || 0) + (customers?.length || 0);
+      const convertedLeads = customers?.length || 0;
+      const conversionRate =
+        totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+
+      const leadsThisMonth = leads.filter(
+        (l) =>
+          new Date(l.created_at).getMonth() === currentMonth &&
+          new Date(l.created_at).getFullYear() === currentYear
+      ).length;
+
+      const customersThisMonth = customers.filter(
+        (c) =>
+          new Date(c.created_at).getMonth() === currentMonth &&
+          new Date(c.created_at).getFullYear() === currentYear
+      ).length;
+
+      const totalThisMonth = leadsThisMonth + customersThisMonth;
+      const conversionRateMonth =
+        totalThisMonth > 0 ? Math.round((customersThisMonth / totalThisMonth) * 100) : 0;
+
+      const leadsThisYear = leads.filter(
+        (l) => new Date(l.created_at).getFullYear() === currentYear
+      ).length;
+
+      const customersThisYear = customers.filter(
+        (c) => new Date(c.created_at).getFullYear() === currentYear
+      ).length;
+
+      const totalThisYear = leadsThisYear + customersThisYear;
+      const conversionRateYear =
+        totalThisYear > 0 ? Math.round((customersThisYear / totalThisYear) * 100) : 0;
+
+      const safe = (val) => (isNaN(val) || val === null ? 0 : Number(val));
+
+      return {
+        totalLeads: safe(totalLeads),
+        convertedLeads: safe(convertedLeads),
+        conversionRate: safe(conversionRate),
+        conversionRateMonth: safe(conversionRateMonth),
+        conversionRateYear: safe(conversionRateYear),
+      };
+    } catch (error) {
+      console.error("Error fetching leads conversion rate:", error);
+      return {
+        totalLeads: 0,
+        convertedLeads: 0,
+        conversionRate: 0,
+        conversionRateMonth: 0,
+        conversionRateYear: 0,
+      };
+    }
+  };
 
   // Fetch performing loans
   const fetchPerformingLoans = async (loansData) => {
@@ -492,20 +569,39 @@ const Dashboard = () => {
     }
   };
 
+
+  // Fetch total paid amount for performing loans only
+const fetchPerformingLoansPaidAmount = async (performingLoanIds) => {
+  if (!performingLoanIds || performingLoanIds.length === 0) return 0;
+  
+  try {
+    const { data, error } = await supabase
+      .from("mpesa_c2b_transactions")
+      .select("amount, loan_id")
+      .in("loan_id", performingLoanIds)
+      .eq("status", "applied")
+      .eq("payment_type", "repayment");
+
+    if (error) throw error;
+    
+    return data?.reduce((sum, transaction) => sum + (parseFloat(transaction.amount) || 0), 0) || 0;
+  } catch (error) {
+    console.error("Error fetching performing loans paid amounts:", error);
+    return 0;
+  }
+};
+
   // Calculate dashboard metrics with proper filtering
   const calculateDashboardMetrics = async (loansData, customersData, profile) => {
     const { role, branchId, regionId } = profile;
 
-    // Apply filters based on role and selections
     let filteredLoans = loansData;
     let filteredCustomers = customersData;
 
     if (role === "branch_manager") {
-      // Branch manager sees only their branch data
       filteredLoans = loansData.filter(loan => loan.branch_id === branchId);
       filteredCustomers = customersData.filter(customer => customer.branch_id === branchId);
       
-      // Apply RO filter for branch manager
       if (selectedRO !== "all") {
         filteredCustomers = filteredCustomers.filter(customer => customer.created_by === selectedRO);
         const customerIds = filteredCustomers.map(c => c.id);
@@ -514,17 +610,14 @@ const Dashboard = () => {
         );
       }
     } else if (role === "regional_manager") {
-      // Regional manager sees only their region data
       filteredLoans = loansData.filter(loan => loan.region_id === regionId);
       filteredCustomers = customersData.filter(customer => customer.region_id === regionId);
       
-      // Apply branch filter for regional manager
       if (selectedBranch !== "all") {
         filteredLoans = filteredLoans.filter(loan => loan.branch_id === selectedBranch);
         filteredCustomers = filteredCustomers.filter(customer => customer.branch_id === selectedBranch);
       }
       
-      // Apply RO filter for regional manager
       if (selectedRO !== "all") {
         filteredCustomers = filteredCustomers.filter(customer => customer.created_by === selectedRO);
         const customerIds = filteredCustomers.map(c => c.id);
@@ -533,21 +626,16 @@ const Dashboard = () => {
         );
       }
     } else if (role === "credit_analyst_officer" || role === "customer_service_officer") {
-      // CA and CSO can filter by region, branch, and RO
-      
-      // Apply region filter
       if (selectedRegion !== "all") {
         filteredLoans = filteredLoans.filter(loan => loan.region_id === selectedRegion);
         filteredCustomers = filteredCustomers.filter(customer => customer.region_id === selectedRegion);
       }
       
-      // Apply branch filter
       if (selectedBranch !== "all") {
         filteredLoans = filteredLoans.filter(loan => loan.branch_id === selectedBranch);
         filteredCustomers = filteredCustomers.filter(customer => customer.branch_id === selectedBranch);
       }
       
-      // Apply RO filter
       if (selectedRO !== "all") {
         filteredCustomers = filteredCustomers.filter(customer => customer.created_by === selectedRO);
         const customerIds = filteredCustomers.map(c => c.id);
@@ -557,14 +645,13 @@ const Dashboard = () => {
       }
     }
 
-    // Fetch performing loans
     const performingLoans = await fetchPerformingLoans(filteredLoans);
-
-    // Calculate total paid amount
     const loanIds = filteredLoans.map(loan => loan.id);
     const totalPaidAmount = await fetchTotalPaidAmount(loanIds);
+    const monthlyCollectionData = await fetchMonthlyCollectionData(loanIds);
+    const prepaymentData = await fetchPrepaymentData(loanIds);
+    
 
-    // Calculate totals
     const totalLoanAmount = filteredLoans.reduce((sum, loan) =>
       sum + (loan.total_payable || loan.scored_amount || 0), 0
     );
@@ -575,44 +662,44 @@ const Dashboard = () => {
       loan.status === "disbursed" && loan.repayment_state !== "completed"
     );
 
-    const performingLoanAmount = performingLoans.reduce((sum, loan) =>
-      sum + (loan.total_payable || loan.scored_amount || 0), 0
-    );
+ // Calculate performing loan balance correctly
+  const performingLoanIds = performingLoans.map(loan => loan.id);
+  const performingLoanTotalPayable = performingLoans.reduce((sum, loan) =>
+    sum + (loan.total_payable || loan.scored_amount || 0), 0
+  );
+  const performingLoansPaid = await fetchPerformingLoansPaidAmount(performingLoanIds);
+  const performingLoanBalance = performingLoanTotalPayable - performingLoansPaid;
 
-    // Customer stats
+// Active customers are those with at least one loan where repayment_state is not 'completed'
     const activeCustomerIds = new Set();
 
     filteredLoans.forEach(loan => {
-      if (
-        loan.status !== "completed" &&
-        loan.repayment_state !== "completed" &&
-        (loan.outstanding_balance > 0 || loan.arrears_amount > 0 || loan.status === "disbursed")
-      ) {
+      if (loan.repayment_state?.toLowerCase() !== "completed") {
         activeCustomerIds.add(loan.customer_id);
       }
     });
 
-    const activeCustomers = filteredCustomers.filter(c => activeCustomerIds.has(c.id)).length;
-    const inactiveCustomers = filteredCustomers.filter(c => !activeCustomerIds.has(c.id)).length;
+    const activeCustomers = activeCustomerIds.size;
+    const inactiveCustomers = filteredCustomers.length - activeCustomers;
+
+
+
 
     const today = new Date().toISOString().split("T")[0];
     const newCustomersToday = filteredCustomers.filter(c =>
       c.created_at && c.created_at.split("T")[0] === today
     ).length;
 
-    // Lead conversion
-   const leadConversionRate = await fetchLeadsConversionRate(
-  regionId,
-  branchId,
-  role,
-  profile?.id ,
-  selectedRegion,
-  selectedBranch,
-  selectedRO
-);
+    const leadConversionRate = await fetchLeadsConversionRate(
+      regionId,
+      branchId,
+      role,
+      profile?.id,
+      selectedRegion,
+      selectedBranch,
+      selectedRO
+    );
 
-
-    // Loan overview
     const disbursedLoans = filteredLoans.filter(loan => loan.status === "disbursed");
     const disbursedLoansAmount = disbursedLoans.reduce((sum, loan) =>
       sum + (loan.scored_amount || 0), 0
@@ -622,7 +709,15 @@ const Dashboard = () => {
       sum + (loan.today_collection || 0), 0
     );
 
-    // Pending actions
+    // Calculate month-to-date arrears
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthToDateArrears = outstandingLoans.reduce((sum, loan) => {
+      const loanArrears = loan.arrears_amount || 0;
+      const loanDate = new Date(loan.disbursed_date || loan.created_at);
+      return loanDate >= startOfMonth ? sum + loanArrears : sum;
+    }, 0);
+
     const pendingCustomerApprovals = filteredCustomers.filter(c =>
       ["pending", "bm_review", "ca_review", "cso_review"].includes(c.status)
     ).length;
@@ -638,27 +733,35 @@ const Dashboard = () => {
       totalLoanCount: filteredLoans.length,
       outstandingBalance,
       outstandingLoansCount: outstandingLoans.length,
-      performingLoanAmount,
+       performingLoanBalance, 
+    performingLoanAmount: performingLoanTotalPayable,
+      
       performingLoansCount: performingLoans.length,
       totalCustomers: filteredCustomers.length,
       customerOverview: {
         activeCustomers,
         inactiveCustomers,
         newCustomersToday,
-        leadConversionRateMonth: leadConversionRate,
-        leadConversionRateYear: 0
+        leadConversionRateMonth: leadConversionRate.conversionRateMonth,
+        leadConversionRateYear: leadConversionRate.conversionRateYear
       },
       loanOverview: {
         disbursedLoansAmount,
         disbursedLoansCount: disbursedLoans.length,
         loansDueToday: filteredLoans.filter(l => l.due_date === today).length,
-        outstandingArrears: outstandingLoans.reduce((sum, l) => sum + (l.arrears_amount || 0), 0)
+        outstandingArrears: outstandingLoans.reduce((sum, l) => sum + (l.arrears_amount || 0), 0),
+        monthToDateArrears,
+        totalLoanArrears: outstandingLoans.reduce((sum, l) => sum + (l.arrears_amount || 0), 0)
       },
       collectionOverview: {
         todayCollectionAmount,
         todayCollectionRate:
           outstandingBalance > 0 ? Math.round((todayCollectionAmount / outstandingBalance) * 100) : 0,
-        tomorrowCollection: 0,
+        tomorrowCollection: prepaymentData.prepaymentAmount,
+        monthlyCollectionAmount: monthlyCollectionData.monthlyAmount,
+        monthlyCollectionRate: monthlyCollectionData.monthlyRate,
+        prepaymentAmount: prepaymentData.prepaymentAmount,
+        prepaymentRate: prepaymentData.prepaymentRate,
         par:
           outstandingLoans.length > 0
             ? Math.round(
@@ -676,117 +779,79 @@ const Dashboard = () => {
       }
     };
   };
-// Fetch dashboard data
-const fetchDashboardData = async () => {
-  try {
-    setLoading(true);
 
-    const profile = await fetchUserProfile();
-    if (!profile) return setLoading(false);
+  // Fetch dashboard data
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
 
-    const { role, regionId, branchId, id: userId } = profile; // include userId
+      const profile = await fetchUserProfile();
+      if (!profile) return setLoading(false);
 
-    // Fetch regions (for CA and CSO)
-    if (role === "credit_analyst_officer" || role === "customer_service_officer") {
-      const regionsData = await fetchRegions();
-      setAvailableRegions(regionsData);
+      const { role, regionId, branchId, id: userId } = profile;
+
+      if (role === "credit_analyst_officer" || role === "customer_service_officer") {
+        const regionsData = await fetchRegions();
+        setAvailableRegions(regionsData);
+      }
+
+      let branchesData = [];
+      if (role === "regional_manager") {
+        branchesData = await fetchBranches(regionId);
+      } else {
+        branchesData = await fetchBranches("all");
+      }
+      setAvailableBranches(branchesData);
+
+      const relationshipOfficers = await fetchRelationshipOfficers(
+        "all",
+        role,
+        branchId,
+        regionId
+      );
+      setAvailableROs([{ id: "all", full_name: "All ROs" }, ...relationshipOfficers]);
+
+      let customersQuery = supabase
+        .from("customers")
+        .select("*, form_status")
+        .neq("form_status", "draft");
+
+      let loansQuery = supabase
+        .from("loans")
+        .select("*");
+
+      if (role === "branch_manager") {
+        customersQuery = customersQuery.eq("branch_id", branchId);
+        loansQuery = loansQuery.eq("branch_id", branchId);
+      } else if (role === "regional_manager") {
+        customersQuery = customersQuery.eq("region_id", regionId);
+        loansQuery = loansQuery.eq("region_id", regionId);
+      }
+
+      const [
+        { data: customersData },
+        { data: loansData }
+      ] = await Promise.all([
+        customersQuery,
+        loansQuery
+      ]);
+
+      setCustomers(customersData || []);
+      setLoans(loansData || []);
+      setBranches(branchesData || []);
+
+      const metrics = await calculateDashboardMetrics(loansData || [], customersData || [], profile);
+      setDashboardMetrics(metrics);
+
+      const activities = await fetchRecentActivities(profile);
+      setRecentActivity(activities);
+
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+    } finally {
+      setLoading(false);
     }
-
-    // Fetch branches based on role
-    let branchesData = [];
-    if (role === "regional_manager") {
-      branchesData = await fetchBranches(regionId);
-    } else {
-      branchesData = await fetchBranches("all");
-    }
-    setAvailableBranches(branchesData);
-
-    // Fetch relationship officers
-    const relationshipOfficers = await fetchRelationshipOfficers(
-      "all",
-      role,
-      branchId,
-      regionId
-    );
-    setAvailableROs([{ id: "all", full_name: "All ROs" }, ...relationshipOfficers]);
-
-    // Fetch customers and loans based on role
- let customersQuery = supabase
-  .from("customers")
-   .select("*, form_status")
-  .neq("form_status", "draft"); 
-
-let loansQuery = supabase
-  .from("loans")
-  .select("*");
-
-    if (role === "branch_manager") {
-      customersQuery = customersQuery.eq("branch_id", branchId);
-      loansQuery = loansQuery.eq("branch_id", branchId);
-    } else if (role === "regional_manager") {
-      customersQuery = customersQuery.eq("region_id", regionId);
-      loansQuery = loansQuery.eq("region_id", regionId);
-    }
-
-    const [
-      { data: customersData },
-      { data: loansData }
-    ] = await Promise.all([
-      customersQuery,
-      loansQuery
-    ]);
-
-    setCustomers(customersData || []);
-    setLoans(loansData || []);
-    setBranches(branchesData || []);
-
-    //  Fetch lead conversion metrics (monthly + yearly)
-const { 
-  totalLeads, 
-  convertedLeads, 
-  conversionRate, 
-  conversionRateMonth, 
-  conversionRateYear 
-} = await fetchLeadsConversionRate(
-  regionId,
-  branchId,
-  role,
-  userId,
-  selectedRegion,
-  selectedBranch,
-  selectedRO
-);
-
-
-    // Calculate other dashboard metrics (your existing function)
-    const metrics = await calculateDashboardMetrics(loansData || [], customersData || [], profile);
-
-    // Merge conversion metrics into dashboard state
-setDashboardMetrics({
-  ...metrics,
-  customerOverview: {
-    ...metrics.customerOverview,
-    totalLeads,
-    convertedLeads,
-    leadConversionRate: conversionRate,
-    leadConversionRateMonth: conversionRateMonth, 
-    leadConversionRateYear: conversionRateYear,   
-  },
-});
-
-
-
-    // Fetch recent activities
-    const activities = await fetchRecentActivities(profile);
-    setRecentActivity(activities);
-
-  } catch (err) {
-    console.error("Error fetching dashboard data:", err);
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   // Fetch data on mount
   useEffect(() => {
@@ -799,13 +864,14 @@ setDashboardMetrics({
       const profile = {
         role: userRole,
         regionId: userRegionId,
-        branchId: userBranchId
+        branchId: userBranchId,
+        id: userBranchId
       };
       calculateDashboardMetrics(loans, customers, profile).then(setDashboardMetrics);
     }
   }, [selectedRegion, selectedBranch, selectedRO, userRole, loans, customers, userRegionId, userBranchId]);
 
-  // Update branches when region changes (for CA and CSO)
+  // Update branches when region changes
   useEffect(() => {
     if (selectedRegion !== "all" && (userRole === "credit_analyst_officer" || userRole === "customer_service_officer")) {
       fetchBranches(selectedRegion).then(branches => {
@@ -835,78 +901,161 @@ setDashboardMetrics({
   const handleCustomerApprovals = () => navigate("/registry/approvals-pending");
   const handlePendingAmendments = () => navigate("/registry/pending-amendments");
 
-  // Main Stats Card Component
-  const MainStatCard = ({ title, amount, count, icon, color, loading }) => (
-    <div className="group relative transition-transform hover:-translate-y-1.5 duration-500">
-      <div
-        className={`absolute inset-0 bg-gradient-to-r ${color} rounded-2xl opacity-25 blur-lg group-hover:opacity-40 transition-all duration-700`}
-      ></div>
-      <div className="relative bg-white/80 backdrop-blur-xl border border-gray-200/60 rounded-2xl shadow-md hover:shadow-2xl p-6 transition-all duration-500">
-        <div className="flex items-center justify-between mb-5">
-          <div
-            className={`p-3.5 rounded-xl bg-gradient-to-r ${color} text-white shadow-lg transform group-hover:scale-110 transition-transform duration-500`}
-          >
-            {icon}
-          </div>
-          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-            <svg
-              className="w-5 h-5 text-yellow-400 animate-pulse"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path d="M10 2l2 5h5l-4 3 1 5-4-3-4 3 1-5-4-3h5l2-5z" />
-            </svg>
-          </div>
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-gray-600 tracking-wide uppercase mb-2">
-            {title}
-          </p>
-          {loading ? (
-            <>
-              <div className="h-7 w-36 bg-gray-200 animate-pulse rounded-lg mb-2"></div>
-              <div className="h-4 w-20 bg-gray-200 animate-pulse rounded"></div>
-            </>
-          ) : (
-            <>
-              <p className="text-3xl font-extrabold text-gray-900 tracking-tight mb-1">
-                {amount}
-              </p>
-              <p className="text-sm font-medium text-gray-500">{count}</p>
-            </>
-          )}
-        </div>
-        <div
-          className={`mt-5 h-1 w-full rounded-full bg-gradient-to-r ${color} opacity-60 group-hover:opacity-90 transition-opacity duration-500`}
-        ></div>
-      </div>
-    </div>
-  );
+  // Circular Progress Component
+  const CircularProgress = ({ percentage, label, total, converted }) => {
+    const radius = 70;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (percentage / 100) * circumference;
 
-  // Filter Components with proper conditional rendering
-  const FilterSection = () => (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-green-600">Dashboard Overview</h2>
-          <p className="text-gray-600 mt-1">
-            {userRole === "branch_manager" 
-              ? `Branch: ${userBranch}` 
-              : userRole === "regional_manager"
-              ? `Region: ${userRegion}`
-              : "Multi-Region View"}
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <div className="relative w-44 h-44">
+          <svg className="transform -rotate-90 w-44 h-44">
+            <circle
+              cx="88"
+              cy="88"
+              r={radius}
+              stroke="#E5E7EB"
+              strokeWidth="12"
+              fill="none"
+            />
+            <circle
+              cx="88"
+              cy="88"
+              r={radius}
+              stroke="#C19A6B"
+              strokeWidth="12"
+              fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
+              strokeLinecap="round"
+              className="transition-all duration-1000 ease-out"
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-4xl font-bold text-gray-800">{percentage}%</p>
+              <p className="text-xs text-gray-500 mt-1">{converted}/{total}</p>
+            </div>
+          </div>
+        </div>
+        <p className="text-sm text-gray-600 mt-4 font-medium text-center">{label}</p>
+      </div>
+    );
+  };
+
+  // Main Stats Card Component
+ const MainStatCard = ({ title, amount, count, loading }) => (
+  <div className="bg-blue-500 rounded-xl shadow-lg p-6 text-white hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-indigo-400/20">
+    {loading ? (
+      <div className="space-y-3">
+        <div className="h-5 w-32 bg-white/20 animate-pulse rounded"></div>
+        <div className="h-10 w-40 bg-white/30 animate-pulse rounded-lg"></div>
+        <div className="h-4 w-24 bg-white/20 animate-pulse rounded"></div>
+      </div>
+    ) : (
+      <div className="flex flex-col h-full">
+        {/* Title */}
+        <div className="mb-3">
+          <p className="text-sm font-medium text-indigo-100 uppercase tracking-wide">
+            {title}
           </p>
         </div>
         
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Region Filter (for CA and CSO only) */}
-          {(userRole === "credit_analyst_officer" || userRole === "customer_service_officer") && (
-            <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-gray-700">Region:</label>
+        {/* Amount */}
+        <div className="flex-grow flex items-center">
+          <p className="text-3xl lg:text-4xl font-bold tracking-tight leading-none">
+            {amount}
+          </p>
+        </div>
+        
+        {/* Count/Additional Info */}
+        <div className="mt-4 pt-3 border-t border-white/20">
+          <p className="text-sm font-semibold text-indigo-50 flex items-center">
+            <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            {count}
+          </p>
+        </div>
+      </div>
+    )}
+  </div>
+);
+  // Overview Section Component
+  const OverviewSection = ({ title, children, onViewAll }) => (
+    <div className="bg-white rounded-xl shadow-md border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-xl font-bold text-gray-600">{title}</h3>
+        {onViewAll && (
+          <button 
+            onClick={onViewAll}
+            className="flex items-center text-blue-500 hover:text-blue-600 font-medium text-sm transition duration-200"
+          >
+            View Customers
+            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+
+const ProgressBar = ({ label, value, total, type }) => {
+  const percentage = total ? Math.round((value / total) * 100) : value; // value as rate if total not provided
+  const bgColor = percentage < 50 ? "bg-red-500" : "bg-green-500";
+
+  return (
+    <div className="p-4 bg-gray-50 rounded-lg">
+      <p className="text-2xl font-bold text-gray-800">
+        {total ? `Ksh ${value.toLocaleString()}` : `${value}%`}
+        {total && <span className="text-sm font-normal text-gray-500">/Ksh {total.toLocaleString()}</span>}
+      </p>
+      <p className="text-sm text-gray-600 mt-2">{label}</p>
+      <div className="mt-3 bg-gray-200 rounded-full h-2">
+        <div
+          className={`${bgColor} h-2 rounded-full transition-all duration-500`}
+          style={{ width: `${percentage}%` }}
+        ></div>
+      </div>
+      <p className="text-xs text-gray-500 mt-1">{percentage}%</p>
+    </div>
+  );
+};
+
+
+
+  if (loading && !userRegion && !userBranch && !userRole) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-200 border-t-indigo-600 mx-auto"></div>
+          </div>
+          <p className="mt-6 text-lg text-gray-600 font-medium">
+            Loading dashboard...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      {/* Header Section with Filters */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+         
+          
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Region Filter */}
+            {(userRole === "credit_analyst_officer" || userRole === "customer_service_officer") && (
               <select 
                 value={selectedRegion}
                 onChange={(e) => setSelectedRegion(e.target.value)}
-                className="bg-white border-2 border-gray-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition duration-200 cursor-pointer hover:border-gray-400"
+                className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer"
               >
                 <option value="all">All Regions</option>
                 {availableRegions.map(region => (
@@ -915,17 +1064,14 @@ setDashboardMetrics({
                   </option>
                 ))}
               </select>
-            </div>
-          )}
+            )}
 
-          {/* Branch Filter (for Regional Manager, CA and CSO) */}
-          {(userRole === "regional_manager" || userRole === "credit_analyst_officer" || userRole === "customer_service_officer") && (
-            <div className="flex items-center space-x-3">
-              <label className="text-sm font-medium text-gray-700">Branch:</label>
+            {/* Branch Filter */}
+            {(userRole === "regional_manager" || userRole === "credit_analyst_officer" || userRole === "customer_service_officer") && (
               <select 
                 value={selectedBranch}
                 onChange={(e) => setSelectedBranch(e.target.value)}
-                className="bg-white border-2 border-gray-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition duration-200 cursor-pointer hover:border-gray-400"
+                className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer"
               >
                 <option value="all">
                   {userRole === "regional_manager" ? "All Branches in Region" : "All Branches"}
@@ -936,16 +1082,13 @@ setDashboardMetrics({
                   </option>
                 ))}
               </select>
-            </div>
-          )}
+            )}
 
-          {/* Relationship Officer Filter (for all roles except when branch is not selected for regional manager) */}
-          <div className="flex items-center space-x-3">
-            <label className="text-sm font-medium text-gray-700">RO:</label>
+            {/* RO Filter */}
             <select 
               value={selectedRO}
               onChange={(e) => setSelectedRO(e.target.value)}
-              className="bg-white border-2 border-gray-300 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition duration-200 cursor-pointer hover:border-gray-400"
+              className="bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={
                 (userRole === "regional_manager" && selectedBranch === "all") ||
                 (userRole === "credit_analyst_officer" && selectedBranch === "all") ||
@@ -961,348 +1104,195 @@ setDashboardMetrics({
           </div>
         </div>
       </div>
-    </div>
-  );
 
-  // Section Components
-  const OverviewSection = ({ title, children, bgColor = "bg-white", onViewAll }) => (
-    <div className={`${bgColor} rounded-2xl shadow-lg border border-gray-100 p-6`}>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-bold text-gray-600">{title}</h3>
-        {onViewAll && (
-          <button 
-            onClick={onViewAll}
-            className="flex items-center text-blue-600 hover:text-blue-700 font-medium text-sm transition duration-200"
-          >
-            View All
-            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        )}
-      </div>
-      {children}
-    </div>
-  );
+      {/* Main Stats Cards */}
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-6">
+ 
+  <MainStatCard
+    title="Outstanding Loan Balance"
+    amount={`Ksh ${(dashboardMetrics?.outstandingBalance ?? 0).toLocaleString()}`}
+    count={`${(dashboardMetrics?.outstandingLoansCount ?? 0).toLocaleString()} Loans`}
+    loading={loading}
+  />
+  <MainStatCard
+    title="Performing Loan Balance"
+    amount={`Ksh ${(dashboardMetrics?.performingLoanBalance ?? 0).toLocaleString()}`}
+    count={`${(dashboardMetrics?.performingLoansCount ?? 0).toLocaleString()} Loans`}
+    loading={loading}
+  />
+  <MainStatCard
+    title="Total Customers"
+    amount={(dashboardMetrics?.totalCustomers ?? 0).toLocaleString()}
+    count={`${(dashboardMetrics?.totalCustomers ?? 0).toLocaleString()} Customers`}
+    loading={loading}
+  />
+</div>
 
-  if (loading && !userRegion && !userBranch && !userRole) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <div className="text-center">
-          <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
+      {/* Customer Overview and Loans Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Customers Overview */}
+        <OverviewSection 
+          title="Customers Overview" 
+          onViewAll={handleViewCustomers}
+        >
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <p className="text-3xl font-bold text-gray-800">{dashboardMetrics.customerOverview.activeCustomers.toLocaleString()}</p>
+              <p className="text-sm text-gray-600 mt-1">Active Customers</p>
+            </div>
+            <div className="text-center p-4 bg-red-50 rounded-lg">
+              <p className="text-3xl font-bold text-gray-800">{dashboardMetrics.customerOverview.inactiveCustomers.toLocaleString()}</p>
+              <p className="text-sm text-gray-600 mt-1">Inactive Customers</p>
+            </div>
+            <div className="text-center p-4 bg-indigo-50 rounded-lg">
+              <p className="text-3xl font-bold text-gray-800">{dashboardMetrics.customerOverview.newCustomersToday}</p>
+              <p className="text-sm text-gray-600 mt-1">New Today</p>
+            </div>
           </div>
-          <p className="mt-6 text-lg text-gray-600 font-medium">
-            Loading dashboard...
-          </p>
-        </div>
-      </div>
-    );
-  }
 
-  // Main stats configuration
-  const mainStats = [
-    {
-      title: "Total Loan Amount",
-      amount: `Ksh ${dashboardMetrics.totalLoanAmount.toLocaleString()}`,
-      count: `${dashboardMetrics.totalLoanCount} Loans`,
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      color: "from-blue-500 to-blue-600",
-    },
-    {
-      title: "Outstanding Balance",
-      amount: `Ksh ${dashboardMetrics.outstandingBalance.toLocaleString()}`,
-      count: `${dashboardMetrics.outstandingLoansCount} Loans`,
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-      color: "from-purple-500 to-purple-600",
-    },
-    {
-      title: "Performing Loans",
-      amount: `Ksh ${dashboardMetrics.performingLoanAmount.toLocaleString()}`,
-      count: `${dashboardMetrics.performingLoansCount} Loans`,
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-      color: "from-emerald-500 to-emerald-600",
-    },
-    {
-      title: "Total Customers",
-      amount: dashboardMetrics.totalCustomers.toLocaleString(),
-      count: "All Time",
-      icon: (
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
-      color: "from-indigo-500 to-indigo-600",
-    },
-  ];
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 p-6">
-      {/* Filter Section */}
-      <FilterSection />
-
-      {/* Main Content */}
-      <div className="space-y-6">
-        {/* Four Main Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          {mainStats.map((stat, index) => (
-            <MainStatCard
-              key={index}
-              title={stat.title}
-              amount={stat.amount}
-              count={stat.count}
-              icon={stat.icon}
-              color={stat.color}
-              loading={loading}
+          <div className="grid grid-cols-2 gap-6">
+            <CircularProgress 
+              percentage={dashboardMetrics.customerOverview.leadConversionRateMonth || 0}
+              label="Leads Conversion this month"
+              total={0}
+              converted={0}
             />
-          ))}
-        </div>
+            <CircularProgress 
+              percentage={dashboardMetrics.customerOverview.leadConversionRateYear || 0}
+              label="Leads Conversion this year"
+              total={0}
+              converted={0}
+            />
+          </div>
+        </OverviewSection>
 
-       
-       {/* Customer Overview and Loan Overview Side by Side */}
-<div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-  {/* Customer Overview */}
-  <OverviewSection 
-    title="Customer Overview" 
-    bgColor="bg-white"
-    onViewAll={handleViewCustomers}
-  >
-    {/* Top Stats (3 small cards) */}
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-      <div className="text-center p-4 bg-blue-50 rounded-lg">
-        <p className="text-2xl font-bold text-blue-600">{dashboardMetrics.customerOverview.activeCustomers}</p>
-        <p className="text-sm text-gray-600">Active</p>
-      </div>
-      <div className="text-center p-4 bg-gray-50 rounded-lg">
-        <p className="text-2xl font-bold text-gray-600">{dashboardMetrics.customerOverview.inactiveCustomers}</p>
-        <p className="text-sm text-gray-600">Inactive</p>
-      </div>
-      <div className="text-center p-4 bg-green-50 rounded-lg">
-        <p className="text-2xl font-bold text-green-600">{dashboardMetrics.customerOverview.newCustomersToday}</p>
-        <p className="text-sm text-gray-600">New Today</p>
-      </div>
-    </div>
-
-    {/* Conversion Rates (2 equal wide cards) */}
-
-<div className="grid grid-cols-2 gap-4 mt-4">
-  <div className="flex flex-col items-center justify-center p-4 bg-purple-50 rounded-lg h-full">
-  <p className="text-2xl font-bold text-purple-600">
-  {isNaN(Number(dashboardMetrics.customerOverview.leadConversionRateMonth))
-    ? 0
-    : Number(dashboardMetrics.customerOverview.leadConversionRateMonth)}%
-</p>
-
-
-    <p className="text-sm text-gray-600 whitespace-nowrap">
-      Conversion Rate (This Month)
-    </p>
-  </div>
-
-  <div className="flex flex-col items-center justify-center p-4 bg-indigo-50 rounded-lg h-full">
-   <p className="text-2xl font-bold text-indigo-600">
-  {isNaN(Number(dashboardMetrics.customerOverview.leadConversionRateYear))
-    ? 0
-    : Number(dashboardMetrics.customerOverview.leadConversionRateYear)}%
-</p>
-
-    <p className="text-sm text-gray-600 whitespace-nowrap">
-      Conversion Rate (This Year)
-    </p>
-  </div>
-</div>
-
-  </OverviewSection>
-
-  {/* Loan Overview */}
-  <OverviewSection 
-    title="Loan Overview" 
-    bgColor="bg-white"
-    onViewAll={handleViewLoans}
-  >
-    <div className="grid grid-cols-2 gap-4">
-      <div className="text-center p-4 bg-green-50 rounded-lg">
-        <p className="text-2xl font-bold text-green-600">Ksh {dashboardMetrics.loanOverview.disbursedLoansAmount.toLocaleString()}</p>
-        <p className="text-sm text-gray-600">Disbursed Amount</p>
-      </div>
-      <div className="text-center p-4 bg-blue-50 rounded-lg">
-        <p className="text-2xl font-bold text-blue-600">{dashboardMetrics.loanOverview.disbursedLoansCount}</p>
-        <p className="text-sm text-gray-600">Disbursed Loans</p>
-      </div>
-      <div className="text-center p-4 bg-amber-50 rounded-lg">
-        <p className="text-2xl font-bold text-amber-600">{dashboardMetrics.loanOverview.loansDueToday}</p>
-        <p className="text-sm text-gray-600">Due Today</p>
-      </div>
-      <div className="text-center p-4 bg-red-50 rounded-lg">
-        <p className="text-2xl font-bold text-red-600">Ksh {dashboardMetrics.loanOverview.outstandingArrears.toLocaleString()}</p>
-        <p className="text-sm text-gray-600">Outstanding Arrears</p>
-      </div>
-    </div>
-  </OverviewSection>
-</div>
-
-
-        {/* Collection Overview and Pending Actions Side by Side */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Collection Overview */}
-          <OverviewSection title="Collection Overview" bgColor="bg-white">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-emerald-50 rounded-lg">
-                <p className="text-2xl font-bold text-emerald-600">Ksh {(dashboardMetrics?.collectionOverview?.todayCollectionAmount || 0).toLocaleString()}</p>
-                <p className="text-sm text-gray-600">Today's Collection</p>
-              </div>
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <p className="text-2xl font-bold text-blue-600">{dashboardMetrics?.collectionOverview?.todayCollectionRate || 0}%</p>
-                <p className="text-sm text-gray-600">Collection Rate</p>
-              </div>
-              <div className="text-center p-4 bg-amber-50 rounded-lg">
-                <p className="text-2xl font-bold text-amber-600">Ksh {(dashboardMetrics?.collectionOverview?.tomorrowCollection || 0).toLocaleString()}</p>
-                <p className="text-sm text-gray-600">Tomorrow's Due</p>
-              </div>
-              <div className="text-center p-4 bg-red-50 rounded-lg">
-                <p className="text-2xl font-bold text-red-600">{dashboardMetrics?.collectionOverview?.par || 0}%</p>
-                <p className="text-sm text-gray-600">PAR</p>
+        {/* Loans Overview */}
+        <OverviewSection title="Loans Overview" onViewAll={handleViewLoans}>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-700">Disbursed Loans</span>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-gray-800">
+                  Ksh {dashboardMetrics.loanOverview.disbursedLoansAmount.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-500">{dashboardMetrics.loanOverview.disbursedLoansCount.toLocaleString()} loans</p>
               </div>
             </div>
-          </OverviewSection>
 
-          {/* Pending Actions */}
-          <OverviewSection title="Pending Actions" bgColor="bg-white">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div 
-                className="text-center p-4 bg-amber-50 rounded-lg cursor-pointer hover:bg-amber-100 transition duration-200"
-                onClick={handleCustomerApprovals}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl font-bold text-amber-600">{dashboardMetrics.pendingActions.pendingCustomerApprovals}</p>
-                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-                <p className="text-sm text-gray-600">Customer Approvals</p>
-              </div>
-              
-              <div 
-                className="text-center p-4 bg-amber-50 rounded-lg cursor-pointer hover:bg-amber-100 transition duration-200"
-                onClick={handlePendingAmendments}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl font-bold text-amber-600">{dashboardMetrics.pendingActions.pendingAmends}</p>
-                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-                <p className="text-sm text-gray-600">Pending Amends</p>
-              </div>
-              
-              <div 
-                className="text-center p-4 bg-amber-50 rounded-lg cursor-pointer hover:bg-amber-100 transition duration-200"
-                onClick={handlePendingBMLoans}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl font-bold text-amber-600">{dashboardMetrics.pendingActions.pendingBMLoanApprovals}</p>
-                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-                <p className="text-sm text-gray-600">BM Loan Approval</p>
-              </div>
-              
-              <div 
-                className="text-center p-4 bg-amber-50 rounded-lg cursor-pointer hover:bg-amber-100 transition duration-200"
-                onClick={handlePendingRMLoans}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl font-bold text-amber-600">{dashboardMetrics.pendingActions.pendingRMLoanApprovals}</p>
-                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-                <p className="text-sm text-gray-600">RM Loan Approval</p>
-              </div>
-              
-              <div 
-                className="text-center p-4 bg-amber-50 rounded-lg cursor-pointer hover:bg-amber-100 transition duration-200"
-                onClick={handlePendingDisbursement}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-2xl font-bold text-amber-600">{dashboardMetrics.pendingActions.pendingDisbursement}</p>
-                  <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-                <p className="text-sm text-gray-600">Pending Disbursement</p>
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-700">Loans Due Today</span>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-gray-800">
+                  {dashboardMetrics.loanOverview.loansDueToday.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-500">loans</p>
               </div>
             </div>
-          </OverviewSection>
-        </div>
 
-        {/* Recent Activities */}
-        <div className="grid grid-cols-1">
-          <OverviewSection title="Recent Activities" bgColor="bg-white">
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center p-4 bg-gray-50 rounded-xl animate-pulse">
-                    <div className="bg-gray-200 rounded-xl p-3 mr-4 h-12 w-12"></div>
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                    </div>
-                  </div>
-                ))}
+            <div className="flex items-center justify-between p-4 bg-red-50 border border-red-200 rounded-lg">
+              <span className="text-sm font-medium text-red-700">Month to Date Arrears</span>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-red-600">
+                  Ksh {dashboardMetrics.loanOverview.monthToDateArrears.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-500">arrears</p>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {recentActivity.length > 0 ? (
-                  recentActivity.map((activity) => (
-                    <div 
-                      key={activity.id} 
-                      className="flex items-center p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-200 cursor-pointer group"
-                    >
-                      <div className={`rounded-xl p-3 mr-4 ${activity.iconBg} group-hover:scale-110 transition-transform duration-200`}>
-                        {activity.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 mb-1 truncate">
-                          {activity.message}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-gray-500 font-medium">
-                            {activity.time}
-                          </p>
-                          <p className="text-sm font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-lg">
-                            {activity.amount}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p className="text-gray-500 font-medium text-lg">No recent activity</p>
-                    <p className="text-gray-400 text-sm mt-1">Activity will appear here as it happens</p>
-                  </div>
-                )}
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <span className="text-sm font-medium text-gray-700">Outstanding Total Loan Arrears</span>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-gray-800">
+                  Ksh {dashboardMetrics.loanOverview.totalLoanArrears.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-500">total arrears</p>
               </div>
-            )}
-          </OverviewSection>
-        </div>
+            </div>
+          </div>
+        </OverviewSection>
+      </div>
+
+      {/* Collections Overview and Pending Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Collections Overview */}
+     <OverviewSection title="Collections Overview">
+  <div className="grid grid-cols-2 gap-4">
+    <ProgressBar
+      label="Today's Collection Rate"
+      value={dashboardMetrics.collectionOverview.todayCollectionAmount}
+      total={dashboardMetrics.outstandingBalance}
+    />
+    <ProgressBar
+      label="Monthly Collection Rate"
+      value={dashboardMetrics.collectionOverview.monthlyCollectionRate}
+    />
+    <ProgressBar
+      label="Prepayment Rate"
+      value={dashboardMetrics.collectionOverview.prepaymentRate}
+    />
+    <ProgressBar
+      label="PAR"
+      value={dashboardMetrics.collectionOverview.par}
+    />
+  </div>
+</OverviewSection>
+
+
+        {/* Pending Actions */}
+        <OverviewSection title="Pending Actions">
+          <div className="space-y-3">
+            <div 
+              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition"
+              onClick={handleCustomerApprovals}
+            >
+              <span className="text-sm font-medium text-gray-700">Pending Customers Approvals</span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-gray-800">{dashboardMetrics.pendingActions.pendingCustomerApprovals}</span>
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+
+            <div 
+              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition"
+              onClick={handlePendingAmendments}
+            >
+              <span className="text-sm font-medium text-gray-700">Pending Customers Amendments</span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-gray-800">{dashboardMetrics.pendingActions.pendingAmends}</span>
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+
+            <div 
+              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition"
+            >
+              <span className="text-sm font-medium text-gray-700">Limit Approvals</span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-gray-800">{dashboardMetrics.pendingActions.pendingLimitApprovals}</span>
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+
+            <div 
+              className="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition"
+              onClick={handlePendingBMLoans}
+            >
+              <span className="text-sm font-medium text-gray-700">Lock Approvals</span>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl font-bold text-gray-800">{dashboardMetrics.pendingActions.pendingBMLoanApprovals}</span>
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </OverviewSection>
       </div>
     </div>
   );
