@@ -7,26 +7,22 @@ import {
   UserIcon,
   PhoneIcon,
 } from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom'; // Add this import
 import { supabase } from "../../supabaseClient";
 import { useAuth } from "../../hooks/userAuth";
-import CustomerVerificationForm from './CustomerVerification';
-import CustomerDetailsModal from '../../relationship-officer/components/CustomerDetailsModal.jsx';
 
 const ApprovalPending = () => {
   const [customers, setCustomers] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Get user profile from auth hook
   const { profile } = useAuth();
   const userRole = profile?.role;
   const userBranchId = profile?.branch_id;
 
-
+  const navigate = useNavigate(); 
 
   // Fetch pending customers based on user role
   const fetchPendingCustomers = async () => {
@@ -89,14 +85,13 @@ const ApprovalPending = () => {
     setFilteredCustomers(filtered);
   }, [searchTerm, customers]);
 
+  // Updated handlers to use navigation
   const handleApprove = (customer) => {
-    setSelectedCustomer(customer);
-    setShowForm(true);
+    navigate(`/customer/${customer}/verify`);
   };
 
   const handleView = (customer) => {
-    setSelectedCustomer(customer);
-    setIsModalOpen(true);
+    navigate(`/customer/${customer.id}/details`);
   };
 
   // Get dynamic header text based on user role
@@ -107,34 +102,6 @@ const ApprovalPending = () => {
       return "Customers awaiting CA approval";
     }
     return "Customers awaiting approval";
-  };
-
-  // Get appropriate verification form component based on role
-  const getVerificationForm = () => {
-    if (!selectedCustomer) return null;
-    
-    return (
-      <CustomerVerificationForm
-        customerId={selectedCustomer}
-        userRole={userRole}
-        userBranchId={userBranchId}
-        onClose={() => setShowForm(false)}
-        onSuccess={fetchPendingCustomers}
-      />
-    );
-  };
-
-  // Get appropriate view customer component based on role
-  const getCustomerDetailsModalComponent = () => {
-    if (!selectedCustomer) return null;
-    
-    return (
-      <CustomerDetailsModal
-        customer={selectedCustomer}
-        userRole={userRole}
-        onClose={() => setIsModalOpen(false)}
-      />
-    );
   };
 
   // Show loading if profile is not yet loaded
@@ -158,10 +125,8 @@ const ApprovalPending = () => {
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
-             
               <p className="text-gray-600 mt-2 text-sm">
                 {getHeaderText()} ({filteredCustomers.length})
-               
               </p>
             </div>
           </div>
@@ -281,40 +246,6 @@ const ApprovalPending = () => {
           )}
         </div>
       </div>
-
-      {/* View Customer Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-none shadow-2xl w-full h-full overflow-y-auto relative">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold"
-            >
-              ✕
-            </button>
-            <div className="p-6">
-              {getCustomerDetailsModalComponent()}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Customer Verification Form Modal */}
-      {showForm && selectedCustomer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white w-full h-full relative rounded-none shadow-xl">
-            {/* <button
-              onClick={() => setShowForm(false)}
-              className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
-            >
-              ✕
-            </button> */}
-            <div className="p-6 h-full overflow-y-auto">
-              {getVerificationForm()}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

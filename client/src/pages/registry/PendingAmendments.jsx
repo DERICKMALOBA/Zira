@@ -11,6 +11,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../supabaseClient";
 import { useAuth } from "../../hooks/userAuth";
+import { useNavigate } from "react-router-dom";
 import ViewCustomer from "./ViewCustomer";
 import CustomerVerification from "./CustomerVerification";
 import Verification from "./Verification";
@@ -53,6 +54,7 @@ const PendingAmendments = () => {
   // Get role from profile
   const userRole = profile?.role;
   const config = userRole ? ROLE_CONFIG[userRole] : null;
+   const navigate = useNavigate();
 
   const fetchAmendmentCustomers = async () => {
     if (authLoading) return;
@@ -157,13 +159,17 @@ const PendingAmendments = () => {
   }, [searchTerm, customers]);
 
   const handleApproveAmendment = (customer) => {
-    setSelectedCustomer(customer);
-    setShowForm(true);
+    if (config.useVerificationComponent) {
+      // Customer Service Officer uses Verification component
+      navigate(`/customer/${customer.id}/verify-amendment?role=customer_service_officer`);
+    } else {
+      // Branch Manager and Credit Analyst use CustomerVerification component
+      navigate(`/customer/${customer.id}/verify-amendment?role=${userRole}`);
+    }
   };
 
-  const handleViewChanges = (customer) => {
-    setSelectedCustomer(customer);
-    setIsModalOpen(true);
+ const handleViewChanges = (customer) => {
+    navigate(`/customer/${customer.id}/details`);
   };
 
   // Show loading while auth is initializing
@@ -203,7 +209,7 @@ const PendingAmendments = () => {
     <div className="flex items-center justify-between">
       <div>
         <p className="text-gray-600 mt-2 text-sm">
-          Recently updated customer records requiring review ({filteredCustomers.length})
+          Recently updated customer records requiring review  sure ({filteredCustomers.length})
         </p>
       </div>
     </div>

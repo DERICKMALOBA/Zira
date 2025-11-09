@@ -13,6 +13,7 @@ import {
 import { supabase } from "../../supabaseClient";
 import ViewCustomer from './ViewCustomer';
 import Verification from './Verification';
+import { useNavigate } from 'react-router-dom';
 
 const CallbackPending = () => {
   const [customers, setCustomers] = useState([]);
@@ -20,9 +21,9 @@ const CallbackPending = () => {
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-    const [selectedCustomer, setSelectedCustomer] = useState(null);
-   const [showForm, setShowForm] = useState(false);
-   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+
+   const navigate = useNavigate(); 
 
 const fetchPendingCustomers = async () => {
   if (!profile?.region) {
@@ -84,16 +85,14 @@ useEffect(() => {
     setFilteredCustomers(filtered);
   }, [searchTerm, customers]);
 
-  const handleApprove = (customer) => {
-  setSelectedCustomer(customer);
-  setShowForm(true);
+const handleApprove = (customerId) => {
+  navigate(`/customer/${customerId}/verify-customer_service_officer`);
 };
 
 
- const handleView= (customer) => {
-  setSelectedCustomer(customer); // pass full object not just id
-  setIsModalOpen(true);
-};
+  const handleView = (customer) => {
+    navigate(`/customer/${customer.id}/details`);
+  };
 
   return (
   <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 p-8">
@@ -228,51 +227,7 @@ useEffect(() => {
     </div>
   </div>
 
-  {isModalOpen && (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-none shadow-2xl w-full h-full overflow-y-auto relative">
-        {/* Close button */}
-        <button
-          onClick={() => setIsModalOpen(false)}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold"
-        >
-          ✕
-        </button>
-  
-        {/* Render the ViewCustomer component */}
-        <div className="p-6">
-          <ViewCustomer
-            customer={selectedCustomer}
-            onClose={() => setIsModalOpen(false)}
-          />
-        </div>
-      </div>
-    </div>
-  )}
-
-   {/* customer Verification Form Modal */}
-        {showForm && selectedCustomer && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white w-full h-full relative rounded-none shadow-xl">
-              {/* Close button */}
-              <button
-                onClick={() => setShowForm(false)}
-                className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold z-10"
-              >
-                ✕
-              </button>
-  
-              {/* Loan form takes the whole screen */}
-              <div className="p-6 h-full overflow-y-auto">
-              <Verification
-    customerId={selectedCustomer}   // Only send the id
-    onClose={() => setShowForm(false)}
-  />
-  
-              </div>
-            </div>
-          </div>
-        )}
+ 
 </div>
 
   );

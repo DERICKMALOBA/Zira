@@ -112,6 +112,8 @@ import AmendmentDetailsPage from "./relationship-officer/amendments/AmendmentDet
 import OfficerDrafts from "./relationship-officer/components/OfficerDrafts.jsx";
 import LoanBookingForm from "./relationship-officer/loans/LoanBooking.jsx";
 import CustomerForm from "./relationship-officer/components/CustomerForm.jsx";
+import CustomerVerification from "./pages/registry/CustomerVerification.jsx";
+import Verification from "./pages/registry/Verification.jsx";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -542,6 +544,25 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
     </ProtectedRoute>
   }
 />
+
+ <Route path="/customer/:customerId/verify" element={
+   <ProtectedRoute>
+      <CustomerVerification />
+   </ProtectedRoute>
+} />
+
+
+  <Route path="/customer/:customerId/verify-amendment" element={
+    <ProtectedRoute>
+      <CustomerVerification/>
+    </ProtectedRoute>
+    } />
+      <Route path="/customer/:customerId/verify-customer_service_officer" element={
+        <ProtectedRoute>
+           <Verification />
+        </ProtectedRoute>
+       } />
+
 <Route
   path="/customer/:customerId/interactions"
   element={

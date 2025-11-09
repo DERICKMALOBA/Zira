@@ -4,6 +4,7 @@ import { supabase } from "../../supabaseClient";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "../../hooks/userAuth";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -26,7 +27,9 @@ import {
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 
-const Verification = ({ customerId, onClose }) => {
+const Verification = ({  onClose }) => {
+  const { customerId } = useParams();
+    const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const { profile } = useAuth();
   const [customer, setCustomer] = useState(null);
@@ -407,7 +410,7 @@ const Verification = ({ customerId, onClose }) => {
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="sr-only"
+        className="absolute opacity-0 w-0 h-0"
       />
       <div
         className={`relative w-14 h-7 bg-gray-300 rounded-full transition-colors duration-200 ${

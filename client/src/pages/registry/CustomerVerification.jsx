@@ -23,10 +23,12 @@ import {
   DevicePhoneMobileIcon,
   PhoneIcon,
   PencilSquareIcon,
-  DocumentTextIcon,
+  DocumentTextIcon,ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
-
-const CustomerVerification = ({ customerId, onClose }) => {
+import { useParams, useNavigate } from "react-router-dom";
+const CustomerVerification = () => {
+   const { customerId } = useParams(); 
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const { profile } = useAuth();
   const [customer, setCustomer] = useState(null);
@@ -343,42 +345,43 @@ const CustomerVerification = ({ customerId, onClose }) => {
     }
   };
 
-  const handleVerificationChange = (
-    field,
-    value,
-    section = "customer",
-    index = null
-  ) => {
-    setVerificationData((prev) => {
-      if (field === "finalDecision" || field === "overallComment") {
-        return { ...prev, [field]: value };
-      }
+  
+const handleVerificationChange = (
+  field,
+  value,
+  section = "customer",
+  index = null
+) => {
+  setVerificationData((prev) => {
+    if (field === "finalDecision" || field === "overallComment") {
+      return { ...prev, [field]: value };
+    }
 
-      if (section === "customer") {
-        return { ...prev, customer: { ...prev.customer, [field]: value } };
-      } else if (section === "guarantors" && index !== null) {
-        const updatedGuarantors = [...prev.guarantors];
-        updatedGuarantors[index] = {
-          ...updatedGuarantors[index],
-          [field]: value,
-        };
-        return { ...prev, guarantors: updatedGuarantors };
-      } else if (
-        [
-          "security",
-          "guarantorSecurity",
-          "loan",
-          "business",
-          "nextOfKin",
-          "document",
-        ].includes(section)
-      ) {
-        return { ...prev, [section]: { ...prev[section], [field]: value } };
-      } else {
-        return { ...prev, [field]: value };
-      }
-    });
-  };
+    if (section === "customer") {
+      return { ...prev, customer: { ...prev.customer, [field]: value } };
+    } else if (section === "guarantors" && index !== null) {
+      const updatedGuarantors = [...prev.guarantors];
+      updatedGuarantors[index] = {
+        ...updatedGuarantors[index],
+        [field]: value,
+      };
+      return { ...prev, guarantors: updatedGuarantors };
+    } else if (
+      [
+        "security",
+        "guarantorSecurity",
+        "loan",
+        "business",
+        "nextOfKin",
+        "document",
+      ].includes(section)
+    ) {
+      return { ...prev, [section]: { ...prev[section], [field]: value } };
+    } else {
+      return { ...prev, [field]: value };
+    }
+  });
+};
 
   const submitVerification = async () => {
     try {
@@ -500,7 +503,7 @@ const CustomerVerification = ({ customerId, onClose }) => {
       }
 
       toast.success("Verification submitted successfully!");
-      onClose();
+      navigate(-1);
     } catch (error) {
       console.error("Error submitting verification:", error);
       toast.error("Error submitting verification");
@@ -586,15 +589,21 @@ const CustomerVerification = ({ customerId, onClose }) => {
 
 
 
+   const handleGoBack = () => {
+    navigate(-1);
+  };
+
+
   // Common UI components (ToggleSwitch, DocumentCard, DetailRow remain the same)
 
-  const ToggleSwitch = ({ checked, onChange, label }) => (
+
+ const ToggleSwitch = ({ checked, onChange, label }) => (
     <label className="flex items-center cursor-pointer group">
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="sr-only"
+        className="absolute opacity-0 w-0 h-0"
       />
       <div
         className={`relative w-14 h-7 bg-gray-300 rounded-full transition-colors duration-200 ${
@@ -826,73 +835,62 @@ const CustomerVerification = ({ customerId, onClose }) => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="bg-blue-50 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-2 border border-indigo-100">
-          <div className="flex items-center justify-between">
-            <div>
-              {/* <h1 className="  bg-gradient-to-r from-indigo-700 to-blue-700 bg-clip-text text-transparent">
-                {getHeaderText()}
-              </h1> */}
-              <p className="text-gray-600 mt-2">
-                Comprehensive verification of customer documents and information
-              </p>
-              {/* <div className="mt-2 flex items-center">
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    userRole === "branch_manager"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-purple-100 text-purple-800"
-                  }`}
-                >
-                  {userRole === "branch_manager"
-                    ? "Branch Manager"
-                    : "Credit Analyst"}{" "}
-                  Mode
-                </span>
-              </div> */}
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
-            >
-              <XCircleIcon className="h-8 w-8" />
-            </button>
-          </div>
+        <div className="bg-white rounded-xl shadow-md p-4 mb-4 border border-indigo-100">
+      <div className="flex items-center gap-3">
+        {/* Back Arrow */}
+        <button
+          onClick={handleGoBack}
+          className="p-2 rounded-full hover:bg-indigo-50 transition-colors"
+        >
+          <ArrowLeftIcon className="w-6 h-6 text-indigo-700" />
+        </button>
+
+        {/* Header Text */}
+        <div>
+          <h1 className="text-lg font-semibold text-gray-800">
+            Customer Verification 
+          </h1>
+          <p className="text-sm text-gray-500">
+            Comprehensive verification of customer documents and information
+          </p>
         </div>
+      </div>
+    </div>
 
         {/* Progress Steps */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
-          <div className="flex items-center justify-between">
-            {steps.map(({ num, label, icon: Icon }) => (
-              <div key={num} className="flex flex-col items-center">
-                <div
-                  className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-                    step === num
-                      ? "border-indigo-500 bg-indigo-500 text-white shadow-lg shadow-indigo-200 scale-110"
-                      : step > num
-                      ? "border-emerald-500 bg-emerald-500 text-white shadow-md"
-                      : "border-gray-300 bg-white text-gray-400 hover:border-gray-400"
-                  }`}
-                >
-                  <Icon className="h-6 w-6" />
-                </div>
-                <span
-                  className={`text-sm mt-3 font-medium transition-colors ${
-                    step === num
-                      ? "text-indigo-700"
-                      : step > num
-                      ? "text-emerald-700"
-                      : "text-gray-600"
-                  }`}
-                >
-                  {label}
-                </span>
+       <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
+        <div className="flex items-center justify-between overflow-x-auto"> 
+          {steps.map(({ num, label, icon: Icon }) => (
+            <div key={num} className="flex flex-col items-center flex-shrink-0"> 
+              <div
+                className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                  step === num
+                    ? "border-blue-500 bg-blue-500 text-white shadow-lg shadow-indigo-200 scale-110"
+                    : step > num
+                    ? "border-emerald-500 bg-emerald-500 text-white shadow-md"
+                    : "border-gray-300 bg-white text-gray-400 hover:border-gray-400"
+                }`}
+              >
+                <Icon className="h-6 w-6" />
               </div>
-            ))}
-          </div>
+              <span
+                className={`text-sm mt-3 font-medium transition-colors ${
+                  step === num
+                    ? "text-indigo-700"
+                    : step > num
+                    ? "text-emerald-700"
+                    : "text-gray-600"
+                }`}
+              >
+                {label}
+              </span>
+            </div>
+          ))}
         </div>
+      </div>
 
         {/* Step Content */}
         <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
@@ -2762,7 +2760,7 @@ const CustomerVerification = ({ customerId, onClose }) => {
 
         {/* Navigation Buttons */}
 
-        <div className="bg-white rounded-2xl shadow-lg p-6 flex justify-between items-center border border-indigo-100">
+         <div className="bg-white rounded-2xl shadow-lg p-6 flex justify-between items-center border border-indigo-100">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setStep(step - 1)}
@@ -2788,7 +2786,7 @@ const CustomerVerification = ({ customerId, onClose }) => {
                   setStep(step + 1);
                 }
               }}
-              className="flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
+              className="flex items-center px-6 py-3 bg-blue-300 text-white rounded-xl font-medium hover:bg-blue-500 transition-all shadow-md hover:shadow-lg"
             >
               Next
               <ChevronRightIcon className="h-5 w-5 ml-2" />
