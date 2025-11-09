@@ -126,16 +126,16 @@ const SharedSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       href: '/drafts/customers',
       icon: UserCheck, // good for customer
     },
-    {
-      name: 'Loan Verification Drafts',
-      href: '/drafts/loans',
-      icon: FileSpreadsheet, // good for loans
-    },
-    {
-      name: 'Other Drafts',
-      href: '/drafts/others',
-      icon: FolderOpen, // optional general section
-    },
+    // {
+    //   name: 'Loan Verification Drafts',
+    //   href: '/drafts/loans',
+    //   icon: FileSpreadsheet, // good for loans
+    // },
+    // {
+    //   name: 'Other Drafts',
+    //   href: '/drafts/others',
+    //   icon: FolderOpen, // optional general section
+    // },
   ],
 }
 ,
