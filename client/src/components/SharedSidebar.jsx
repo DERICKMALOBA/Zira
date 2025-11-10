@@ -88,7 +88,7 @@ const SharedSidebar = ({ sidebarOpen, setSidebarOpen }) => {
         { name: 'Customers', href: '/registry/customers', icon: Users },
         { name: 'Pending Amendments', href: '/registry/pending-amendments', icon: FolderOpen },
         { name: 'Approvals Pending', href: '/registry/approvals-pending', icon: UserCheck },
-       // ✅ Only show this if logged-in user is a CSO
+       //  Only show this if logged-in user is a CSO
         ...(profile?.role === "customer_service_officer" 
           ? [{ name: 'Callbacks Pending', href: '/registry/callbacks-pending', icon: PhoneCall }] 
           : []),

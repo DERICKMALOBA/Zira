@@ -10,12 +10,14 @@ import {
   BanknotesIcon,
   EyeIcon,
   FunnelIcon,
-  BuildingOfficeIcon,
+  BuildingOfficeIcon,ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
-import ViewLoan from "./ViewLoan";
+import { useNavigate } from "react-router-dom";
+
 
 const AllLoans = () => {
   const { profile, loading: authLoading } = useAuth();
+    const navigate = useNavigate();
   const [loans, setLoans] = useState([]);
   const [filteredLoans, setFilteredLoans] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -25,7 +27,6 @@ const AllLoans = () => {
   const [regionFilter, setRegionFilter] = useState("all");
   const [branchFilter, setBranchFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLoan, setSelectedLoan] = useState(null);
 
   // Determine user access level
   const isBranchManager = profile?.role === "branch_manager";
@@ -208,6 +209,17 @@ const AllLoans = () => {
     rejected: loans.filter((l) => l.status === "rejected").length,
   };
 
+const handleViewLoan = (loanId) => {
+    navigate(`/loans/${loanId}`);
+  };
+
+
+  const handleAddInteraction = (loanId) => {
+    navigate(`/loans/${loanId}/interactions`);
+  };
+
+
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -384,13 +396,24 @@ const AllLoans = () => {
                     </div>
                   </td>
                   <td className="px-3 py-3 text-center whitespace-nowrap">
-                    <button
-                      onClick={() => setSelectedLoan(loan)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-emerald-600 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg text-sm font-semibold"
-                    >
-                      <EyeIcon className="h-4 w-4" />
-                      Review
-                    </button>
+                   <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => handleViewLoan(loan.id)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-emerald-600 text-white rounded-lg hover:from-emerald-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg text-sm font-semibold"
+                        title="View Loan Details"
+                      >
+                        <EyeIcon className="h-4 w-4" />
+                        Review
+                      </button>
+                      <button
+                        onClick={() => handleAddInteraction(loan.id)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-600 text-white rounded-lg hover:from-blue-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg text-sm font-semibold"
+                        title="Add Interaction"
+                      >
+                        <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                        Log
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -411,10 +434,7 @@ const AllLoans = () => {
         </div>
       </div>
 
-      {/* Modal */}
-      {selectedLoan && (
-        <ViewLoan loan={selectedLoan} onClose={() => setSelectedLoan(null)} />
-      )}
+   
     </div>
   );
 };

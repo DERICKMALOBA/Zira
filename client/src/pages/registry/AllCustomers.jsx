@@ -162,6 +162,7 @@ const handleOpenInteractions = (customer) => {
     setSelectedStatus("");
     setCurrentPage(1);
   };
+  
 const filteredCustomers = customers.filter((c) => {
   const matchesSearch =
     (c.Firstname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
