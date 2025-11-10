@@ -35,7 +35,7 @@ import ConversionChart from "./relationship-officer/components/CoversionChart";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AllUsers from "./pages/admin/AllUsers";
 import AddUsers from "./pages/admin/AddUsers";
-import SuspendedUsers from "./pages/admin/suspendedUsers";
+import SuspendedUsers from "./pages/admin/SuspendedUsers.jsx";
 import AllLoansAdmin from "./pages/admin/loans/AllLoansAdmin";
 import PendingLoans from "./pages/admin/loans/PendingLoans";
 import ApprovedLoans from "./pages/admin/loans/ApprovedLoans";
