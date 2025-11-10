@@ -84,20 +84,20 @@ const ViewLoan = () => {
       }
 
       // Fetch branch manager and regional manager details if available
-      if (loanData.bm_approved_by) {
+      if (loanData.bm_id) {
         const { data: bmData } = await supabase
           .from("users")
           .select("*")
-          .eq('id', loanData.bm_approved_by)
+          .eq('id', loanData.bm_id)
           .single();
         setBranchManager(bmData);
       }
 
-      if (loanData.rm_approved_by) {
+      if (loanData.rm_id) {
         const { data: rmData } = await supabase
           .from("users")
           .select("*")
-          .eq('id', loanData.rm_approved_by)
+          .eq('id', loanData.rm_id)
           .single();
         setRegionalManager(rmData);
       }
@@ -959,7 +959,7 @@ const ViewLoan = () => {
                   {branchManager ? (
                     <div className="text-sm">
                       <div className="font-medium">{branchManager.full_name}</div>
-                      <div className="text-gray-500 text-xs mt-1">{formatDate(loanDetails.bm_approved_at)}</div>
+                      <div className="text-gray-500 text-xs mt-1">{formatDate(loanDetails.bm_reviewed_at)}</div>
                       {loanDetails.bm_comment && (
                         <div className="text-xs text-gray-600 mt-2">"{loanDetails.bm_comment}"</div>
                       )}
@@ -975,7 +975,7 @@ const ViewLoan = () => {
                   {regionalManager ? (
                     <div className="text-sm">
                       <div className="font-medium">{regionalManager.full_name}</div>
-                      <div className="text-gray-500 text-xs mt-1">{formatDate(loanDetails.rm_approved_at)}</div>
+                      <div className="text-gray-500 text-xs mt-1">{formatDate(loanDetails.rm_reviewed_at)}</div>
                       {loanDetails.rm_comment && (
                         <div className="text-xs text-gray-600 mt-2">"{loanDetails.rm_comment}"</div>
                       )}

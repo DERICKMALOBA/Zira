@@ -10,7 +10,7 @@ import {
   BanknotesIcon,
   EyeIcon,
   FunnelIcon,
-  BuildingOfficeIcon,ChatBubbleLeftRightIcon,
+  BuildingOfficeIcon,ChatBubbleLeftRightIcon
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 
