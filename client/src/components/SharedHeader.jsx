@@ -42,7 +42,7 @@ const SharedHeader = ({ sidebarOpen, setSidebarOpen }) => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50 backdrop-blur-sm bg-white/95">
+    <header className="bg-green-50 border-b border-green-100 shadow-sm sticky top-0 z-50 backdrop-blur-sm bg-green-50">
       <div className="flex items-center justify-between px-6 py-3">
         {/* Left Section */}
         <div className="flex items-center space-x-4">
