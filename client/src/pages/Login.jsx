@@ -82,7 +82,7 @@ export default function Login() {
 
       switch (userData.role) {
         case "relationship_officer":
-          navigate("/officer");
+          navigate("/dashboard");
           break;
         case "admin":
           navigate("/dashboard/admin");

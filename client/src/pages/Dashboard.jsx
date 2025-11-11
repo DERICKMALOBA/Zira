@@ -8,6 +8,7 @@ const Dashboard = () => {
   const [userRole, setUserRole] = useState(null);
   const [userBranchId, setUserBranchId] = useState(null);
   const [userRegionId, setUserRegionId] = useState(null);
+  const [userId, setUserId] = useState(null); // ✅ Added userId state
   const [recentActivity, setRecentActivity] = useState([]);
   const navigate = useNavigate();
 
@@ -112,6 +113,7 @@ const Dashboard = () => {
         setUserBranch(profileData?.branches?.name || profileData?.branch_id);
         setUserBranchId(profileData?.branch_id);
         setUserRegionId(profileData?.region_id);
+        setUserId(user.id); // ✅ Store userId
 
         return {
           role: userData?.role,
@@ -218,7 +220,7 @@ const Dashboard = () => {
 
   const fetchRecentActivities = async (profile) => {
     try {
-      const { role, regionId, branchId } = profile;
+      const { role, regionId, branchId, id } = profile;
 
       let loansQuery = supabase
         .from("loans")
@@ -238,7 +240,10 @@ const Dashboard = () => {
         .order("created_at", { ascending: false })
         .limit(10);
 
-      if (role === "branch_manager") {
+      // ✅ Filter for relationship_officer
+      if (role === "relationship_officer") {
+        loansQuery = loansQuery.eq("booked_by", id);
+      } else if (role === "branch_manager") {
         loansQuery = loansQuery.eq("branch_id", branchId);
       } else if (role === "regional_manager") {
         loansQuery = loansQuery.eq("region_id", regionId);
@@ -505,6 +510,7 @@ const Dashboard = () => {
             query = query.eq("branch_id", selectedBranch);
           }
         } else if (role === "relationship_officer") {
+          // ✅ Filter by created_by for relationship_officer
           query = query.eq("created_by", userId);
         } else if (
           role === "credit_analyst_officer" ||
@@ -698,12 +704,21 @@ const Dashboard = () => {
     customersData,
     profile
   ) => {
-    const { role, branchId, regionId } = profile;
+    const { role, branchId, regionId, id } = profile;
 
     let filteredLoans = loansData;
     let filteredCustomers = customersData;
 
-    if (role === "branch_manager") {
+    // ✅ Filter data for relationship_officer
+    if (role === "relationship_officer") {
+      filteredCustomers = customersData.filter(
+        (customer) => customer.created_by === id
+      );
+      const customerIds = filteredCustomers.map((c) => c.id);
+      filteredLoans = loansData.filter(
+        (loan) => loan.booked_by === id || customerIds.includes(loan.customer_id)
+      );
+    } else if (role === "branch_manager") {
       filteredLoans = loansData.filter((loan) => loan.branch_id === branchId);
       filteredCustomers = customersData.filter(
         (customer) => customer.branch_id === branchId
@@ -970,8 +985,9 @@ const Dashboard = () => {
       const profile = await fetchUserProfile();
       if (!profile) return setLoading(false);
 
-      const { role, regionId, branchId } = profile;
+      const { role, regionId, branchId, id } = profile;
 
+      // ✅ Only load regions for analysts and CSO
       if (
         role === "credit_analyst_officer" ||
         role === "customer_service_officer"
@@ -980,24 +996,30 @@ const Dashboard = () => {
         setAvailableRegions(regionsData);
       }
 
+      // ✅ Only load branches if NOT relationship_officer
       let branchesData = [];
-      if (role === "regional_manager") {
-        branchesData = await fetchBranches(regionId);
-      } else {
-        branchesData = await fetchBranches("all");
+      if (role !== "relationship_officer") {
+        if (role === "regional_manager") {
+          branchesData = await fetchBranches(regionId);
+        } else {
+          branchesData = await fetchBranches("all");
+        }
+        setAvailableBranches(branchesData);
       }
-      setAvailableBranches(branchesData);
 
-      const relationshipOfficers = await fetchRelationshipOfficers(
-        "all",
-        role,
-        branchId,
-        regionId
-      );
-      setAvailableROs([
-        { id: "all", full_name: "All ROs" },
-        ...relationshipOfficers,
-      ]);
+      // ✅ Only load ROs if NOT relationship_officer
+      if (role !== "relationship_officer") {
+        const relationshipOfficers = await fetchRelationshipOfficers(
+          "all",
+          role,
+          branchId,
+          regionId
+        );
+        setAvailableROs([
+          { id: "all", full_name: "All ROs" },
+          ...relationshipOfficers,
+        ]);
+      }
 
       let customersQuery = supabase
         .from("customers")
@@ -1006,7 +1028,11 @@ const Dashboard = () => {
 
       let loansQuery = supabase.from("loans").select("*");
 
-      if (role === "branch_manager") {
+      // ✅ Apply filters based on role
+      if (role === "relationship_officer") {
+        customersQuery = customersQuery.eq("created_by", id);
+        loansQuery = loansQuery.eq("booked_by", id);
+      } else if (role === "branch_manager") {
         customersQuery = customersQuery.eq("branch_id", branchId);
         loansQuery = loansQuery.eq("branch_id", branchId);
       } else if (role === "regional_manager") {
@@ -1048,7 +1074,7 @@ const Dashboard = () => {
         role: userRole,
         regionId: userRegionId,
         branchId: userBranchId,
-        id: userBranchId,
+        id: userId, // ✅ Pass userId
       };
       calculateDashboardMetrics(loans, customers, profile).then(
         setDashboardMetrics
@@ -1063,6 +1089,7 @@ const Dashboard = () => {
     customers,
     userRegionId,
     userBranchId,
+    userId, // ✅ Add userId dependency
   ]);
 
   useEffect(() => {
@@ -1110,93 +1137,74 @@ const Dashboard = () => {
   const handlePendingAmendments = () =>
     navigate("/registry/pending-amendments");
 
-const SemiCircularConverter = ({ percentage, label, total, converted }) => {
-  const radius = 80;
-  const circumference = Math.PI * radius;
-  const offset = circumference - (percentage / 100) * circumference;
+  // Component definitions remain the same...
+  const SemiCircularConverter = ({ percentage, label, total, converted }) => {
+    const radius = 80;
+    const circumference = Math.PI * radius;
+    const offset = circumference - (percentage / 100) * circumference;
+    const rotation = -90 + (percentage / 100) * 180;
 
-  // Compute rotation of the pointer (from -90° to +90°)
-  const rotation = -90 + (percentage / 100) * 180;
-
-  return (
-    <div className="relative flex flex-col items-center space-y-4">
-      <div className="relative w-56 h-36 mb-3">
-        <svg className="w-full h-full" viewBox="0 0 200 120">
-          {/* Background Arc */}
-          <path
-            d="M 20 100 A 80 80 0 0 1 180 100"
-            fill="none"
-            stroke="#E5E7EB"
-            strokeWidth="16"
-            strokeLinecap="round"
-          />
-
-          {/* Active Arc */}
-          <path
-            d="M 20 100 A 80 80 0 0 1 180 100"
-            fill="none"
-            stroke="url(#goldGradient)"
-            strokeWidth="16"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            className="transition-all duration-1000 ease-out"
-          />
-
-          {/* Golden Gradient Definition */}
-          <defs>
-            <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#FFD700" /> {/* Bright gold */}
-              <stop offset="50%" stopColor="#FACC15" /> {/* Amber */}
-              <stop offset="100%" stopColor="#CA8A04" /> {/* Deep gold */}
-            </linearGradient>
-          </defs>
-
-          {/* Center & Pointer */}
-          <g transform="translate(100,100)">
-            {/* Pointer Arrow — originating from center */}
-            <g transform={`rotate(${rotation})`}>
-              <polygon
-                points="0,0 0,-75 3,-68 -3,-68"
+    return (
+      <div className="relative flex flex-col items-center space-y-4">
+        <div className="relative w-56 h-36 mb-3">
+          <svg className="w-full h-full" viewBox="0 0 200 120">
+            <path
+              d="M 20 100 A 80 80 0 0 1 180 100"
+              fill="none"
+              stroke="#E5E7EB"
+              strokeWidth="16"
+              strokeLinecap="round"
+            />
+            <path
+              d="M 20 100 A 80 80 0 0 1 180 100"
+              fill="none"
+              stroke="url(#goldGradient)"
+              strokeWidth="16"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
+              className="transition-all duration-1000 ease-out"
+            />
+            <defs>
+              <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#FFD700" />
+                <stop offset="50%" stopColor="#FACC15" />
+                <stop offset="100%" stopColor="#CA8A04" />
+              </linearGradient>
+            </defs>
+            <g transform="translate(100,100)">
+              <g transform={`rotate(${rotation})`}>
+                <polygon
+                  points="0,0 0,-75 3,-68 -3,-68"
+                  fill="#FACC15"
+                  stroke="#CA8A04"
+                  strokeWidth="1"
+                />
+              </g>
+              <circle
+                cx="0"
+                cy="0"
+                r="10"
                 fill="#FACC15"
                 stroke="#CA8A04"
-                strokeWidth="1"
+                strokeWidth="1.5"
               />
             </g>
-
-            {/* Center Circle */}
-            <circle
-              cx="0"
-              cy="0"
-              r="10"
-              fill="#FACC15"
-              stroke="#CA8A04"
-              strokeWidth="1.5"
-            />
-          </g>
-        </svg>
+          </svg>
+        </div>
+        <div className="text-center -mt-4">
+          <p className="text-3xl font-bold text-gray-800 tracking-tight">{percentage}%</p>
+        </div>
+        <div className="text-center bg-gradient-to-br from-yellow-50 to-amber-50 rounded-2xl shadow-sm px-4 py-3 w-full border border-yellow-100">
+          <p className="text-sm font-semibold text-gray-700 mb-1">{label}</p>
+          <p className="text-xs text-gray-600">
+            <span className="font-bold text-yellow-600">{converted}</span> converted of{" "}
+            <span className="font-bold text-gray-700">{total}</span> total
+          </p>
+        </div>
       </div>
-
-      {/* Percentage Text — positioned below the semicircle */}
-      <div className="text-center -mt-4">
-        <p className="text-3xl font-bold text-gray-800 tracking-tight">{percentage}%</p>
-      </div>
-
-      {/* Label Section */}
-      <div className="text-center bg-gradient-to-br from-yellow-50 to-amber-50 rounded-2xl shadow-sm px-4 py-3 w-full border border-yellow-100">
-        <p className="text-sm font-semibold text-gray-700 mb-1">{label}</p>
-        <p className="text-xs text-gray-600">
-          <span className="font-bold text-yellow-600">{converted}</span> converted of{" "}
-          <span className="font-bold text-gray-700">{total}</span> total
-        </p>
-      </div>
-    </div>
-  );
-};
-
-
-
-
+    );
+  };
 
   const MainStatCard = ({
     title,
@@ -1222,13 +1230,11 @@ const SemiCircularConverter = ({ percentage, label, total, converted }) => {
               {title}
             </p>
           </div>
-
           <div className="flex-grow flex items-center">
             <p className="text-4xl lg:text-5xl font-extrabold tracking-tight leading-none drop-shadow-lg">
               {amount}
             </p>
           </div>
-
           {percentage !== undefined && (
             <div className="mt-2">
               <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-white/20 backdrop-blur-sm">
@@ -1236,7 +1242,6 @@ const SemiCircularConverter = ({ percentage, label, total, converted }) => {
               </span>
             </div>
           )}
-
           <div className="mt-5 pt-4 border-t border-white/30">
             <p className="text-sm font-bold text-white/95 flex items-center">
               <svg
@@ -1350,68 +1355,72 @@ const SemiCircularConverter = ({ percentage, label, total, converted }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6">
-      <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg border border-gray-200/50 p-6 mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            {(userRole === "credit_analyst_officer" ||
-              userRole === "customer_service_officer") && (
+      {/* ✅ Hide filter dropdowns for relationship_officer */}
+      {userRole !== "relationship_officer" && (
+        <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg border border-gray-200/50 p-6 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              {(userRole === "credit_analyst_officer" ||
+                userRole === "customer_service_officer") && (
+                <select
+                  value={selectedRegion}
+                  onChange={(e) => setSelectedRegion(e.target.value)}
+                  className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer hover:border-indigo-300"
+                >
+                  <option value="all">All Regions</option>
+                  {availableRegions.map((region) => (
+                    <option key={region.id} value={region.id}>
+                      {region.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {(userRole === "regional_manager" ||
+                userRole === "credit_analyst_officer" ||
+                userRole === "customer_service_officer") && (
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer hover:border-indigo-300"
+                >
+                  <option value="all">
+                    {userRole === "regional_manager"
+                      ? "All Branches in Region"
+                      : "All Branches"}
+                  </option>
+                  {availableBranches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
               <select
-                value={selectedRegion}
-                onChange={(e) => setSelectedRegion(e.target.value)}
-                className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer hover:border-indigo-300"
+                value={selectedRO}
+                onChange={(e) => setSelectedRO(e.target.value)}
+                className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer hover:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={
+                  (userRole === "regional_manager" && selectedBranch === "all") ||
+                  (userRole === "credit_analyst_officer" &&
+                    selectedBranch === "all") ||
+                  (userRole === "customer_service_officer" &&
+                    selectedBranch === "all")
+                }
               >
-                <option value="all">All Regions</option>
-                {availableRegions.map((region) => (
-                  <option key={region.id} value={region.id}>
-                    {region.name}
+                {availableROs.map((ro) => (
+                  <option key={ro.id} value={ro.id}>
+                    {ro.full_name}
                   </option>
                 ))}
               </select>
-            )}
-
-            {(userRole === "regional_manager" ||
-              userRole === "credit_analyst_officer" ||
-              userRole === "customer_service_officer") && (
-              <select
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer hover:border-indigo-300"
-              >
-                <option value="all">
-                  {userRole === "regional_manager"
-                    ? "All Branches in Region"
-                    : "All Branches"}
-                </option>
-                {availableBranches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            <select
-              value={selectedRO}
-              onChange={(e) => setSelectedRO(e.target.value)}
-              className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer hover:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={
-                (userRole === "regional_manager" && selectedBranch === "all") ||
-                (userRole === "credit_analyst_officer" &&
-                  selectedBranch === "all") ||
-                (userRole === "customer_service_officer" &&
-                  selectedBranch === "all")
-              }
-            >
-              {availableROs.map((ro) => (
-                <option key={ro.id} value={ro.id}>
-                  {ro.full_name}
-                </option>
-              ))}
-            </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
+      {/* Rest of the dashboard UI remains the same */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <MainStatCard
           title="Outstanding Loan Balance"
@@ -1446,7 +1455,6 @@ const SemiCircularConverter = ({ percentage, label, total, converted }) => {
           gradient="bg-gradient-to-br from-purple-600 via-violet-500 to-indigo-500"
         />
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <OverviewSection
           title="Customers Overview"

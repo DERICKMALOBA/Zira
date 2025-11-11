@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx
+// src/components/SharedSidebar.jsx
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -18,7 +18,11 @@ import {
   FolderOpen,
   UserCheck,
   PhoneCall,
-  Handshake
+  Handshake,
+  UserPlus,
+  ClipboardList,
+  TrendingUp,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useAuth } from "../hooks/userAuth"; 
 
@@ -44,7 +48,7 @@ const SharedSidebar = () => {
 
   // Auto-expand parent when child is active
   useEffect(() => {
-    navigation.forEach(item => {
+    getNavigation().forEach(item => {
       if (item.children) {
         const isChildActive = item.children.some(child => 
           location.pathname === child.href || location.pathname.startsWith(child.href + '/')
@@ -57,93 +61,147 @@ const SharedSidebar = () => {
         }
       }
     });
-  }, [location.pathname]);
+  }, [location.pathname, profile?.role]);
 
-  const navigation = [
-    { 
-      name: 'Dashboard', 
-      href: '/dashboard', 
-      icon: Home,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100'
-    },
-    {
-      name: 'Accounting',
-      href: '/accounting',
-      icon: Calculator,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100',
-      children: [
-        { name: 'Chart of Accounts', href: '/accounting/chart-of-accounts', icon: BookOpen },
-        { name: 'Journals', href: '/accounting/journals', icon: Book },
-        { name: 'Transactions', href: '/accounting/transactions', icon: CreditCard },
-        { name: 'Bank Reconciliations', href: '/accounting/bank-reconciliations', icon: Landmark },
-      ],
-    },
-    {
-      name: 'Registry',
-      href: '/registry',
-      icon: Users,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100',
-      children: [
-        { name: 'Customers', href: '/registry/customers', icon: Users },
-        { name: 'Pending Amendments', href: '/registry/pending-amendments', icon: FolderOpen },
-        { name: 'Approvals Pending', href: '/registry/approvals-pending', icon: UserCheck },
-        ...(profile?.role === "customer_service_officer" 
-          ? [{ name: 'Callbacks Pending', href: '/registry/callbacks-pending', icon: PhoneCall }] 
-          : []),
-      ],
-    },
-    {
-      name: 'Loaning',
-      href: '/loaning',
-      icon: FileText,
-      color: 'text-red-600',
-      bgColor: 'bg-red-100',
-      children: [
-        { name: 'Loans', href: '/loaning/all', icon: FileText },
-        { name: 'Loan Pending Branch Manager', href: '/loaning/pending-branch-manager', icon: FileText },
-        { name: 'Loan Pending Regional Manager', href: '/loaning/pending-regional-manager', icon: FileText },
-        { name: 'Loan Pending Disbursement', href: '/loaning/pending-disbursement', icon: FileText },
-        { name: 'Disbursement Loans', href: '/loaning/disbursement-loans', icon: FileText },
-        { name: 'Rejected Loans', href: '/loaning/rejected-loans', icon: FileText },
-      ],
-    },
-    {
-      name: 'Drafts',
-      href: '/drafts',
-      icon: FileText,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100',
-      children: [
-        {
-          name: 'Customer Verification Drafts',
-          href: '/drafts/customers',
-          icon: UserCheck,
-        },
-      ],
-    },
-    {
-      name: 'Reports',
-      href: '/reports',
-      icon: BarChart3,
-      color: 'text-cyan-600',
-      bgColor: 'bg-cyan-100',
-      children: [
-        { 
-          name: 'Reports', 
-          href: '/reports/all', 
-          icon: FileText,
-        },
-        { 
-          name: 'PTP Reports', 
-          href: '/reports/ptp', 
-          icon: Handshake,
-        },
-      ],
-    },
-  ];
+  const getNavigation = () => {
+    const isOfficer = profile?.role === 'relationship_officer';
+    
+    const baseNavigation = [
+      { 
+        name: 'Dashboard', 
+        href: '/dashboard', 
+        icon: Home,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-100'
+      },
+    ];
+
+    // Officer-specific navigation items
+    const officerNavigation = isOfficer ? [
+      {
+        name: 'Leads',
+        href: '/officer/leads',
+        icon: UserPlus,
+        color: 'text-green-600',
+        bgColor: 'bg-green-100',
+      },
+      {
+        name: 'My Customers',
+        href: '/officer/customers',
+        icon: Users,
+        color: 'text-purple-600',
+        bgColor: 'bg-purple-100',
+        children: [
+          { name: 'View Customers', href: '/officer/customers', icon: Users },
+          { name: 'Add Customer', href: '/officer/customers/add', icon: UserPlus },
+          { name: 'Pending Amendments', href: '/officer/customers/amendments', icon: ClipboardList },
+          { name: 'Customer Drafts', href: '/officer/customers/drafts', icon: FileText },
+        ],
+      },
+      {
+        name: 'My Loans',
+        href: '/officer/loans',
+        icon: FileText,
+        color: 'text-red-600',
+        bgColor: 'bg-red-100',
+        children: [
+          { name: 'Loan Applications', href: '/officer/loans/applications', icon: FileText },
+          { name: 'All Loans', href: '/officer/loans', icon: FileSpreadsheet },
+          { name: 'Loan Drafts', href: '/officer/loans/drafts', icon: FileText },
+        ],
+      },
+      {
+        name: 'Performance',
+        href: '/officer/conversions',
+        icon: TrendingUp,
+        color: 'text-indigo-600',
+        bgColor: 'bg-indigo-100',
+      },
+    ] : [];
+
+    const sharedNavigation = [
+      {
+        name: 'Accounting',
+        href: '/accounting',
+        icon: Calculator,
+        color: 'text-green-600',
+        bgColor: 'bg-green-100',
+        children: [
+          { name: 'Chart of Accounts', href: '/accounting/chart-of-accounts', icon: BookOpen },
+          { name: 'Journals', href: '/accounting/journals', icon: Book },
+          { name: 'Transactions', href: '/accounting/transactions', icon: CreditCard },
+          { name: 'Bank Reconciliations', href: '/accounting/bank-reconciliations', icon: Landmark },
+        ],
+      },
+      {
+        name: 'Registry',
+        href: '/registry',
+        icon: Users,
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-100',
+        children: [
+          { name: 'Customers', href: '/registry/customers', icon: Users },
+          { name: 'Pending Amendments', href: '/registry/pending-amendments', icon: FolderOpen },
+          { name: 'Approvals Pending', href: '/registry/approvals-pending', icon: UserCheck },
+          ...(profile?.role === "customer_service_officer" 
+            ? [{ name: 'Callbacks Pending', href: '/registry/callbacks-pending', icon: PhoneCall }] 
+            : []),
+        ],
+      },
+      {
+        name: 'Loaning',
+        href: '/loaning',
+        icon: FileText,
+        color: 'text-red-600',
+        bgColor: 'bg-red-100',
+        children: [
+          { name: 'All Loans', href: '/loaning/all', icon: FileText },
+          { name: 'Pending Branch Manager', href: '/loaning/pending-branch-manager', icon: FileText },
+          { name: 'Pending Regional Manager', href: '/loaning/pending-regional-manager', icon: FileText },
+          { name: 'Pending Disbursement', href: '/loaning/pending-disbursement', icon: FileText },
+          { name: 'Disbursed Loans', href: '/loaning/disbursement-loans', icon: FileText },
+          { name: 'Rejected Loans', href: '/loaning/rejected-loans', icon: FileText },
+        ],
+      },
+      {
+        name: 'Drafts',
+        href: '/drafts',
+        icon: FileText,
+        color: 'text-yellow-600',
+        bgColor: 'bg-yellow-100',
+        children: [
+          {
+            name: 'Customer Verification Drafts',
+            href: '/drafts/customers',
+            icon: UserCheck,
+          },
+        ],
+      },
+      {
+        name: 'Reports',
+        href: '/reports',
+        icon: BarChart3,
+        color: 'text-cyan-600',
+        bgColor: 'bg-cyan-100',
+        children: [
+          { 
+            name: 'All Reports', 
+            href: '/reports/all', 
+            icon: FileText,
+          },
+          { 
+            name: 'PTP Reports', 
+            href: '/reports/ptp', 
+            icon: Handshake,
+          },
+        ],
+      },
+    ];
+
+    return [...baseNavigation, ...officerNavigation, ...sharedNavigation];
+  };
+
+  const navigation = getNavigation();
 
   return (
     <div className={`h-full bg-green-50 text-gray-800 border-r border-green-200 transition-all duration-300 ${
@@ -158,7 +216,7 @@ const SharedSidebar = () => {
               <BarChart3 className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              Zira Lending
+              Jasiri Lending 
             </span>
           </div>
         )}
@@ -272,10 +330,10 @@ const SharedSidebar = () => {
         {!isCollapsed && (
           <div className="text-center">
             <p className="text-xs text-gray-500">
-              Zira Lending v1.0
+              Jasiri Lending v1.0
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              {profile?.role ? `Logged in as ${profile.role}` : ''}
+              {profile?.role ? `${profile.role.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}` : ''}
             </p>
           </div>
         )}

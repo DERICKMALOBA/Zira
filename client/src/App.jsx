@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useState,memo } from "react";
+import { useState, memo } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -12,15 +12,12 @@ import { useAuth } from "./hooks/userAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Layout Components
-import OfficerSidebar from "./relationship-officer/components/OfficerSidebar";
 import SidebarAdmin from "./pages/admin/components/SidebarAdmin";
-
-import OfficerHeader from "./relationship-officer/components/OfficerHeader";
 import HeaderAdmin from "./pages/admin/components/HeaderAdmin";
+import SharedSidebar from "./components/SharedSidebar";
+import SharedHeader from "./components/SharedHeader";
 
-
-
-// Relationship Officer Pages (Remain separate)
+// Relationship Officer Pages
 import OfficerDashboard from "./relationship-officer/Dashboard";
 import Leads from "./relationship-officer/Leads";
 import Customers from "./relationship-officer/Customers";
@@ -31,7 +28,7 @@ import Approval from "./relationship-officer/Approval";
 import Amendments from "./relationship-officer/amendments/Amendments";
 import ConversionChart from "./relationship-officer/components/CoversionChart";
 
-// Admin Pages (Remain separate)
+// Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AllUsers from "./pages/admin/AllUsers";
 import AddUsers from "./pages/admin/AddUsers";
@@ -42,16 +39,12 @@ import ApprovedLoans from "./pages/admin/loans/ApprovedLoans";
 import LoanProduct from "./pages/admin/loans/LoanProduct";
 import RestructureLoans from "./pages/admin/loans/RestructureLoans";
 import RejectedLoans from "./pages/loaning/RejectedLoans";
-
 import LoanWriteOff from "./pages/admin/loans/LoanWriteOff";
+import DisbursedLoansAdmin from "./pages/admin/loans/DisbursedLoansAdmin";
 
-// Other
+// Shared Pages
 import Login from "./pages/Login";
 import OperationsManagement from "./pages/operations/Operations";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import SharedSidebar from "./components/SharedSidebar";
-import SharedHeader from "./components/SharedHeader";
 import Dashboard from "./pages/Dashboard";
 import Accounting from "./pages/accounting/Accounting";
 import Transactions from "./pages/accounting/Transactions";
@@ -73,7 +66,6 @@ import HQReports from "./pages/reports/HQReports";
 import CallbacksPending from "./pages/registry/CallbacksPending";
 import AllCustomers from "./pages/registry/AllCustomers";
 import DisbursedLoans from "./pages/loaning/DisbursementLoans";
-import DisbursedLoansAdmin from "./pages/admin/loans/DisbursedLoansAdmin";
 import PromiseToPayList from "./pages/ptp/PromiseToPay";
 import FinancialReports from "./pages/reports/FinancialReports";
 import LoanReports from "./pages/reports/LoanReports";
@@ -117,6 +109,9 @@ import Verification from "./pages/registry/Verification.jsx";
 import ViewLoan from "./pages/loaning/ViewLoan.jsx";
 import LoanInteraction from "./pages/loaning/LoanInteraction.jsx";
 
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { profile, loading } = useAuth();
@@ -125,80 +120,62 @@ function App() {
 
   const role = profile?.role;
 
-  // Roles that share the same layout and components
-  const sharedRoles = ['branch_manager', 'regional_manager', 'credit_analyst_officer', 'customer_service_officer'];
+  // Roles that share the same layout and components (now includes relationship_officer)
+  const sharedRoles = ['branch_manager', 'regional_manager', 'credit_analyst_officer', 'customer_service_officer', 'relationship_officer'];
   const isSharedRole = sharedRoles.includes(role);
 
   const renderSidebar = () => {
-    switch (role) {
-      case "relationship_officer":
-        return (
-          <OfficerSidebar
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-        );
-      case "admin":
-        return (
-          <SidebarAdmin
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-        );
-      default:
-        if (isSharedRole) {
-          return (
-            <SharedSidebar
-              sidebarOpen={sidebarOpen}
-              setSidebarOpen={setSidebarOpen}
-              userRole={role}
-            />
-          );
-        }
-        return null;
+    if (role === "admin") {
+      return (
+        <SidebarAdmin
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+        />
+      );
     }
+    
+    if (isSharedRole) {
+      return (
+        <SharedSidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          userRole={role}
+        />
+      );
+    }
+    
+    return null;
   };
 
   const renderHeader = () => {
-    switch (role) {
-      case "relationship_officer":
-        return (
-          <OfficerHeader
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-        );
-      case "admin":
-        return (
-          <HeaderAdmin
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
-          />
-        );
-      default:
-        if (isSharedRole) {
-          return (
-            <SharedHeader
-              sidebarOpen={sidebarOpen}
-              setSidebarOpen={setSidebarOpen}
-              userRole={role}
-            />
-          );
-        }
-        return null;
+    if (role === "admin") {
+      return (
+        <HeaderAdmin
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+        />
+      );
     }
+    
+    if (isSharedRole) {
+      return (
+        <SharedHeader
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          userRole={role}
+        />
+      );
+    }
+    
+    return null;
   };
 
   const getDefaultRoute = () => {
     switch (role) {
       case "relationship_officer":
-        return "/officer";
       case "branch_manager":
-        return "/dashboard";
       case "regional_manager":
-        return "/dashboard";
       case "credit_analyst_officer":
-        return "/dashboard";
       case "customer_service_officer":
         return "/dashboard";
       case "admin":
@@ -207,14 +184,14 @@ function App() {
         return "/dashboard";
     }
   };
-const ReportWrapper = memo(function ReportWrapper({ component: Component, userRole }) {
-  return (
-    <div className="mb-4">
-      {Component && <Component userRole={userRole} />}
-    </div>
-  );
-});
 
+  const ReportWrapper = memo(function ReportWrapper({ component: Component, userRole }) {
+    return (
+      <div className="mb-4">
+        {Component && <Component userRole={userRole} />}
+      </div>
+    );
+  });
 
   return (
     <Router>
@@ -231,10 +208,8 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
         theme="colored"
       />
       <div className="flex h-screen bg-gray-100 overflow-hidden">
-        {/* Only show sidebars + headers if user is logged in */}
         {profile && <>{renderSidebar()}</>}
 
-        {/* Main Content */}
         <div className="flex flex-col flex-1 min-w-0">
           {profile && renderHeader()}
 
@@ -246,163 +221,10 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
               {/* Default redirect based on role */}
               <Route path="/" element={<Navigate to={getDefaultRoute()} />} />
 
-              {/* Relationship Officer Routes */}
-              {role === "relationship_officer" && (
-                <>
-                  <Route
-                    path="/officer"
-                    element={
-                      <ProtectedRoute>
-                        <OfficerDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/officer/leads"
-                    element={
-                      <ProtectedRoute>
-                        <Leads />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/officer/customers"
-                    element={
-                      <ProtectedRoute>
-                        <Customers />
-                      </ProtectedRoute>
-                    }
-                  />
-
-    <Route
-                    path="/officer/customers/add"
-                    element={
-                      <ProtectedRoute>
-                        <AddCustomer />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  <Route
-                    path="/officer/loans"
-                    element={
-                      <ProtectedRoute>
-                        <Loans />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                     <Route
-        path="/officer/loan-booking/:customerId"
-        element={
-          <ProtectedRoute>
-            <LoanBookingForm />
-          </ProtectedRoute>
-        }
-      />
-
-
-          <Route
-          path="/officer/customer-form"
-          element={
-            <ProtectedRoute allowedRoles={['relationship_officer']}>
-              <CustomerForm />
-            </ProtectedRoute>
-          }
-        />
-                  <Route
-                    path="/officer/loans/applications"
-                    element={
-                      <ProtectedRoute>
-                        <LoanApplication />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/officer/loans/approval"
-                    element={
-                      <ProtectedRoute>
-                        <ApprovalQueue />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/officer/customers/approval"
-                    element={
-                      <ProtectedRoute>
-                        <Approval />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/officer/customers/amendments"
-                    element={
-                      <ProtectedRoute>
-                        <Amendments />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                   <Route
-                    path="/officer/customers/drafts"
-                    element={
-                      <ProtectedRoute>
-                        <OfficerDrafts/>
-                      </ProtectedRoute>
-                    }
-                  />
-                   <Route
-                    path="/officer/loans/drafts"
-                    element={
-                      <ProtectedRoute>
-                        <LoanDrafts/>
-                      </ProtectedRoute>
-                    }
-                  />
-
-
-<Route
-  path="/officer/:customerId/details"
-  element={
-    <ProtectedRoute>
-      <CustomerDetailsModal />
-    </ProtectedRoute>
-  }
-/>
-
-
-
-<Route
-  path="/officer/drafts/view/:draftId"
-  element={
-    <ProtectedRoute>
-      <CustomerDraft />
-    </ProtectedRoute>
-  }
-/>
-
-
-
-                  <Route
-                    path="/officer/conversions"
-                    element={
-                      <ProtectedRoute>
-                        <ConversionChart />
-                      </ProtectedRoute>
-                    }
-                  />
-
-
-
-            
-<Route path="/officer/editamendments/:customerId" element={<EditAmendment />} />
-<Route path="/officer/viewamendments/:amendmentId" element={<AmendmentDetailsPage />} />                </>
-              )}
-
-              {/* Shared Routes for RM, BM, CA, CSO */}
+              {/* Shared Routes for RM, BM, CA, CSO, and Relationship Officer */}
               {isSharedRole && (
                 <>
-                  {/* Dashboard */}
+                  {/* Dashboard - role-specific data filtering */}
                   <Route
                     path="/dashboard"
                     element={
@@ -473,9 +295,6 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                     }
                   />
 
-             
-                  
-                  
                   <Route
                     path="/registry/pending-amendments"
                     element={
@@ -516,7 +335,7 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-                    <Route
+                  <Route
                     path="/registry/callbacks-pending"
                     element={
                       <ProtectedRoute>
@@ -525,70 +344,191 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                     }
                   />
 
+                  {/* Relationship Officer Specific Routes */}
+                  {role === 'relationship_officer' && (
+                    <>
+                      <Route
+                        path="/officer/leads"
+                        element={
+                          <ProtectedRoute>
+                            <Leads />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/customers"
+                        element={
+                          <ProtectedRoute>
+                            <Customers />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/customers/add"
+                        element={
+                          <ProtectedRoute>
+                            <AddCustomer />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/loans"
+                        element={
+                          <ProtectedRoute>
+                            <Loans />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/loan-booking/:customerId"
+                        element={
+                          <ProtectedRoute>
+                            <LoanBookingForm />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/customer-form"
+                        element={
+                          <ProtectedRoute>
+                            <CustomerForm />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/loans/applications"
+                        element={
+                          <ProtectedRoute>
+                            <LoanApplication />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/loans/approval"
+                        element={
+                          <ProtectedRoute>
+                            <ApprovalQueue />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/customers/approval"
+                        element={
+                          <ProtectedRoute>
+                            <Approval />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/customers/amendments"
+                        element={
+                          <ProtectedRoute>
+                            <Amendments />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/customers/drafts"
+                        element={
+                          <ProtectedRoute>
+                            <OfficerDrafts />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/loans/drafts"
+                        element={
+                          <ProtectedRoute>
+                            <LoanDrafts />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/:customerId/details"
+                        element={
+                          <ProtectedRoute>
+                            <CustomerDetailsModal />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/drafts/view/:draftId"
+                        element={
+                          <ProtectedRoute>
+                            <CustomerDraft />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/officer/conversions"
+                        element={
+                          <ProtectedRoute>
+                            <ConversionChart />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route path="/officer/editamendments/:customerId" element={<EditAmendment />} />
+                      <Route path="/officer/viewamendments/:amendmentId" element={<AmendmentDetailsPage />} />
+                    </>
+                  )}
 
+                  {/* Customer 360 View Routes */}
+                  <Route
+                    path="/customer/:customerId/360"
+                    element={
+                      <ProtectedRoute>
+                        <Customer360View userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/customer/:customerId/details"
+                    element={
+                      <ProtectedRoute>
+                        <CustomerDetailsModal />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/customer/:customerId/verify" element={
+                    <ProtectedRoute>
+                      <CustomerVerification />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/customer/:customerId/verify-amendment" element={
+                    <ProtectedRoute>
+                      <CustomerVerification />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/customer/:customerId/verify-customer_service_officer" element={
+                    <ProtectedRoute>
+                      <Verification />
+                    </ProtectedRoute>
+                  } />
+                  <Route
+                    path="/customer/:customerId/interactions"
+                    element={
+                      <ProtectedRoute>
+                        <CustomerInteractions />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/customer/:customerId/loan-details"
+                    element={
+                      <ProtectedRoute>
+                        <LoanDetails />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/customer/:customerId/promise-to-pay"
+                    element={
+                      <ProtectedRoute>
+                        <PromiseToPay />
+                      </ProtectedRoute>
+                    }
+                  />
 
-
-
-
-<Route
-  path="/customer/:customerId/360"
-  element={
-    <ProtectedRoute>
-      <Customer360View userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/customer/:customerId/details"
-  element={
-    <ProtectedRoute>
-      <CustomerDetailsModal />
-    </ProtectedRoute>
-  }
-/>
-
- <Route path="/customer/:customerId/verify" element={
-   <ProtectedRoute>
-      <CustomerVerification />
-   </ProtectedRoute>
-} />
-
-
-  <Route path="/customer/:customerId/verify-amendment" element={
-    <ProtectedRoute>
-      <CustomerVerification/>
-    </ProtectedRoute>
-    } />
-      <Route path="/customer/:customerId/verify-customer_service_officer" element={
-        <ProtectedRoute>
-           <Verification />
-        </ProtectedRoute>
-       } />
-
-<Route
-  path="/customer/:customerId/interactions"
-  element={
-    <ProtectedRoute>
-      <CustomerInteractions />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/customer/:customerId/loan-details"
-  element={
-    <ProtectedRoute>
-      <LoanDetails/>
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/customer/:customerId/promise-to-pay"
-  element={
-    <ProtectedRoute>
-      <PromiseToPay />
-    </ProtectedRoute>
-  }
-/>
                   {/* Reports */}
                   <Route
                     path="/reports"
@@ -606,9 +546,6 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-
-
-                       
                   <Route
                     path="/reports/accountlist"
                     element={
@@ -617,9 +554,6 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-
-
-                        
                   <Route
                     path="/reports/outstandEOM"
                     element={
@@ -628,8 +562,7 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-
-                     <Route
+                  <Route
                     path="/reports/financial"
                     element={
                       <ProtectedRoute>
@@ -637,8 +570,7 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-
-                     <Route
+                  <Route
                     path="/reports/all"
                     element={
                       <ProtectedRoute>
@@ -646,8 +578,7 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-
-                     <Route
+                  <Route
                     path="/reports/officers"
                     element={
                       <ProtectedRoute>
@@ -655,10 +586,7 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-
-                  
-
-                     <Route
+                  <Route
                     path="/reports/ptp"
                     element={
                       <ProtectedRoute>
@@ -666,9 +594,7 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-
-
-                     <Route
+                  <Route
                     path="/drafts/customers"
                     element={
                       <ProtectedRoute>
@@ -676,8 +602,7 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-
-                     <Route
+                  <Route
                     path="/drafts/loans"
                     element={
                       <ProtectedRoute>
@@ -685,7 +610,7 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-                     <Route
+                  <Route
                     path="/drafts/others"
                     element={
                       <ProtectedRoute>
@@ -743,27 +668,17 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                       </ProtectedRoute>
                     }
                   />
-
-
-
-  
-<Route path="/loans/:loanId" element={
-  <ProtectedRoute>
-  <ViewLoan userRole={role}
-    />
-     </ProtectedRoute>
-  }
-  
-  />
-<Route path="/loans/:loanId/interactions" element={
-    <ProtectedRoute>
-
-  <LoanInteraction userRole={role} />
-  </ProtectedRoute>
-  } />
-
-
-                    <Route
+                  <Route path="/loans/:loanId" element={
+                    <ProtectedRoute>
+                      <ViewLoan userRole={role} />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/loans/:loanId/interactions" element={
+                    <ProtectedRoute>
+                      <LoanInteraction userRole={role} />
+                    </ProtectedRoute>
+                  } />
+                  <Route
                     path="/promise-to-pay"
                     element={
                       <ProtectedRoute>
@@ -780,142 +695,119 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                     }
                   />
 
-
-
+                  {/* Report Routes with Wrapper */}
                   <Route
-  path="/reports/disbursement-loans"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={DisbursementLoansReport} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
- 
+                    path="/reports/disbursement-loans"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={DisbursementLoansReport} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route
-  path="/reports/customer-account-statement"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={CustomerAccountModal} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/loan-due"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={LoanDueReport} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/customer-listing"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={CustomerListing} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/mpesa-repayment"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={MpesaRepaymentReports} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/loan-officer-performance"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={LoanOfficerPerformanceReport} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/non-performing-loans"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={NonPerformingLoansReport} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/outstanding-balance"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={OutstandingLoanBalanceReport} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/pending-disbursement"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={PendingDisbursementReport} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/loan-listing"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={LoanListing} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/trace-mpesa"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={TraceMpesaTransaction} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/inactive-customers"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={InactiveCustomers} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/loan-arrears"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={LoanArrearsReport} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/advanced-mpesa"
-  element={
-    <ProtectedRoute>
-    
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/reports/suspense-payments"
-  element={
-    <ProtectedRoute>
-      <ReportWrapper component={SuspensePaymentsReport} userRole={role} />
-    </ProtectedRoute>
-  }
-/>
+                    path="/reports/customer-account-statement"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={CustomerAccountModal} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/loan-due"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={LoanDueReport} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/customer-listing"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={CustomerListing} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/mpesa-repayment"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={MpesaRepaymentReports} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/loan-officer-performance"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={LoanOfficerPerformanceReport} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/non-performing-loans"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={NonPerformingLoansReport} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/outstanding-balance"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={OutstandingLoanBalanceReport} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/pending-disbursement"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={PendingDisbursementReport} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/loan-listing"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={LoanListing} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/trace-mpesa"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={TraceMpesaTransaction} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/inactive-customers"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={InactiveCustomers} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/loan-arrears"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={LoanArrearsReport} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/reports/suspense-payments"
+                    element={
+                      <ProtectedRoute>
+                        <ReportWrapper component={SuspensePaymentsReport} userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
                 </>
               )}
 
@@ -932,7 +824,6 @@ const ReportWrapper = memo(function ReportWrapper({ component: Component, userRo
                     path="/users/suspended/admin"
                     element={<SuspendedUsers />}
                   />
-
                   <Route path="/loans/all/admin" element={<AllLoansAdmin />} />
                   <Route
                     path="/loans/pending/admin"
