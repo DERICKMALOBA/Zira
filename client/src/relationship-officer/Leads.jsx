@@ -22,12 +22,11 @@ import { supabase } from "../supabaseClient";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from 'react-router-dom';
-import CustomerForm from "./components/CustomerForm"; 
 
 const Leads = () => {
   const [leads, setLeads] = useState([]);
   const { profile } = useAuth();
-   const navigate = useNavigate();
+  const navigate = useNavigate();
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,8 +42,7 @@ const Leads = () => {
     status: "Cold",
   });
 
-
-    const handleConvertToCustomer = (lead) => {
+  const handleConvertToCustomer = (lead) => {
     navigate('/officer/customer-form', { 
       state: { 
         leadData: lead,
@@ -52,6 +50,7 @@ const Leads = () => {
       } 
     });
   }; 
+
   //  Fetch leads for logged-in officer
   const fetchLeads = async () => {
     try {
@@ -185,9 +184,6 @@ const Leads = () => {
     }
   };
 
-
- 
-
   // Sorting
   const handleSort = (key) => {
     let direction = "asc";
@@ -272,9 +268,6 @@ const Leads = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-       
-
         {/* Controls */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-indigo-100">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -283,40 +276,38 @@ const Leads = () => {
               {/* Search Bar */}
               <div className="relative flex-1 max-w-md">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+                  <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
                   type="text"
                   placeholder="Search leads..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  className="block w-full pl-9 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 />
               </div>
- <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-200">
-                <UserPlusIcon className="h-5 w-5 text-emerald-600" />
-                <span className="text-emerald-700 font-semibold text-sm">{leads.length} Total Leads</span>
-              </div>
+
               {/* Status Filter */}
               <div className="relative">
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-xl px-4 py-3 pr-8 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                  className="appearance-none bg-white border border-gray-300 rounded-xl px-4 py-3 pr-10 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors h-[46px]"
                 >
                   <option value="all">All Status</option>
                   <option value="Hot">Hot</option>
                   <option value="Warm">Warm</option>
                   <option value="Cold">Cold</option>
                 </select>
-                <TagIcon className="absolute right-3 top-3.5 h-4 w-4 text-gray-400 pointer-events-none" />
+                <TagIcon className="absolute right-3 top-3.5 h-5 w-5 text-gray-400 pointer-events-none" />
               </div>
             </div>
 
             {/* Add Lead Button */}
             <button
               onClick={() => setShowLeadForm(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-600 text-white rounded-xl hover:from-green-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl font-sm"
+              className="flex items-center gap-2 px-4 py-3 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg h-[46px]"
+              style={{ backgroundColor: "#586ab1" }}              
             >
               <PlusIcon className="h-5 w-5" />
               Add Lead
@@ -324,7 +315,7 @@ const Leads = () => {
           </div>
 
           {/* Results Info */}
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+          {/* <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
             <span>
               Showing {sortedLeads.length} of {leads.length} leads
             </span>
@@ -339,11 +330,19 @@ const Leads = () => {
                 Clear filters
               </button>
             )}
-          </div>
+          </div> */}
         </div>
 
         {/* Table */}
         <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 overflow-hidden">
+          {/* Total Leads Badge - Top Right */}
+          <div className="flex justify-end p-4 pb-0">
+            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-200">
+              <UserPlusIcon className="h-5 w-5 text-emerald-600" />
+              <span className="text-emerald-700 font-semibold text-sm">{leads.length} Total Leads</span>
+            </div>
+          </div>
+
           {sortedLeads.length === 0 ? (
             <div className="p-12 text-center">
               <UserPlusIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -363,85 +362,87 @@ const Leads = () => {
               </button>
             </div>
           ) : (
-           <table className="w-full table-auto border-collapse text-sm text-gray-700">
-  <thead>
-    <tr className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100 text-xs uppercase tracking-wide text-gray-600">
-      <th className="p-4 font-semibold text-left whitespace-nowrap">
-        <SortButton column="Firstname" label="First Name" icon={UserCircleIcon} />
-      </th>
-      <th className="p-4 font-semibold text-left whitespace-nowrap">
-        <SortButton column="Surname" label="Surname" icon={UserCircleIcon} />
-      </th>
-      <th className="p-4 font-semibold text-left whitespace-nowrap">
-        <SortButton column="mobile" label="Phone" icon={DevicePhoneMobileIcon} />
-      </th>
-      <th className="p-4 font-semibold text-left whitespace-nowrap">
-        <SortButton column="business_name" label="Business" icon={BuildingOffice2Icon} />
-      </th>
-      <th className="p-4 font-semibold text-left whitespace-nowrap">
-        <SortButton column="business_type" label="Type" icon={TagIcon} />
-      </th>
-      <th className="p-4 font-semibold text-left whitespace-nowrap">
-        <SortButton column="business_location" label="Location" icon={MapPinIcon} />
-      </th>
-      <th className="p-4 font-semibold text-left whitespace-nowrap">
-        <SortButton column="status" label="Status" icon={TagIcon} />
-      </th>
-      <th className="p-4 font-semibold text-center whitespace-nowrap">
-        Actions
-      </th>
-    </tr>
-  </thead>
+            <div className="overflow-x-auto">
+              <table className="w-full table-auto border-collapse text-sm text-gray-700">
+                <thead>
+                  <tr className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-indigo-100 text-xs uppercase tracking-wide text-gray-600">
+                    <th className="p-4 font-semibold text-left whitespace-nowrap">
+                      <SortButton column="Firstname" label="First Name" icon={UserCircleIcon} />
+                    </th>
+                    <th className="p-4 font-semibold text-left whitespace-nowrap">
+                      <SortButton column="Surname" label="Surname" icon={UserCircleIcon} />
+                    </th>
+                    <th className="p-4 font-semibold text-left whitespace-nowrap">
+                      <SortButton column="mobile" label="Phone" icon={DevicePhoneMobileIcon} />
+                    </th>
+                    <th className="p-4 font-semibold text-left whitespace-nowrap">
+                      <SortButton column="business_name" label="Business" icon={BuildingOffice2Icon} />
+                    </th>
+                    <th className="p-4 font-semibold text-left whitespace-nowrap">
+                      <SortButton column="business_type" label="Type" icon={TagIcon} />
+                    </th>
+                    <th className="p-4 font-semibold text-left whitespace-nowrap">
+                      <SortButton column="business_location" label="Location" icon={MapPinIcon} />
+                    </th>
+                    <th className="p-4 font-semibold text-left whitespace-nowrap">
+                      <SortButton column="status" label="Status" icon={TagIcon} />
+                    </th>
+                    <th className="p-4 font-semibold text-center whitespace-nowrap">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
 
-  <tbody className="divide-y divide-gray-100">
-    {sortedLeads.map((lead) => (
-      <tr
-        key={lead.id}
-        className="hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-200 text-sm"
-      >
-        <td className="p-4 truncate whitespace-nowrap" title={lead.Firstname}>
-          {lead.Firstname}
-        </td>
-        <td className="p-4 truncate whitespace-nowrap" title={lead.Surname}>
-          {lead.Surname}
-        </td>
-        <td className="p-4 truncate whitespace-nowrap" title={lead.mobile}>
-          {lead.mobile}
-        </td>
-        <td className="p-4 truncate whitespace-nowrap" title={lead.business_name}>
-          {lead.business_name}
-        </td>
-        <td className="p-4 truncate whitespace-nowrap" title={lead.business_type}>
-          {lead.business_type}
-        </td>
-        <td className="p-4 truncate whitespace-nowrap" title={lead.business_location}>
-          {lead.business_location}
-        </td>
-        <td className="p-4 whitespace-nowrap">
-          <div
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-              lead.status
-            )}`}
-          >
-            {getStatusIcon(lead.status)}
-            {lead.status}
-          </div>
-        </td>
-        <td className="p-4 whitespace-nowrap text-center">
-          <button
-            onClick={() => handleConvertToCustomer(lead)}
-            className="inline-flex items-center gap-1 px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-full hover:from-emerald-700 hover:to-green-700 transition-all text-xs font-medium shadow-sm hover:shadow-md"
-            title="Convert to Customer"
-          >
-            <ArrowPathIcon className="h-3.5 w-3.5" />
-            Convert
-          </button>
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
-
+                <tbody className="divide-y divide-gray-100">
+                  {sortedLeads.map((lead) => (
+                    <tr
+                      key={lead.id}
+                      className="hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-200 text-sm"
+                    >
+                      <td className="p-4 truncate whitespace-nowrap" title={lead.Firstname}>
+                        {lead.Firstname}
+                      </td>
+                      <td className="p-4 truncate whitespace-nowrap" title={lead.Surname}>
+                        {lead.Surname}
+                      </td>
+                      <td className="p-4 truncate whitespace-nowrap" title={lead.mobile}>
+                        {lead.mobile}
+                      </td>
+                      <td className="p-4 truncate whitespace-nowrap" title={lead.business_name}>
+                        {lead.business_name}
+                      </td>
+                      <td className="p-4 truncate whitespace-nowrap" title={lead.business_type}>
+                        {lead.business_type}
+                      </td>
+                      <td className="p-4 truncate whitespace-nowrap" title={lead.business_location}>
+                        {lead.business_location}
+                      </td>
+                      <td className="p-4 whitespace-nowrap">
+                        <div
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                            lead.status
+                          )}`}
+                        >
+                          {getStatusIcon(lead.status)}
+                          {lead.status}
+                        </div>
+                      </td>
+                      <td className="p-4 whitespace-nowrap text-center">
+                        <button
+                          onClick={() => handleConvertToCustomer(lead)}
+                          className="flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg"
+                          style={{ backgroundColor: "#586ab1" }}
+                          title="Convert to Customer"
+                        >
+                          <ArrowPathIcon className="h-3.5 w-3.5" />
+                          Convert
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
@@ -450,7 +451,7 @@ const Leads = () => {
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
             <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-8 m-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-slate-700 to-slate-700 bg-clip-text text-transparent">
+                <h2 className="text-lg font-semibold bg-gradient-to-r from-slate-700 to-slate-700 bg-clip-text text-transparent">
                   Add New Lead
                 </h2>
                 <button
@@ -518,8 +519,8 @@ const Leads = () => {
                       onChange={handleChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     >
-                      <option value="Hot"> Hot</option>
-                      <option value="Warm"> Warm</option>
+                      <option value="Hot">Hot</option>
+                      <option value="Warm">Warm</option>
                       <option value="Cold">Cold</option>
                     </select>
                   </div>
@@ -604,8 +605,6 @@ const Leads = () => {
             </div>
           </div>
         )}
-
-       
       </div>
     </div>
   );
