@@ -17,30 +17,33 @@ import {
   ChevronDoubleRightIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../supabaseClient.js";
-
 import { useAuth } from "../../hooks/userAuth.js";
-
-
 import { useNavigate } from "react-router-dom";
 
 const AllCustomers = () => {
-   const navigate = useNavigate();
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [regions, setRegions] = useState([]);
+  const [relationshipOfficers, setRelationshipOfficers] = useState([]);
+  const [allBranches, setAllBranches] = useState([]);
+  const [allRelationshipOfficers, setAllRelationshipOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [quickSearchTerm, setQuickSearchTerm] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedRO, setSelectedRO] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
   const { profile } = useAuth();
-const handleOpenInteractions = (customer) => {
+
+  const handleOpenInteractions = (customer) => {
     navigate(`/customer/${customer.id}/interactions`);
     setQuickSearchTerm(""); // Clear search when opening
   };
@@ -65,61 +68,111 @@ const handleOpenInteractions = (customer) => {
     setQuickSearchTerm(""); // Clear search when opening
   };
 
-
-  // Fetch branches for the region
-  const fetchBranches = async () => {
-    try {
-      if (!profile?.region_id) return;
-
-      const { data, error } = await supabase
-        .from("branches")
-        .select("id, name")
-        .eq("region_id", profile.region_id)
-        .order("name");
-
-      if (error) {
-        console.error("Error fetching branches:", error);
-        return;
-      }
-
-      setBranches(data || []);
-    } catch (error) {
-      console.error("Error fetching branches:", error);
-    }
-  };
-
-  // Fetch customers for Region Manager
-  const fetchCustomers = async () => {
+  // Fetch data based on user role
+  const fetchData = async () => {
     try {
       setLoading(true);
 
-      if (!profile?.region_id) {
-        console.error("No region_id found for this RM profile");
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
+      // Fetch customers based on role
+      let customersQuery = supabase
         .from("customers")
         .select(`
           *,
           branches (
             id,
             name
+          ),
+          regions (
+            id,
+            name
+          ),
+          users:created_by (
+            id,
+            full_name
           )
         `)
-        .eq("region_id", profile.region_id)
-         .eq("form_status", "submitted")
+        .eq("form_status", "submitted")
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching customers:", error);
+      // Apply filters based on user role
+      if (profile?.role === 'credit_analyst_officer' || profile?.role === 'customer_service_officer') {
+        // See all customers across all regions, all branches, all ROs
+        // No additional filters needed
+      } else if (profile?.role === 'regional_manager') {
+        // See customers in their region and branches in their region
+        if (profile.region_id) {
+          customersQuery = customersQuery.eq("region_id", profile.region_id);
+        }
+      } else if (profile?.role === 'branch_manager') {
+        // See customers from their branch and ROs in their branch
+        if (profile.branch_id) {
+          customersQuery = customersQuery.eq("branch_id", profile.branch_id);
+        }
+      } else if (profile?.role === 'relationship_officer') {
+        // Only see customers they created
+        if (profile.id) {
+          customersQuery = customersQuery.eq("created_by", profile.id);
+        }
+      }
+
+      const { data: customersData, error: customersError } = await customersQuery;
+
+      if (customersError) {
+        console.error("Error fetching customers:", customersError);
         return;
       }
 
-      if (data && data.length > 0) {
+      // Fetch additional data for filters based on role
+      if (profile?.role === 'credit_analyst_officer' || profile?.role === 'customer_service_officer') {
+        // Fetch all branches, regions, and ROs for global access
+        const [branchesResult, regionsResult, roResult] = await Promise.all([
+          supabase.from("branches").select("id, name, region_id").order("name"),
+          supabase.from("regions").select("id, name").order("name"),
+          supabase.from("users").select("id, full_name, branch_id, region_id").eq("role", "relationship_officer").order("full_name")
+        ]);
+
+        setAllBranches(branchesResult.data || []);
+        setBranches(branchesResult.data || []);
+        setRegions(regionsResult.data || []);
+        setAllRelationshipOfficers(roResult.data || []);
+        setRelationshipOfficers(roResult.data || []);
+      } else if (profile?.role === 'regional_manager') {
+        // Fetch branches in their region and ROs in those branches
+        if (profile.region_id) {
+          const [branchesResult, roResult] = await Promise.all([
+            supabase.from("branches").select("id, name, region_id").eq("region_id", profile.region_id).order("name"),
+            supabase
+              .from("users")
+              .select("id, full_name, branch_id, region_id")
+              .eq("role", "relationship_officer")
+              .eq("region_id", profile.region_id)
+              .order("full_name")
+          ]);
+
+          setAllBranches(branchesResult.data || []);
+          setBranches(branchesResult.data || []);
+          setAllRelationshipOfficers(roResult.data || []);
+          setRelationshipOfficers(roResult.data || []);
+        }
+      } else if (profile?.role === 'branch_manager') {
+        // Fetch ROs in their branch
+        if (profile.branch_id) {
+          const { data: roData } = await supabase
+            .from("users")
+            .select("id, full_name, branch_id, region_id")
+            .eq("role", "relationship_officer")
+            .eq("branch_id", profile.branch_id)
+            .order("full_name");
+
+          setAllRelationshipOfficers(roData || []);
+          setRelationshipOfficers(roData || []);
+        }
+      }
+
+      // Process customers data
+      if (customersData && customersData.length > 0) {
         const customersWithLoanStatus = await Promise.all(
-          data.map(async (c) => {
+          customersData.map(async (c) => {
             const { data: loan, error: loanError } = await supabase
               .from("loans")
               .select("id, status, repayment_state")
@@ -139,51 +192,113 @@ const handleOpenInteractions = (customer) => {
         setCustomers([]);
       }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (profile?.region_id) {
-      fetchCustomers();
-      fetchBranches();
-      console.log("region in the customers table", profile.region_id);
+    if (profile) {
+      fetchData();
     }
-  }, [profile?.region_id]);
-
- 
+  }, [profile]);
 
   // Clear all filters
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedBranch("");
+    setSelectedRegion("");
+    setSelectedRO("");
     setSelectedStatus("");
     setCurrentPage(1);
+    
+    // Reset cascading filters
+    if (profile?.role === 'credit_analyst_officer' || profile?.role === 'customer_service_officer') {
+      setBranches(allBranches);
+      setRelationshipOfficers(allRelationshipOfficers);
+    } else if (profile?.role === 'regional_manager') {
+      setBranches(allBranches);
+      setRelationshipOfficers(allRelationshipOfficers);
+    }
   };
-  
-const filteredCustomers = customers.filter((c) => {
-  const matchesSearch =
-    (c.Firstname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.Surname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.Middlename || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (c.mobile || "").toString().includes(searchTerm) ||
-    (c.id_number || "").toString().includes(searchTerm);
 
-  const matchesBranch =
-    !selectedBranch ||
-    c.branch_id?.toString() === selectedBranch ||
-    c.branches?.id?.toString() === selectedBranch;
+  // Handle region change - filter branches and ROs
+  const handleRegionChange = (regionId) => {
+    setSelectedRegion(regionId);
+    setSelectedBranch(""); // Clear branch selection
+    setSelectedRO(""); // Clear RO selection
+    
+    if (regionId) {
+      // Filter branches by selected region
+      const filteredBranches = allBranches.filter(
+        (branch) => branch.region_id?.toString() === regionId
+      );
+      setBranches(filteredBranches);
+      
+      // Filter ROs by selected region
+      const filteredROs = allRelationshipOfficers.filter(
+        (ro) => ro.region_id?.toString() === regionId
+      );
+      setRelationshipOfficers(filteredROs);
+    } else {
+      // Reset to all branches and ROs
+      setBranches(allBranches);
+      setRelationshipOfficers(allRelationshipOfficers);
+    }
+  };
 
-  const matchesStatus =
-    !selectedStatus ||
-    c.status === selectedStatus ||
-    c.verification_status === selectedStatus;
+  // Handle branch change - filter ROs
+  const handleBranchChange = (branchId) => {
+    setSelectedBranch(branchId);
+    setSelectedRO(""); // Clear RO selection
+    
+    if (branchId) {
+      // Filter ROs by selected branch
+      const filteredROs = allRelationshipOfficers.filter(
+        (ro) => ro.branch_id?.toString() === branchId
+      );
+      setRelationshipOfficers(filteredROs);
+    } else if (selectedRegion) {
+      // If no branch but region is selected, show ROs for that region
+      const filteredROs = allRelationshipOfficers.filter(
+        (ro) => ro.region_id?.toString() === selectedRegion
+      );
+      setRelationshipOfficers(filteredROs);
+    } else {
+      // Reset to all ROs
+      setRelationshipOfficers(allRelationshipOfficers);
+    }
+  };
 
-  return matchesSearch && matchesBranch && matchesStatus;
-});
+  const filteredCustomers = customers.filter((c) => {
+    const matchesSearch =
+      (c.Firstname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.Surname || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.Middlename || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.mobile || "").toString().includes(searchTerm) ||
+      (c.id_number || "").toString().includes(searchTerm);
 
+    const matchesBranch =
+      !selectedBranch ||
+      c.branch_id?.toString() === selectedBranch ||
+      c.branches?.id?.toString() === selectedBranch;
+
+    const matchesRegion =
+      !selectedRegion ||
+      c.region_id?.toString() === selectedRegion;
+
+    const matchesRO =
+      !selectedRO ||
+      c.created_by?.toString() === selectedRO;
+
+    const matchesStatus =
+      !selectedStatus ||
+      c.status === selectedStatus ||
+      c.verification_status === selectedStatus;
+
+    return matchesSearch && matchesBranch && matchesRegion && matchesRO && matchesStatus;
+  });
 
   // Quick search filter (separate from main search)
   const quickSearchResults = customers.filter((c) => {
@@ -242,10 +357,27 @@ const filteredCustomers = customers.filter((c) => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedBranch, selectedStatus]);
+  }, [searchTerm, selectedBranch, selectedRegion, selectedRO, selectedStatus]);
 
   // Get unique statuses from customers
   const uniqueStatuses = [...new Set(customers.map((c) => c.verification_status).filter(Boolean))];
+
+  // Get role-specific display text
+  const getRoleSpecificText = () => {
+    switch (profile?.role) {
+      case 'credit_analyst_officer':
+      case 'customer_service_officer':
+        return "all customers across all regions";
+      case 'regional_manager':
+        return "customers in your region";
+      case 'branch_manager':
+        return "customers in your branch";
+      case 'relationship_officer':
+        return "customers you created";
+      default:
+        return "customers";
+    }
+  };
 
   if (!profile || loading) {
     return (
@@ -260,12 +392,14 @@ const filteredCustomers = customers.filter((c) => {
     );
   }
 
-  if (profile && !profile.region_id) {
+  // Check if user has necessary permissions/data
+  if ((profile.role === 'regional_manager' && !profile.region_id) ||
+      (profile.role === 'branch_manager' && !profile.branch_id)) {
     return (
       <div className="p-6">
         <div className="bg-white shadow rounded-lg p-8 text-center">
           <p className="text-red-600">
-            Error: No region assigned to your profile. Please contact your administrator.
+            Error: Your profile is missing necessary information. Please contact your administrator.
           </p>
         </div>
       </div>
@@ -273,86 +407,80 @@ const filteredCustomers = customers.filter((c) => {
   }
 
   return (
-    <div className="p-2">
+    <div className="p-2  bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 text-gray-800 border-r border-gray-200 transition-all duration-300">
       {/* Page Header with 360 View Search */}
-      <div className="mb-2 items-right ">
-       
-        
-      {/* 360° Customer View Quick Search - Top Right */}
-<div className="flex justify-end mb-2">
-  <div className="relative w-72"> {/* smaller width */}
-    <label className="block text-xs font-medium text-gray-700 mb-1 text-right">
-      360° Customer View
-    </label>
-    <div className="relative">
-      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-        <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
-      </div>
-      <input
-        type="text"
-        placeholder="Quick search..."
-        className="pl-9 pr-3 py-1.5 border border-gray-300 rounded-md w-full text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-        value={quickSearchTerm}
-        onChange={(e) => setQuickSearchTerm(e.target.value)}
-      />
-    </div>
-
-    {/* Quick Search Results Dropdown */}
-    {quickSearchTerm && quickSearchResults.length > 0 && (
-      <div className="absolute right-0 z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto">
-        {quickSearchResults.slice(0, 10).map((customer) => (
-          <div
-            key={customer.id}
-            onClick={() => handleOpen360View(customer)}
-            className="p-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition"
-          >
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="font-medium text-gray-900">
-                  {customer.Firstname} {customer.Surname}
-                </p>
-                <p className="text-sm text-gray-600">{customer.mobile}</p>
-                <p className="text-xs text-gray-500">ID: {customer.id_number}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-medium text-indigo-600">
-                  {customer.prequalifiedAmount
-                    ? `KES ${customer.prequalifiedAmount.toLocaleString()}`
-                    : "N/A"}
-                </p>
-                <span
-                  className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
-                    customer.status === "verified"
-                      ? "bg-green-100 text-green-800"
-                      : customer.status === "bm_review"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : customer.status === "rejected"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {customer.status || "N/A"}
-                </span>
-              </div>
+      <div className="flex justify-end mb-2">
+        <div className="relative w-72">
+          <label className="block text-xs font-medium text-gray-700 mb-1 text-right">
+            360° Customer View
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
             </div>
+            <input
+              type="text"
+              placeholder="Quick search..."
+              className="pl-9 pr-3 py-1.5 border border-gray-300 rounded-md w-full text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+              value={quickSearchTerm}
+              onChange={(e) => setQuickSearchTerm(e.target.value)}
+            />
           </div>
-        ))}
-        {quickSearchResults.length > 10 && (
-          <div className="p-2 text-center text-xs text-gray-500 bg-gray-50 border-t">
-            Showing 10 of {quickSearchResults.length} results
-          </div>
-        )}
-      </div>
-    )}
 
-    {quickSearchTerm && quickSearchResults.length === 0 && (
-      <div className="absolute right-0 z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl p-3 text-center text-sm text-gray-500">
-        No customers found
-      </div>
-    )}
-  </div>
-</div>
+          {/* Quick Search Results Dropdown */}
+          {quickSearchTerm && quickSearchResults.length > 0 && (
+            <div className="absolute right-0 z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl max-h-96 overflow-y-auto">
+              {quickSearchResults.slice(0, 10).map((customer) => (
+                <div
+                  key={customer.id}
+                  onClick={() => handleOpen360View(customer)}
+                  className="p-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {customer.Firstname} {customer.Surname}
+                      </p>
+                      <p className="text-sm text-gray-600">{customer.mobile}</p>
+                      <p className="text-xs text-gray-500">ID: {customer.id_number}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-indigo-600">
+                        {customer.prequalifiedAmount
+                          ? `KES ${customer.prequalifiedAmount.toLocaleString()}`
+                          : "N/A"}
+                      </p>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mt-1 ${
+                          customer.status === "verified"
+                            ? "bg-green-100 text-green-800"
+                            : customer.status === "bm_review"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : customer.status === "rejected"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {customer.status || "N/A"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {quickSearchResults.length > 10 && (
+                <div className="p-2 text-center text-xs text-gray-500 bg-gray-50 border-t">
+                  Showing 10 of {quickSearchResults.length} results
+                </div>
+              )}
+            </div>
+          )}
 
+          {quickSearchTerm && quickSearchResults.length === 0 && (
+            <div className="absolute right-0 z-50 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-xl p-3 text-center text-sm text-gray-500">
+              No customers found
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filters and Search */}
@@ -391,9 +519,9 @@ const filteredCustomers = customers.filter((c) => {
               >
                 <FunnelIcon className="h-5 w-5 mr-2" />
                 Filters
-                {(selectedBranch || selectedStatus) && (
+                {(selectedBranch || selectedRegion || selectedRO || selectedStatus) && (
                   <span className="ml-2 px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded-full">
-                    {[selectedBranch, selectedStatus].filter(Boolean).length}
+                    {[selectedBranch, selectedRegion, selectedRO, selectedStatus].filter(Boolean).length}
                   </span>
                 )}
               </button>
@@ -407,25 +535,69 @@ const filteredCustomers = customers.filter((c) => {
           {/* Second Row - Advanced Filters (Collapsible) */}
           {showFilters && (
             <div className="border-t pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Region Filter (only for global roles) */}
+                {(profile?.role === 'credit_analyst_officer' || profile?.role === 'customer_service_officer') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Filter by Region
+                    </label>
+                    <select
+                      value={selectedRegion}
+                      onChange={(e) => handleRegionChange(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="">All Regions</option>
+                      {regions.map((region) => (
+                        <option key={region.id} value={region.id.toString()}>
+                          {region.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Branch Filter */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Filter by Branch
-                  </label>
-                  <select
-                    value={selectedBranch}
-                    onChange={(e) => setSelectedBranch(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">All Branches</option>
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.id.toString()}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {(profile?.role === 'credit_analyst_officer' || profile?.role === 'customer_service_officer' || profile?.role === 'regional_manager') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Filter by Branch
+                    </label>
+                    <select
+                      value={selectedBranch}
+                      onChange={(e) => handleBranchChange(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="">All Branches</option>
+                      {branches.map((branch) => (
+                        <option key={branch.id} value={branch.id.toString()}>
+                          {branch.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Relationship Officer Filter */}
+                {(profile?.role === 'credit_analyst_officer' || profile?.role === 'customer_service_officer' || profile?.role === 'regional_manager' || profile?.role === 'branch_manager') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Filter by Relationship Officer
+                    </label>
+                    <select
+                      value={selectedRO}
+                      onChange={(e) => setSelectedRO(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="">All ROs</option>
+                      {relationshipOfficers.map((ro) => (
+                        <option key={ro.id} value={ro.id.toString()}>
+                          {ro.full_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Status Filter */}
                 <div>
@@ -459,15 +631,37 @@ const filteredCustomers = customers.filter((c) => {
               </div>
 
               {/* Active Filters Display */}
-              {(selectedBranch || selectedStatus) && (
+              {(selectedBranch || selectedRegion || selectedRO || selectedStatus) && (
                 <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">
                   <span className="text-sm text-gray-600">Active filters:</span>
+                  {selectedRegion && (
+                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                      Region: {regions.find((r) => r.id.toString() === selectedRegion)?.name}
+                      <button
+                        onClick={() => handleRegionChange("")}
+                        className="ml-1 text-blue-600 hover:text-blue-800"
+                      >
+                        <XMarkIcon className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )}
                   {selectedBranch && (
                     <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
                       Branch: {branches.find((b) => b.id.toString() === selectedBranch)?.name}
                       <button
-                        onClick={() => setSelectedBranch("")}
+                        onClick={() => handleBranchChange("")}
                         className="ml-1 text-blue-600 hover:text-blue-800"
+                      >
+                        <XMarkIcon className="h-3 w-3" />
+                      </button>
+                    </span>
+                  )}
+                  {selectedRO && (
+                    <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                      RO: {relationshipOfficers.find((ro) => ro.id.toString() === selectedRO)?.full_name}
+                      <button
+                        onClick={() => setSelectedRO("")}
+                        className="ml-1 text-purple-600 hover:text-purple-800"
                       >
                         <XMarkIcon className="h-3 w-3" />
                       </button>
@@ -496,7 +690,7 @@ const filteredCustomers = customers.filter((c) => {
         <div className="mb-4 flex justify-between items-center">
           <p className="text-sm text-gray-600">
             Showing {startIndex + 1} to {Math.min(endIndex, filteredCustomers.length)} of {filteredCustomers.length} customers
-            {(searchTerm || selectedBranch || selectedStatus) && " (filtered)"}
+            {(searchTerm || selectedBranch || selectedRegion || selectedRO || selectedStatus) && " (filtered)"}
           </p>
           <p className="text-sm font-medium text-gray-900">
             Total Records: <span className="text-indigo-600">{customers.length}</span>
@@ -505,7 +699,7 @@ const filteredCustomers = customers.filter((c) => {
       )}
 
       {/* Customers Table */}
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className=" bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50  border-r border-gray-200 transition-all duration-300 shadow rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 table-fixed">
             <thead className="bg-gray-50">
@@ -528,9 +722,19 @@ const filteredCustomers = customers.filter((c) => {
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                   Status
                 </th>
+                {(profile?.role === 'credit_analyst_officer' || profile?.role === 'customer_service_officer') && (
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                    Region
+                  </th>
+                )}
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                   Branch
                 </th>
+                {(profile?.role === 'credit_analyst_officer' || profile?.role === 'customer_service_officer' || profile?.role === 'regional_manager' || profile?.role === 'branch_manager') && (
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                    Relationship Officer
+                  </th>
+                )}
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                   Actions
                 </th>
@@ -581,51 +785,61 @@ const filteredCustomers = customers.filter((c) => {
                       {customer.status || "N/A"}
                     </span>
                   </td>
+                  {(profile?.role === 'credit_analyst_officer' || profile?.role === 'customer_service_officer') && (
+                    <td className="px-3 py-2 text-sm text-gray-900 truncate" title={customer.regions?.name || "N/A"}>
+                      {customer.regions?.name || "N/A"}
+                    </td>
+                  )}
                   <td className="px-3 py-2 text-sm text-gray-900 truncate" title={customer.branches?.name || "N/A"}>
                     {customer.branches?.name || "N/A"}
                   </td>
-                 <td className="px-3 py-2 text-sm font-medium space-x-1 flex items-center">
-        {/* View Customer */}
-        <button
-          onClick={() => handleViewCustomer(customer)}
-          className="p-1.5 rounded-md bg-green-50 border border-green-200 text-green-600 hover:bg-green-100 hover:text-green-700 transition"
-          title="View Customer"
-        >
-          <EyeIcon className="h-4 w-4" />
-        </button>
+                  {(profile?.role === 'credit_analyst_officer' || profile?.role === 'customer_service_officer' || profile?.role === 'regional_manager' || profile?.role === 'branch_manager') && (
+                    <td className="px-3 py-2 text-sm text-gray-900 truncate" title={customer.users?.full_name || "N/A"}>
+                      {customer.users?.full_name || "N/A"}
+                    </td>
+                  )}
+                  <td className="px-3 py-2 text-sm font-medium space-x-1 flex items-center">
+                    {/* View Customer */}
+                    <button
+                      onClick={() => handleViewCustomer(customer)}
+                      className="p-1.5 rounded-md bg-green-50 border border-green-200 text-green-600 hover:bg-green-100 hover:text-green-700 transition"
+                      title="View Customer"
+                    >
+                      <EyeIcon className="h-4 w-4" />
+                    </button>
 
-        {/* Interactions */}
-        <button
-          onClick={() => handleOpenInteractions(customer)}
-          className="p-1.5 rounded-md bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition"
-          title="Customer Interactions"
-        >
-          <ChatBubbleLeftRightIcon className="h-4 w-4" />
-        </button>
+                    {/* Interactions */}
+                    <button
+                      onClick={() => handleOpenInteractions(customer)}
+                      className="p-1.5 rounded-md bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition"
+                      title="Customer Interactions"
+                    >
+                      <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                    </button>
 
-        {/* Loan Details (only if disbursed) */}
-        {customer.hasDisbursedLoan && (
-          <button
-            onClick={() => handleOpenLoanDetails(customer)}
-            className="p-1.5 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-600 hover:bg-yellow-100 hover:text-yellow-700 transition"
-            title="Loan Details"
-          >
-            <BanknotesIcon className="h-4 w-4" />
-          </button>
-        )}
+                    {/* Loan Details (only if disbursed) */}
+                    {customer.hasDisbursedLoan && (
+                      <button
+                        onClick={() => handleOpenLoanDetails(customer)}
+                        className="p-1.5 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-600 hover:bg-yellow-100 hover:text-yellow-700 transition"
+                        title="Loan Details"
+                      >
+                        <BanknotesIcon className="h-4 w-4" />
+                      </button>
+                    )}
 
-        {/* Promise to Pay (only if disbursed AND repayment_state is ongoing or partial) */}
-        {customer.hasDisbursedLoan &&
-          ["ongoing", "partial"].includes(customer.loanRepaymentState) && (
-            <button
-              onClick={() => handleOpenPromiseToPay(customer)}
-              className="p-1.5 rounded-md bg-purple-50 border border-purple-200 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition"
-              title="Promise to Pay"
-            >
-              <HandRaisedIcon className="h-4 w-4" />
-            </button>
-          )}
-      </td>
+                    {/* Promise to Pay (only if disbursed AND repayment_state is ongoing or partial) */}
+                    {customer.hasDisbursedLoan &&
+                      ["ongoing", "partial"].includes(customer.loanRepaymentState) && (
+                        <button
+                          onClick={() => handleOpenPromiseToPay(customer)}
+                          className="p-1.5 rounded-md bg-purple-50 border border-purple-200 text-purple-600 hover:bg-purple-100 hover:text-purple-700 transition"
+                          title="Promise to Pay"
+                        >
+                          <HandRaisedIcon className="h-4 w-4" />
+                        </button>
+                      )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -649,11 +863,11 @@ const filteredCustomers = customers.filter((c) => {
                 />
               </svg>
               <p className="text-lg font-medium text-gray-500">
-                {searchTerm || selectedBranch || selectedStatus
+                {searchTerm || selectedBranch || selectedRegion || selectedRO || selectedStatus
                   ? "No customers found matching your filters."
                   : "No customers found."}
               </p>
-              {(searchTerm || selectedBranch || selectedStatus) && (
+              {(searchTerm || selectedBranch || selectedRegion || selectedRO || selectedStatus) && (
                 <p className="mt-1 text-sm text-gray-400">Try adjusting your search terms or filters.</p>
               )}
             </div>
@@ -763,7 +977,7 @@ const filteredCustomers = customers.filter((c) => {
       <div className="mt-4 bg-white shadow rounded-lg p-4">
         <div className="flex justify-between items-center">
           <div className="text-sm text-gray-600">
-            <span className="font-medium text-gray-900">{customers.length}</span> total customers in your region
+            <span className="font-medium text-gray-900">{customers.length}</span> {getRoleSpecificText()}
           </div>
           {filteredCustomers.length !== customers.length && (
             <div className="text-sm text-gray-600">
@@ -772,9 +986,6 @@ const filteredCustomers = customers.filter((c) => {
           )}
         </div>
       </div>
-
-
-    
     </div>
   );
 };

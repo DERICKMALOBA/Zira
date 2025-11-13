@@ -308,7 +308,7 @@ const NonPerformingLoansReport = () => {
 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h1 className="text-2xl font-bold text-green-600">Non-Performing Loans Report</h1>
+      <h1 className="text-lg font-semibold" style={{ color: "#586ab1" }}>Non-Performing Loans Report</h1>
       <p className="text-sm text-gray-600 mt-1">
         Track and manage defaulted and overdue loans
       </p>
@@ -400,7 +400,7 @@ const NonPerformingLoansReport = () => {
         </div>
       )}
 
-      {/* Data Summary */}
+      {/* Data Summary
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <p className="text-gray-600 text-sm font-medium">Total NPLs</p>
@@ -418,7 +418,7 @@ const NonPerformingLoansReport = () => {
           <p className="text-gray-600 text-sm font-medium">Total Disbursed</p>
           <p className="text-2xl font-bold text-blue-600">{formatCurrency(totals.disbursementAmount)}</p>
         </div>
-      </div>
+      </div> */}
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
@@ -434,9 +434,9 @@ const NonPerformingLoansReport = () => {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-100 border-b border-gray-200 sticky top-0">
+                <thead className="bg-gray-100 border-b border-gray-200 sticky top-0 text-sm">
                   <tr>
-                    <th className="px-4 py-4 font-semibold text-gray-700 text-left whitespace-nowrap">#</th>
+                    <th className="px-4 py-4 font-semibold text-slate-600 text-left whitespace-nowrap">#</th>
                     <SortableHeader label="Customer Name" sortKey="customer_name" />
                     <SortableHeader label="ID Number" sortKey="customer_id" />
                     <SortableHeader label="Mobile" sortKey="mobile" />

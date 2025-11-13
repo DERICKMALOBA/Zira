@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Download, Filter, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { supabase } from "../../supabaseClient";
-import CustomerStatementModal from "./AccountList";
+import { useNavigate } from "react-router-dom";
+
 
 const CustomerAccountModal = () => {
   const [customerAccountData, setCustomerAccountData] = useState([]);
@@ -18,11 +19,9 @@ const CustomerAccountModal = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+   const navigate = useNavigate(); 
   
-  // Statement modal state
-  const [showStatementModal, setShowStatementModal] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-
+ 
   // Fetch branches - only once on mount
   useEffect(() => {
     const fetchBranches = async () => {
@@ -186,11 +185,12 @@ const CustomerAccountModal = () => {
     }));
   }, []);
 
-  // Memoize the view statement handler
-  const handleViewStatement = useCallback((customer) => {
-    setSelectedCustomer(customer);
-    setShowStatementModal(true);
-  }, []);
+const handleViewStatement = useCallback((customer) => {
+  console.log("log full customer object",customer); 
+  navigate(`/reports/customer-statement/${customer.customerId}`);
+}, [navigate]);
+
+
 
   const formatCurrency = (num) =>
     new Intl.NumberFormat("en-KE", {
@@ -229,7 +229,7 @@ const CustomerAccountModal = () => {
 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h1 className="text-2xl font-bold text-green-600">
+      <h1 className="text-lg font-semibold" style={{ color: "#586ab1" }}>
         Customer Account Statements
       </h1>
       <p className="text-sm text-gray-600 mt-1">
@@ -245,7 +245,7 @@ const CustomerAccountModal = () => {
         onClick={() => setShowFilters(!showFilters)}
         className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
           showFilters
-            ? "bg-blue-600 text-white shadow-md"
+            ? "bg-blue-300 text-white shadow-md"
             : "bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
         }`}
       >
@@ -327,7 +327,7 @@ const CustomerAccountModal = () => {
           </div>
         )}
 {/* Data Summary */}
-<div className="flex justify-between items-stretch gap-2 w-full">
+{/* <div className="flex justify-between items-stretch gap-2 w-full">
   <div className="bg-white p-3 rounded-lg border border-gray-200 flex-1 text-center">
     <p className="text-gray-600 text-sm font-medium">Total Records</p>
     <p className="text-2xl font-bold text-gray-900">
@@ -370,7 +370,7 @@ const CustomerAccountModal = () => {
       )}
     </p>
   </div>
-</div>
+</div> */}
 
         {/* Table */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
@@ -386,9 +386,9 @@ const CustomerAccountModal = () => {
             <>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-100 border-b border-gray-200 sticky top-0">
+                  <thead className="bg-gray-100 border-b border-gray-200 sticky top-0 text-sm">
                     <tr>
-                      <th className="px-6 py-4 font-semibold text-gray-700 text-left whitespace-nowrap">#</th>
+                      <th className="px-6 py-4  text-slate-600 text-left whitespace-nowrap">#</th>
                       <SortableHeader label="Customer Details" sortKey="customerName" />
                       <SortableHeader label="Phone" sortKey="phone" />
                       <SortableHeader label="Branch" sortKey="branch" />
@@ -403,7 +403,7 @@ const CustomerAccountModal = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {currentData.map((c, i) => (
-                      <tr key={i} className="hover:bg-gray-50 transition-colors">
+                      <tr key={i} className="hover:bg-gray-50 transition-colors text-sm">
                         <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{startIdx + i + 1}</td>
                         <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{c.customerName}</td>
                         <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{c.phone}</td>
@@ -436,7 +436,8 @@ const CustomerAccountModal = () => {
                         <td className="px-6 py-4 text-center whitespace-nowrap">
                           <button
                             onClick={() => handleViewStatement(c)}
-                            className="inline-flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+   className="flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg"
+                style={{ backgroundColor: "#586ab1" }}
                           >
                             <Eye className="w-4 h-4" />
                             Statement
@@ -518,17 +519,7 @@ const CustomerAccountModal = () => {
         </div>
       </div>
 
-      {/* Statement Modal */}
-      {showStatementModal && selectedCustomer && (
-        <CustomerStatementModal
-          customerId={selectedCustomer.customerId}
-          customerName={selectedCustomer.customerName}
-          onClose={() => {
-            setShowStatementModal(false);
-            setSelectedCustomer(null);
-          }}
-        />
-      )}
+    
     </>
   );
 };

@@ -7,16 +7,17 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ["Inter", "sans-serif"],     // generates font-body
-        heading: ["Poppins", "sans-serif"], // generates font-heading
+        body: ["Inter", "sans-serif"],       // Clean and readable font
+        heading: ["Poppins", "sans-serif"],  // Modern for headings
       },
       colors: {
-        primary: "#2563eb",
-        secondary: "#9333ea",
-        danger: "#dc2626",
-        background: "#f9fafb",
-        text: "#111827",
-        warning: "#f59e0b",
+        primary: "#1E3A8A",     // Navy Blue – Trust & Stability
+        accent: "#10B981",      // Emerald Green – Growth & Prosperity
+        neutral: "#F3F4F6",     // Cool Gray – Minimalist Background
+        highlight: "#FACC15",   // Gold – Premium Highlight
+        text: "#111827",        // Default text color
+        background: "#FFFFFF",  // Clean white background
+        muted: "#6B7280",       // Subtle gray for secondary text
       },
     },
   },

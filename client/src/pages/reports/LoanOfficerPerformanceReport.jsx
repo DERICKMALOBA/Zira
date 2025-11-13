@@ -482,7 +482,7 @@ const LoanOfficerPerformanceReport = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-green-600">Loan Officer Performance Report</h1>
+            <h1 className="text-lg font-semibold" style={{ color: "#586ab1" }}>Loan Officer Performance Report</h1>
             <p className="text-sm text-gray-600 mt-1">
               Track performance metrics and productivity of loan officers
             </p>
@@ -582,8 +582,8 @@ const LoanOfficerPerformanceReport = () => {
           )}
         </div>
       )}
-
-      {/* Data Summary */}
+{/* 
+      Data Summary
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <p className="text-gray-600 text-sm font-medium">Total Officers</p>
@@ -605,7 +605,7 @@ const LoanOfficerPerformanceReport = () => {
           <p className="text-gray-600 text-sm font-medium">Portfolio at Risk</p>
           <p className="text-2xl font-bold text-orange-600">{formatPercentage(overallPAR)}</p>
         </div>
-      </div>
+      </div> */}
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
@@ -621,7 +621,7 @@ const LoanOfficerPerformanceReport = () => {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-100 border-b border-gray-200 sticky top-0">
+                <thead className="bg-gray-100 border-b border-gray-200 sticky text-sm top-0">
                   <tr>
                     <th className="px-4 py-4 font-semibold text-gray-700 text-left whitespace-nowrap">#</th>
                     <SortableHeader label="Branch" sortKey="branch" />
@@ -644,9 +644,9 @@ const LoanOfficerPerformanceReport = () => {
                     <SortableHeader label="Total Loans" sortKey="total_loans" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200 text-sm">
                   {currentData.map((r, i) => (
-                    <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={r.id} className="hover:bg-gray-50 transition-colors text-sm">
                       <td className="px-4 py-4 text-gray-900 font-medium whitespace-nowrap">{startIdx + i + 1}</td>
                       <td className="px-4 py-4 text-gray-700 whitespace-nowrap">{r.branch}</td>
                       <td className="px-4 py-4 text-gray-900 font-medium whitespace-nowrap">{r.officer}</td>

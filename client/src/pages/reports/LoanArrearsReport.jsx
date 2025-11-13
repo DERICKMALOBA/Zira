@@ -258,7 +258,7 @@ const elapsedInstallments = installments.filter(inst => {
       {/* Header */}
       <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-emerald-600">Loan Arrears Report</h2>
+          <h2 className="text-lg font-semibold" style={{ color: "#586ab1" }}>Loan Arrears Report</h2>
           <p className="text-sm text-gray-600 mt-1">
             Comprehensive report showing loans with elapsed payment schedules
           </p>
@@ -273,7 +273,8 @@ const elapsedInstallments = installments.filter(inst => {
           </button>
           <button
             onClick={exportToCSV}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg flex items-center gap-2 hover:bg-green-700"
+              className="flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg"
+                style={{ backgroundColor: "#586ab1" }}
           >
             <Download className="w-4 h-4" /> Export CSV
           </button>

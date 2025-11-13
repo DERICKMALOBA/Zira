@@ -175,7 +175,7 @@ const Customer360View = () => {
   return (
     <div className="space-y-6">
       {/* Customer Profile Card */}
-      <div className="bg-green-100 border-2 border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-gradient-to-br from-slate-100 via-blue-100 to-cyan-100  border-2 border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div className=" from-indigo-50 to-blue-50 rounded-2xl p-8 mb-8 border border-indigo-100">
           <div className="flex items-start gap-6">
             {/* Left: Passport Photo and Basic Info */}

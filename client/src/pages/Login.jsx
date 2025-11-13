@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/userAuth";
 
 export default function Login() {
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -20,16 +21,17 @@ export default function Login() {
     setLoading(true);
 
     try {
+      // Authenticate user
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-
       if (authError) throw authError;
       if (!authData?.user) throw new Error("Authentication failed");
 
       const userId = authData.user.id;
 
+      // Fetch user details
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("id, full_name, email, role")
@@ -38,6 +40,7 @@ export default function Login() {
       if (userError) throw userError;
       if (!userData) throw new Error("No user data found");
 
+      // Fetch profile info (branch/region)
       const { data: basicProfile, error: basicError } = await supabase
         .from("profiles")
         .select("branch_id, region_id")
@@ -80,6 +83,7 @@ export default function Login() {
       setUser(authData.user);
       setProfile(profileData);
 
+      // Redirect based on role
       switch (userData.role) {
         case "relationship_officer":
           navigate("/dashboard");
@@ -100,40 +104,71 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="bg-white w-full max-w-5xl rounded-xl shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        {/* Left Section */}
-        <div className="flex flex-col justify-center items-center p-10 bg-gradient-to-br from-green-100 via-emerald-100 to-green-50">
-          <div className="text-center">
-            <h1 className="text-3xl font-extrabold text-gray-800 mb-3">Jasiri </h1>
-            <p className="text-sm text-gray-600 tracking-wide mb-6">
-              Lending Software
-            </p>
-            <div className="w-24 h-24 bg-white rounded-2xl shadow-md flex items-center justify-center mx-auto">
-              {/* Placeholder for your logo */}
-              <img src="/logo.png" alt="Jasiri Logo" className="w-16 h-16 object-contain" />
-            </div>
+      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-2">
+        {/* LEFT SIDE — Jasiri Branding */}
+        <div
+          className="flex flex-col justify-center items-center p-10 text-white relative"
+          style={{
+            backgroundColor: "#586ab1",
+            background: "linear-gradient(135deg, #586ab1 0%, #6a7fc1 50%, #7a94d0 100%)",
+          }}
+        >
+          {/* Decorative background */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 w-20 h-20 bg-white rounded-full"></div>
+            <div className="absolute bottom-10 right-10 w-16 h-16 bg-white rounded-full"></div>
           </div>
-          <div className="mt-8">
-            <img
-              src="/team-illustration.png"
-              alt="Team Illustration"
-              className="w-72 object-contain mx-auto"
-            />
+
+<div className="relative z-10 mb-6 flex flex-col items-center">
+  {/* Jasiri Logo Image */}
+  <div className="w-28 h-28 bg-white/20 rounded-2xl shadow-lg flex items-center justify-center backdrop-blur-sm border border-white/30 overflow-hidden">
+    <img
+      src="/path/to/jasiri-logo.png"   // <-- replace this with your logo path
+      alt="Jasiri Logo"
+      className="object-contain w-full h-full"
+    />
+  </div>
+
+  <h1 className="text-4xl font-extrabold text-white mt-4">Jasiri</h1>
+  <p className="text-blue-100 tracking-wide font-light">Lending Software</p>
+</div>
+
+
+
+
+          <div className="absolute bottom-4 left-4 text-blue-200 text-xs">Secure Access</div>
+          <div className="absolute bottom-4 right-4 text-blue-200 text-xs">
+            © {currentYear}
           </div>
         </div>
 
-        {/* Right Section */}
+        {/* RIGHT SIDE — Login Form */}
         <div className="p-10 flex flex-col justify-center">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">Sign In</h2>
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-2">Welcome Back</h2>
+            <p className="text-gray-600">Sign in to your account to continue</p>
+          </div>
+
           <form onSubmit={handleLogin}>
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
-                {error}
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
+                <div className="flex items-center">
+                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  {error}
+                </div>
               </div>
             )}
-            <div className="space-y-5">
+
+            <div className="space-y-6">
+              {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
                 </label>
                 <input
@@ -141,13 +176,14 @@ export default function Login() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#586ab1] transition-all duration-200"
                 />
               </div>
 
+              {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password
                 </label>
                 <input
@@ -155,22 +191,55 @@ export default function Login() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#586ab1] transition-all duration-200"
                 />
               </div>
             </div>
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-6 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-medium transition-all duration-200 disabled:opacity-50"
+              className="w-full mt-8 text-white py-3 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 hover:shadow-lg transform hover:-translate-y-0.5"
+              style={{ backgroundColor: "#586ab1" }}
             >
-              {loading ? "Signing In..." : "Sign In"}
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 
+                      1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Signing In...
+                </div>
+              ) : (
+                "Sign In"
+              )}
             </button>
 
-            <div className="mt-4 text-center">
-              <a href="#" className="text-sm text-green-600 hover:text-green-800">
+            <div className="mt-6 text-center">
+              <a
+                href="#"
+                className="text-sm font-medium transition-colors duration-200"
+                style={{ color: "#586ab1" }}
+              >
                 Forgot Password?
               </a>
             </div>

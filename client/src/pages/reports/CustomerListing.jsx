@@ -250,7 +250,7 @@ if (filters.search) {
 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h1 className="text-2xl font-bold text-emerald-600">Customer Listing </h1>
+      <h1 className="text-lg font-semibold" style={{ color: "#586ab1" }}>Customer Listing </h1>
       <p className="text-sm text-gray-600 mt-1">
         Viewing all registered customers in the system 
       </p>
@@ -261,7 +261,7 @@ if (filters.search) {
         onClick={() => setShowFilters(!showFilters)}
         className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
           showFilters
-            ? "bg-blue-600 text-white shadow-md"
+            ? "bg-blue-300 text-white shadow-md"
             : "bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
         }`}
       >
@@ -351,24 +351,24 @@ if (filters.search) {
       )}
 
       {/* Data Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* <div className="grid grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <p className="text-gray-600 text-sm font-medium">Total Records</p>
-          <p className="text-2xl font-bold text-gray-900">{filteredCustomers.length}</p>
+          <p className=" font-bold text-gray-900">{filteredCustomers.length}</p>
         </div>
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <p className="text-gray-600 text-sm font-medium">Approved</p>
-          <p className="text-2xl font-bold text-green-600">
+          <p className=" font-bold text-green-600">
             {filteredCustomers.filter(c => c.approvalStatus.toLowerCase() === "approved").length}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <p className="text-gray-600 text-sm font-medium">Pending</p>
-          <p className="text-2xl font-bold text-yellow-600">
+          <p className=" font-bold text-yellow-600">
             {filteredCustomers.filter(c => c.approvalStatus.toLowerCase() === "pending").length}
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
@@ -384,9 +384,9 @@ if (filters.search) {
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-100 border-b border-gray-200 sticky top-0">
+                <thead className="bg-gray-100 border-b border-gray-200  text-sm sticky top-0">
                   <tr>
-                    <th className="px-6 py-4 font-semibold text-gray-700 text-left whitespace-nowrap">#</th>
+                    <th className="px-6 py-4 font-semibold text-slate-600 text-sm text-left whitespace-nowrap">#</th>
                     <SortableHeader label="Branch" sortKey="branch" />
                     <SortableHeader label="RO" sortKey="relationshipOfficer" />
                     <SortableHeader label="Customer Name" sortKey="customerName" />
@@ -406,17 +406,17 @@ if (filters.search) {
                   {currentData.map((cust, i) => (
                     <tr
                       key={cust.id}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="hover:bg-gray-50 transition-colors text-sm"
                     >
-                      <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{startIdx + i + 1}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{cust.branch}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{cust.relationshipOfficer}</td>
-                      <td className="px-6 py-4 text-gray-900 font-medium whitespace-nowrap">{cust.customerName}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{cust.mobile}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{cust.idNumber}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{cust.gender}</td>
-                      <td className="px-6 py-4 text-gray-700 whitespace-nowrap">{cust.dateOfBirth}</td>
-                      <td className="px-6 py-4 text-center text-gray-700 whitespace-nowrap">{cust.age}</td>
+                      <td className="px-6 py-4 text-slate-900 font-medium whitespace-nowrap">{startIdx + i + 1}</td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{cust.branch}</td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{cust.relationshipOfficer}</td>
+                      <td className="px-6 py-4 text-slate-600 font-medium whitespace-nowrap">{cust.customerName}</td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{cust.mobile}</td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{cust.idNumber}</td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{cust.gender}</td>
+                      <td className="px-6 py-4 text-slate-600 whitespace-nowrap">{cust.dateOfBirth}</td>
+                      <td className="px-6 py-4 text-center text-slate-600 whitespace-nowrap">{cust.age}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                           cust.approvalStatus.toLowerCase() === "approved"

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { useAuth } from "../../hooks/userAuth";
+
 import {
   CurrencyDollarIcon,
   CalendarIcon,
@@ -15,7 +16,7 @@ import {
 
 import { useNavigate,useLocation  } from 'react-router-dom';
 
-const LoanBookingForm = ({ customerData, onComplete }) => {
+const LoanBookingForm = ({ customerData }) => {
   const [duration, setDuration] = useState(4);
  const location = useLocation();
   const navigate = useNavigate();
@@ -308,7 +309,8 @@ const handleBookLoan = async () => {
     if (error) throw error;
 
     alert("Loan successfully booked!");
-    onComplete();
+      navigate(-1); 
+   
   } catch (error) {
     console.error(" Error booking loan:", error.message);
     alert("Error booking loan. Please try again.");

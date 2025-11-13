@@ -273,22 +273,7 @@ const Leads = () => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50">
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 mb-2 border border-indigo-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="  bg-gradient-to-r from-slate-700 to-slate-700 bg-clip-text text-transparent">
-                Lead Management
-              </h1>
-              <p className="text-gray-600 mt-2">Track and convert potential customers</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-200">
-                <UserPlusIcon className="h-5 w-5 text-emerald-600" />
-                <span className="text-emerald-700 font-semibold">{leads.length} Total Leads</span>
-              </div>
-            </div>
-          </div>
-        </div>
+       
 
         {/* Controls */}
         <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-indigo-100">
@@ -308,7 +293,10 @@ const Leads = () => {
                   className="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                 />
               </div>
-
+ <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-200">
+                <UserPlusIcon className="h-5 w-5 text-emerald-600" />
+                <span className="text-emerald-700 font-semibold text-sm">{leads.length} Total Leads</span>
+              </div>
               {/* Status Filter */}
               <div className="relative">
                 <select
@@ -328,7 +316,7 @@ const Leads = () => {
             {/* Add Lead Button */}
             <button
               onClick={() => setShowLeadForm(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-600 text-white rounded-xl hover:from-green-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl font-medium"
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-600 text-white rounded-xl hover:from-green-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl font-sm"
             >
               <PlusIcon className="h-5 w-5" />
               Add Lead

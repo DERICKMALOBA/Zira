@@ -68,6 +68,7 @@ const MpesaRepaymentReports = () => {
             )
           `)
           .eq("payment_type", "repayment")
+           .eq("description", "Loan Repayment")
           .order("transaction_time", { ascending: false });
 
         if (error) throw error;
@@ -165,7 +166,7 @@ const MpesaRepaymentReports = () => {
         (r) => r.status.toLowerCase() === status.toLowerCase()
       );
 
-    // ✅ Apply date range filtering
+    //  Apply date range filtering
     const { start, end } = getDateRange(dateRangeType);
     if (start)
       result = result.filter((r) => r.paymentDate && r.paymentDate >= start);
@@ -328,7 +329,7 @@ const MpesaRepaymentReports = () => {
         {/* TOP HEADER BAR */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-green-600">M-Pesa Repayment Reports</h1>
+            <h1 className="text-lg font-semibold" style={{ color: "#586ab1" }}>M-Pesa Repayment Reports</h1>
             <p className="text-sm text-gray-600 mt-1">
               Viewing all M-Pesa loan repayment transactions
             </p>
@@ -339,7 +340,7 @@ const MpesaRepaymentReports = () => {
               onClick={() => setShowFilters(!showFilters)}
               className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
                 showFilters
-                  ? "bg-blue-600 text-white shadow-md"
+                  ? "bg-blue-300 text-white shadow-md"
                   : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
               }`}
             >
@@ -453,9 +454,9 @@ const MpesaRepaymentReports = () => {
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-100 border-b border-gray-200">
+                <thead className="bg-gray-100 border-b border-gray-200 text-sm">
                   <tr>
-                    <th className="px-6 py-4 font-semibold text-gray-700 text-left">#</th>
+                    <th className="px-6 py-4 font-semibold text-slate-600 text-sm text-left">#</th>
                     <SortableHeader label="Customer Name" sortKey="customerName" />
                     <SortableHeader label="Mobile" sortKey="mobile" />
                     <SortableHeader label="ID Number" sortKey="idNumber" />
@@ -466,9 +467,9 @@ const MpesaRepaymentReports = () => {
                     <SortableHeader label="Payment Date" sortKey="paymentDate" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200 text-sm">
                   {currentData.map((r, i) => (
-                    <tr key={r.id} className="hover:bg-gray-50">
+                    <tr key={r.id} className="hover:bg-gray-50 text-sm">
                       <td className="px-6 py-4 text-gray-900">{startIdx + i + 1}</td>
                       <td className="px-6 py-4">{r.customerName}</td>
                       <td className="px-6 py-4">{r.mobile}</td>

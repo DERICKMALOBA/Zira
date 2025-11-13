@@ -170,7 +170,7 @@ const Reports = () => {
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     {/* Title & Description */}
     <div>
-      <h1 className="text-2xl font-bold text-emerald-600">Reports</h1>
+      <h1 className="text-lg font-semibold" style={{ color: "#586ab1"}}>Reports</h1>
       <p className="text-sm text-gray-600 mt-1">
         Generate and view comprehensive loan management reports
       </p>
@@ -219,7 +219,7 @@ const Reports = () => {
                       <tr key={report.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <FileText className="w-5 h-5 text-blue-600" />
+                            <FileText className="w-5 h-5 text-green-600" />
                             <span className="font-medium text-gray-900">{report.name}</span>
                           </div>
                         </td>
@@ -230,7 +230,8 @@ const Reports = () => {
                           <div className="flex items-center justify-center">
                             <button
                               onClick={() => handleViewReport(report)}
-                              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+   className="flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg"
+                style={{ backgroundColor: "#586ab1" }}
                             >
                               <FileText className="w-3 h-3" />
                               View

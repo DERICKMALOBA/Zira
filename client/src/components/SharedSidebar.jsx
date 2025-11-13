@@ -72,8 +72,6 @@ const SharedSidebar = () => {
         name: "Dashboard",
         href: "/dashboard",
         icon: Home,
-        color: "text-blue-600",
-        bgColor: "bg-blue-100",
       },
     ];
 
@@ -83,15 +81,11 @@ const SharedSidebar = () => {
             name: "Leads",
             href: "/officer/leads",
             icon: UserPlus,
-            color: "text-green-600",
-            bgColor: "bg-green-100",
           },
           {
             name: "My Customers",
             href: "/officer/customers",
             icon: Users,
-            color: "text-purple-600",
-            bgColor: "bg-purple-100",
             children: [
               { name: "View Customers", href: "/officer/customers", icon: Users },
               {
@@ -115,8 +109,6 @@ const SharedSidebar = () => {
             name: "My Loans",
             href: "/officer/loans",
             icon: FileText,
-            color: "text-red-600",
-            bgColor: "bg-red-100",
             children: [
               {
                 name: "Loan Applications",
@@ -124,7 +116,6 @@ const SharedSidebar = () => {
                 icon: FileText,
               },
               { name: "All Loans", href: "/officer/loans", icon: FileSpreadsheet },
-          
             ],
           },
         ]
@@ -136,8 +127,6 @@ const SharedSidebar = () => {
             name: "Accounting",
             href: "/accounting",
             icon: Calculator,
-            color: "text-green-600",
-            bgColor: "bg-green-100",
             children: [
               {
                 name: "Chart of Accounts",
@@ -166,8 +155,6 @@ const SharedSidebar = () => {
             name: "Drafts",
             href: "/drafts",
             icon: FileText,
-            color: "text-yellow-600",
-            bgColor: "bg-yellow-100",
             children: [
               {
                 name: "Customer Verification Drafts",
@@ -184,8 +171,6 @@ const SharedSidebar = () => {
         name: "Registry",
         href: "/registry",
         icon: Users,
-        color: "text-orange-600",
-        bgColor: "bg-orange-100",
         children: [
           { name: "Customers", href: "/registry/customers", icon: Users },
           {
@@ -213,8 +198,6 @@ const SharedSidebar = () => {
         name: "Loaning",
         href: "/loaning",
         icon: FileText,
-        color: "text-red-600",
-        bgColor: "bg-red-100",
         children: [
           { name: "All Loans", href: "/loaning/all", icon: FileText },
           {
@@ -244,8 +227,6 @@ const SharedSidebar = () => {
         name: "Reports",
         href: "/reports",
         icon: BarChart3,
-        color: "text-cyan-600",
-        bgColor: "bg-cyan-100",
         children: [
           { name: "All Reports", href: "/reports/all", icon: FileText },
           { name: "PTP Reports", href: "/reports/ptp", icon: Handshake },
@@ -266,18 +247,19 @@ const SharedSidebar = () => {
 
   return (
     <div
-      className={`h-full bg-green-50 text-gray-800 border-r border-green-200 transition-all duration-300 ${
+      className={`h-full bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 text-gray-800 border-r border-gray-200 transition-all duration-300 ${
         isCollapsed ? "w-20" : "w-64"
       } flex-shrink-0 relative flex flex-col overflow-hidden`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-green-200 flex-shrink-0">
+   <div className="flex items-center justify-between p-4 flex-shrink-0">
+
         {!isCollapsed && (
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
-              <BarChart3 className="h-5 w-5 text-white" />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center">
+              <BarChart3 className="h-5 w-5" style={{ color: "#586ab1" }} />
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
               Jasiri Lending
             </span>
           </div>
@@ -285,12 +267,12 @@ const SharedSidebar = () => {
 
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded-xl bg-green-100 border border-green-200 text-gray-700 hover:text-green-700 hover:bg-green-200 transition-all duration-300 shadow-sm hover:shadow-md"
+          className="p-2 rounded-xl bg-white border border-gray-200 text-gray-700 hover:text-blue-600 hover:border-blue-300 transition-all duration-300 shadow-sm hover:shadow-md"
         >
           {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" style={{ color: "#586ab1" }} />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" style={{ color: "#586ab1" }} />
           )}
         </button>
       </div>
@@ -304,17 +286,13 @@ const SharedSidebar = () => {
                 onClick={() => !isCollapsed && toggleItem(item.name)}
                 className={`group flex items-center justify-between px-3 py-3 rounded-xl cursor-pointer transition-all duration-300 ${
                   expandedItems[item.name] && !isCollapsed
-                    ? "bg-green-200 shadow-lg border border-green-200"
-                    : "bg-transparent hover:bg-green-100 hover:shadow-md hover:border hover:border-green-200"
+                    ? "bg-blue-100 shadow-lg border border-blue-200"
+                    : "bg-transparent hover:bg-white hover:shadow-md hover:border hover:border-gray-200"
                 } ${isCollapsed ? "justify-center" : ""}`}
               >
                 <div className="flex items-center">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.bgColor} ${
-                      isCollapsed ? "mr-0" : "mr-3"
-                    }`}
-                  >
-                    <item.icon className={`h-5 w-5 ${item.color}`} />
+                  <div className={`flex items-center justify-center ${isCollapsed ? "mr-0" : "mr-3"}`}>
+                    <item.icon className="h-4 w-4" style={{ color: "#586ab1" }} />
                   </div>
                   {!isCollapsed && (
                     <span className="text-sm font-semibold">{item.name}</span>
@@ -324,9 +302,9 @@ const SharedSidebar = () => {
                 {!isCollapsed && (
                   <div className="text-gray-500 group-hover:text-gray-700 transition-colors">
                     {expandedItems[item.name] ? (
-                      <ChevronUp className="h-4 w-4" />
+                      <ChevronUp className="h-4 w-4" style={{ color: "#586ab1" }} />
                     ) : (
-                      <ChevronDown className="h-4 w-4" />
+                      <ChevronDown className="h-4 w-4" style={{ color: "#586ab1" }} />
                     )}
                   </div>
                 )}
@@ -337,17 +315,13 @@ const SharedSidebar = () => {
                 className={({ isActive }) =>
                   `group flex items-center px-3 py-3 rounded-xl transition-all duration-300 ${
                     isActive
-                      ? "bg-green-200 shadow-lg border border-green-200"
-                      : "bg-transparent hover:bg-green-100 hover:shadow-md hover:border hover:border-green-200"
+                      ? "bg-blue-100 shadow-lg border border-blue-200"
+                      : "bg-transparent hover:bg-white hover:shadow-md hover:border hover:border-gray-200"
                   } ${isCollapsed ? "justify-center" : ""}`
                 }
               >
-                <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.bgColor} ${
-                    isCollapsed ? "mr-0" : "mr-3"
-                  }`}
-                >
-                  <item.icon className={`h-5 w-5 ${item.color}`} />
+                <div className={`flex items-center justify-center ${isCollapsed ? "mr-0" : "mr-3"}`}>
+                  <item.icon className="h-4 w-4" style={{ color: "#586ab1" }} />
                 </div>
                 {!isCollapsed && (
                   <span className="text-sm font-semibold">{item.name}</span>
@@ -357,7 +331,7 @@ const SharedSidebar = () => {
 
             {/* Submenu */}
             {item.children && !isCollapsed && expandedItems[item.name] && (
-              <div className="ml-4 pl-6 mt-2 space-y-1 border-l-2 border-green-200">
+              <div className="ml-4 pl-6 mt-2 space-y-1 border-l-2 border-blue-200">
                 {item.children.map((child) => (
                   <NavLink
                     key={child.name}
@@ -365,12 +339,12 @@ const SharedSidebar = () => {
                     className={({ isActive }) =>
                       `flex items-center px-3 py-2.5 text-sm rounded-lg transition-all duration-300 ${
                         isActive
-                          ? "bg-green-200 text-green-800 border-l-2 border-green-500 shadow-sm"
-                          : "text-gray-600 hover:text-gray-900 hover:bg-green-100 hover:shadow-sm"
+                          ? "bg-blue-100 text-blue-800 border-l-2 border-blue-500 shadow-sm"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-white hover:shadow-sm"
                       }`
                     }
                   >
-                    <child.icon className="h-4 w-4 mr-3 text-gray-500" />
+                    <child.icon className="h-4 w-4 mr-3" style={{ color: "#586ab1" }} />
                     <span className="font-medium">{child.name}</span>
                   </NavLink>
                 ))}
@@ -379,25 +353,6 @@ const SharedSidebar = () => {
           </div>
         ))}
       </nav>
-
-      {/* Footer */}
-      <div className="p-4 border-t border-green-200">
-        {!isCollapsed && (
-          <div className="text-center">
-            <p className="text-xs text-gray-500">Jasiri Lending v1.0</p>
-            <p className="text-xs text-gray-400 mt-1">
-              {profile?.role
-                ? profile.role
-                    .split("_")
-                    .map(
-                      (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
-                    )
-                    .join(" ")
-                : ""}
-            </p>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

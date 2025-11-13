@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
-import LoanBookingForm from './LoanBooking';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../../hooks/userAuth";
 

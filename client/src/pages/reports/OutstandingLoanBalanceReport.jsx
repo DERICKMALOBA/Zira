@@ -339,7 +339,7 @@ const groupByBranchAndOfficer = (data) => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-green-600">Outstanding Loan Balance Report</h1>
+            <h1 className="text-lg font-semibold" style={{ color: "#586ab1" }}>Outstanding Loan Balance Report</h1>
             <p className="text-sm text-gray-600 mt-1">
               Grouped by Branch and Loan Officer
             </p>
@@ -434,7 +434,7 @@ const groupByBranchAndOfficer = (data) => {
       )}
 
       {/* Data Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <p className="text-gray-600 text-sm font-medium">Total Loans</p>
           <p className="text-2xl font-bold text-gray-900">{allLoans.length}</p>
@@ -451,7 +451,7 @@ const groupByBranchAndOfficer = (data) => {
           <p className="text-gray-600 text-sm font-medium">Total Arrears</p>
           <p className="text-2xl font-bold text-red-600">{formatCurrency(totalArrears)}</p>
         </div>
-      </div>
+      </div> */}
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">

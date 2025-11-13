@@ -8,7 +8,7 @@ const Dashboard = () => {
   const [userRole, setUserRole] = useState(null);
   const [userBranchId, setUserBranchId] = useState(null);
   const [userRegionId, setUserRegionId] = useState(null);
-  const [userId, setUserId] = useState(null); // ✅ Added userId state
+  const [userId, setUserId] = useState(null); //  Added userId state
   const [recentActivity, setRecentActivity] = useState([]);
   const navigate = useNavigate();
 
@@ -113,7 +113,7 @@ const Dashboard = () => {
         setUserBranch(profileData?.branches?.name || profileData?.branch_id);
         setUserBranchId(profileData?.branch_id);
         setUserRegionId(profileData?.region_id);
-        setUserId(user.id); // ✅ Store userId
+        setUserId(user.id); //  Store userId
 
         return {
           role: userData?.role,
@@ -987,7 +987,7 @@ const Dashboard = () => {
 
       const { role, regionId, branchId, id } = profile;
 
-      // ✅ Only load regions for analysts and CSO
+      //  Only load regions for analysts and CSO
       if (
         role === "credit_analyst_officer" ||
         role === "customer_service_officer"
@@ -996,7 +996,7 @@ const Dashboard = () => {
         setAvailableRegions(regionsData);
       }
 
-      // ✅ Only load branches if NOT relationship_officer
+      //  Only load branches if NOT relationship_officer
       let branchesData = [];
       if (role !== "relationship_officer") {
         if (role === "regional_manager") {
@@ -1007,7 +1007,7 @@ const Dashboard = () => {
         setAvailableBranches(branchesData);
       }
 
-      // ✅ Only load ROs if NOT relationship_officer
+      //  Only load ROs if NOT relationship_officer
       if (role !== "relationship_officer") {
         const relationshipOfficers = await fetchRelationshipOfficers(
           "all",
@@ -1028,7 +1028,7 @@ const Dashboard = () => {
 
       let loansQuery = supabase.from("loans").select("*");
 
-      // ✅ Apply filters based on role
+      //  Apply filters based on role
       if (role === "relationship_officer") {
         customersQuery = customersQuery.eq("created_by", id);
         loansQuery = loansQuery.eq("booked_by", id);
@@ -1089,7 +1089,7 @@ const Dashboard = () => {
     customers,
     userRegionId,
     userBranchId,
-    userId, // ✅ Add userId dependency
+    userId, //  Add userId dependency
   ]);
 
   useEffect(() => {
@@ -1137,209 +1137,292 @@ const Dashboard = () => {
   const handlePendingAmendments = () =>
     navigate("/registry/pending-amendments");
 
-  // Component definitions remain the same...
-  const SemiCircularConverter = ({ percentage, label, total, converted }) => {
-    const radius = 80;
-    const circumference = Math.PI * radius;
-    const offset = circumference - (percentage / 100) * circumference;
-    const rotation = -90 + (percentage / 100) * 180;
-
+ 
+  const IconStatCard = ({
+    icon,
+    value,
+    label,
+    subtitle,
+    trend,
+     percentage,
+    color = "#586ab1",
+    backgroundImage = "",
+    onClick,
+  }) => {
     return (
-      <div className="relative flex flex-col items-center space-y-4">
-        <div className="relative w-56 h-36 mb-3">
-          <svg className="w-full h-full" viewBox="0 0 200 120">
-            <path
-              d="M 20 100 A 80 80 0 0 1 180 100"
-              fill="none"
-              stroke="#E5E7EB"
-              strokeWidth="16"
-              strokeLinecap="round"
-            />
-            <path
-              d="M 20 100 A 80 80 0 0 1 180 100"
-              fill="none"
-              stroke="url(#goldGradient)"
-              strokeWidth="16"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={offset}
-              className="transition-all duration-1000 ease-out"
-            />
-            <defs>
-              <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#FFD700" />
-                <stop offset="50%" stopColor="#FACC15" />
-                <stop offset="100%" stopColor="#CA8A04" />
-              </linearGradient>
-            </defs>
-            <g transform="translate(100,100)">
-              <g transform={`rotate(${rotation})`}>
-                <polygon
-                  points="0,0 0,-75 3,-68 -3,-68"
-                  fill="#FACC15"
-                  stroke="#CA8A04"
-                  strokeWidth="1"
-                />
-              </g>
-              <circle
-                cx="0"
-                cy="0"
-                r="10"
-                fill="#FACC15"
-                stroke="#CA8A04"
-                strokeWidth="1.5"
-              />
-            </g>
-          </svg>
+      <div
+        className="relative rounded-2xl shadow-lg p-4 sm:p-6 text-white hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer border border-white/20 overflow-hidden min-h-[140px] sm:min-h-[160px] flex-1"
+        onClick={onClick}
+      >
+        {/* Background Image with reduced opacity */}
+        {backgroundImage && (
+          <div
+            className="absolute inset-0 bg-cover bg-center z-0 opacity-70"
+            style={{ backgroundImage: `url(${backgroundImage})` }}
+          >
+            {/* Overlay color tint */}
+            <div
+              className="absolute inset-0 mix-blend-multiply"
+              style={{ backgroundColor: color, opacity: 0.8 }}
+            ></div>
+          </div>
+        )}
+
+        {/* Blur + Dark Layer (for readability) */}
+        <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px] z-0"></div>
+
+          {/* Clean Book Percentage (Top Right Corner) */}
+      {percentage !== undefined && (
+        <div className="absolute top-3 right-4 z-20 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-semibold text-white shadow-md border border-white/30">
+          {percentage}% 
         </div>
-        <div className="text-center -mt-4">
-          <p className="text-3xl font-bold text-gray-800 tracking-tight">{percentage}%</p>
-        </div>
-        <div className="text-center bg-gradient-to-br from-yellow-50 to-amber-50 rounded-2xl shadow-sm px-4 py-3 w-full border border-yellow-100">
-          <p className="text-sm font-semibold text-gray-700 mb-1">{label}</p>
-          <p className="text-xs text-gray-600">
-            <span className="font-bold text-yellow-600">{converted}</span> converted of{" "}
-            <span className="font-bold text-gray-700">{total}</span> total
-          </p>
+      )}
+
+        {/* Content */}
+        <div className="relative z-10 h-full flex flex-col justify-center">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center mb-2">
+                <div className="p-2 bg-white/20 rounded-lg mr-3">
+                  {icon}
+                </div>
+                <p className="text-sm font-semibold text-white/90 uppercase tracking-wider">
+                  {label}
+                </p>
+              </div>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-1">
+                {value}
+              </p>
+              {subtitle && (
+                <p className="text-white/80 text-xs sm:text-sm font-medium">
+                  {subtitle}
+                </p>
+              )}
+              {trend && (
+                <div className="flex items-center mt-2 sm:mt-3">
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-bold ${
+                      trend.direction === "up"
+                        ? "bg-green-500/20 text-green-100"
+                        : "bg-red-500/20 text-red-100"
+                    }`}
+                  >
+                    {trend.direction === "up" ? "↗" : "↘"} {trend.value}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     );
   };
 
-  const MainStatCard = ({
-    title,
-    amount,
-    count,
-    percentage,
-    loading,
-    gradient,
-  }) => (
-    <div
-      className={`${gradient} rounded-2xl shadow-xl p-6 text-white hover:shadow-2xl transition-all duration-300 hover:scale-105 border border-white/20 backdrop-blur-sm`}
-    >
-      {loading ? (
-        <div className="space-y-3">
-          <div className="h-5 w-32 bg-white/20 animate-pulse rounded"></div>
-          <div className="h-10 w-40 bg-white/30 animate-pulse rounded-lg"></div>
-          <div className="h-4 w-24 bg-white/20 animate-pulse rounded"></div>
-        </div>
-      ) : (
-        <div className="flex flex-col h-full">
-          <div className="mb-4">
-            <p className="text-sm font-semibold text-white/90 uppercase tracking-wider">
-              {title}
-            </p>
+
+
+  const ConversionRateCard = ({ percentage, label, total, converted, period, backgroundImage = "" }) => {
+    return (
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 relative overflow-hidden">
+        {/* Background Image */}
+        {backgroundImage && (
+          <div 
+            className="absolute inset-0 bg-cover bg-center z-0"
+            style={{ backgroundImage: `url(${backgroundImage})` }}
+          >
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-[1px]"></div>
           </div>
-          <div className="flex-grow flex items-center">
-            <p className="text-4xl lg:text-5xl font-extrabold tracking-tight leading-none drop-shadow-lg">
-              {amount}
-            </p>
-          </div>
-          {percentage !== undefined && (
-            <div className="mt-2">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-white/20 backdrop-blur-sm">
-                {percentage}% of portfolio
-              </span>
+        )}
+        
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <div className="p-2 bg-amber-100 rounded-lg mr-3">
+                <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <span className="text-sm font-semibold text-gray-700">{label}</span>
             </div>
-          )}
-          <div className="mt-5 pt-4 border-t border-white/30">
-            <p className="text-sm font-bold text-white/95 flex items-center">
+            <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+              {period}
+            </span>
+          </div>
+          
+          <div className="text-center mb-4">
+            <p className="text-3xl font-bold text-gray-800">{percentage}%</p>
+            <p className="text-sm text-gray-600 mt-1">Conversion Rate</p>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-gray-600">Converted</span>
+              <span className="font-semibold text-gray-800">{converted}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Total Leads</span>
+              <span className="font-semibold text-gray-800">{total}</span>
+            </div>
+          </div>
+
+          <div className="mt-4 bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-1000 ease-out"
+              style={{ width: `${percentage}%` }}
+            ></div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Enhanced OverviewSection with better typography
+   const OverviewSection = ({ title, children, onViewAll, backgroundImage = "" }) => (
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 hover:shadow-xl transition-shadow duration-300 relative overflow-hidden mb-6">
+      {/* Background Image */}
+      {backgroundImage && (
+        <div 
+          className="absolute inset-0 bg-cover bg-center z-0"
+          style={{ backgroundImage: `url(${backgroundImage})` }}
+        >
+<div className="absolute inset-0 bg-white/80 backdrop-blur-[1px]"></div>
+
+        </div>
+      )}
+      
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <h3 className="text sm:text  text-slate-600 flex items-center">
+            <span className="w-1 h-5 sm:h-6 bg-gradient-to-b from-blue-600 to-cyan-500 rounded-full mr-3"></span>
+            {title}
+          </h3>
+          {onViewAll && (
+            <button
+              onClick={onViewAll}
+              className="flex items-center text-blue-600 hover:text-blue-700 font-semibold text-sm transition duration-200 group"
+            >
+              View All
               <svg
-                className="w-5 h-5 mr-2"
+                className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"
                 fill="none"
-                viewBox="0 0 24 24"
                 stroke="currentColor"
+                viewBox="0 0 24 24"
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={2.5}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
                 />
               </svg>
-              {count}
-            </p>
-          </div>
+            </button>
+          )}
         </div>
-      )}
-    </div>
-  );
-
-  const OverviewSection = ({ title, children, onViewAll }) => (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-300">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-gray-800 flex items-center">
-          <span className="w-1 h-6 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full mr-3"></span>
-          {title}
-        </h3>
-        {onViewAll && (
-          <button
-            onClick={onViewAll}
-            className="flex items-center text-indigo-600 hover:text-indigo-700 font-semibold text-sm transition duration-200 group"
-          >
-            View All
-            <svg
-              className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </button>
-        )}
+        {children}
       </div>
-      {children}
     </div>
   );
 
-  const ProgressBar = ({ label, value, total, type }) => {
+  // Enhanced ProgressBar with financial colors
+  const ProgressBar = ({ label, value, total, type, backgroundImage = "" }) => {
     const percentage = total ? Math.round((value / total) * 100) : value;
+    
     const getGradient = () => {
-      if (percentage >= 80) return "from-green-500 to-emerald-600";
-      if (percentage >= 50) return "from-yellow-500 to-orange-500";
-      return "from-red-500 to-pink-600";
+      if (type === 'collection') {
+        return percentage >= 80 ? "from-green-500 to-emerald-600" :
+               percentage >= 60 ? "from-blue-500 to-cyan-600" :
+               percentage >= 40 ? "from-yellow-500 to-amber-600" :
+               "from-red-500 to-rose-600";
+      }
+      return percentage >= 80 ? "from-green-500 to-emerald-600" :
+             percentage >= 50 ? "from-blue-500 to-cyan-600" :
+             "from-amber-500 to-orange-500";
     };
 
     return (
-      <div className="p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl hover:shadow-md transition-shadow">
-        <p className="text-2xl font-bold text-gray-800">
-          {total ? `Ksh ${value.toLocaleString()}` : `${value}%`}
-        </p>
-        {total && (
-          <p className="text-xs text-gray-500 mt-1">
-            of Ksh {total.toLocaleString()}
-          </p>
-        )}
-        <p className="text-sm text-gray-700 font-medium mt-3 mb-3">{label}</p>
-        <div className="relative mt-3 bg-gray-200 rounded-full h-3 overflow-hidden">
-          <div
-            className={`absolute top-0 left-0 h-full bg-gradient-to-r ${getGradient()} rounded-full transition-all duration-700 ease-out`}
-            style={{ width: `${Math.min(percentage, 100)}%` }}
+      <div className="p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl hover:shadow-md transition-shadow border border-gray-200 relative overflow-hidden">
+        {/* Background Image */}
+        {backgroundImage && (
+          <div 
+            className="absolute inset-0 bg-cover bg-center z-0"
+            style={{ backgroundImage: `url(${backgroundImage})` }}
           >
-            <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px]"></div>
+          </div>
+        )}
+        
+        <div className="relative z-10">
+          <div className="flex justify-between items-start mb-3">
+            <div>
+              <p className="text-2xl font-bold text-gray-800">
+                {total ? `Ksh ${value.toLocaleString()}` : `${value}%`}
+              </p>
+              {total && (
+                <p className="text-xs text-gray-500 mt-1">
+                  of Ksh {total.toLocaleString()}
+                </p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-gray-700">{label}</p>
+              <p className="text-xs text-gray-500 mt-1">Target: {total ? 'Amount' : 'Percentage'}</p>
+            </div>
+          </div>
+          
+          <div className="relative bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div
+              className={`absolute top-0 left-0 h-full bg-gradient-to-r ${getGradient()} rounded-full transition-all duration-700 ease-out`}
+              style={{ width: `${Math.min(percentage, 100)}%` }}
+            >
+              <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+            </div>
+          </div>
+          <div className="flex justify-between items-center mt-2">
+            <p className="text-xs font-semibold text-gray-600">
+              {percentage}% Complete
+            </p>
+            <div className="flex items-center">
+              <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${getGradient()} mr-1`}></div>
+              <span className="text-xs text-gray-500">Progress</span>
+            </div>
           </div>
         </div>
-        <p className="text-xs font-semibold text-gray-600 mt-2">
-          {percentage}% Complete
-        </p>
       </div>
     );
   };
 
+
+  // Icons for different sections
+  const financialIcons = {
+    loan: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+      </svg>
+    ),
+    customer: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    ),
+    collection: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+    approval: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    )
+  };
+
   if (loading && !userRegion && !userBranch && !userRole) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
         <div className="text-center">
           <div className="relative">
-            <div className="animate-spin rounded-full h-20 w-20 border-4 border-indigo-200 border-t-indigo-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-20 w-20 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-12 w-12 bg-indigo-100 rounded-full animate-pulse"></div>
+              <div className="h-12 w-12 bg-blue-100 rounded-full animate-pulse"></div>
             </div>
           </div>
           <p className="mt-8 text-xl text-gray-700 font-semibold">
@@ -1354,150 +1437,153 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 p-6">
-      {/* ✅ Hide filter dropdowns for relationship_officer */}
-      {userRole !== "relationship_officer" && (
-        <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-lg border border-gray-200/50 p-6 mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              {(userRole === "credit_analyst_officer" ||
-                userRole === "customer_service_officer") && (
-                <select
-                  value={selectedRegion}
-                  onChange={(e) => setSelectedRegion(e.target.value)}
-                  className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer hover:border-indigo-300"
-                >
-                  <option value="all">All Regions</option>
-                  {availableRegions.map((region) => (
-                    <option key={region.id} value={region.id}>
-                      {region.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {(userRole === "regional_manager" ||
-                userRole === "credit_analyst_officer" ||
-                userRole === "customer_service_officer") && (
-                <select
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer hover:border-indigo-300"
-                >
-                  <option value="all">
-                    {userRole === "regional_manager"
-                      ? "All Branches in Region"
-                      : "All Branches"}
-                  </option>
-                  {availableBranches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <select
-                value={selectedRO}
-                onChange={(e) => setSelectedRO(e.target.value)}
-                className="bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 cursor-pointer hover:border-indigo-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={
-                  (userRole === "regional_manager" && selectedBranch === "all") ||
-                  (userRole === "credit_analyst_officer" &&
-                    selectedBranch === "all") ||
-                  (userRole === "customer_service_officer" &&
-                    selectedBranch === "all")
-                }
-              >
-                {availableROs.map((ro) => (
-                  <option key={ro.id} value={ro.id}>
-                    {ro.full_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 p-6">
+    
+     {userRole !== "relationship_officer" && (
+  <div className="flex justify-end w-full mb-4">
+    <div className="flex flex-col sm:flex-row items-end gap-3">
+      {/* Region Filter */}
+      {(userRole === "credit_analyst_officer" ||
+        userRole === "customer_service_officer") && (
+        <select
+          value={selectedRegion}
+          onChange={(e) => setSelectedRegion(e.target.value)}
+          className="bg-white border border-gray-300 rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 cursor-pointer hover:border-primary-300 shadow-sm"
+        >
+          <option value="all">All Regions</option>
+          {availableRegions.map((region) => (
+            <option key={region.id} value={region.id}>
+              {region.name}
+            </option>
+          ))}
+        </select>
       )}
 
-      {/* Rest of the dashboard UI remains the same */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <MainStatCard
-          title="Outstanding Loan Balance"
-          amount={`Ksh ${(
-            dashboardMetrics?.outstandingBalance ?? 0
-          ).toLocaleString()}`}
-          count={`${(
-            dashboardMetrics?.outstandingLoansCount ?? 0
-          ).toLocaleString()} Active Loans`}
-          loading={loading}
-          gradient="bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-500"
+      {/* Branch Filter */}
+      {(userRole === "regional_manager" ||
+        userRole === "credit_analyst_officer" ||
+        userRole === "customer_service_officer") && (
+        <select
+          value={selectedBranch}
+          onChange={(e) => setSelectedBranch(e.target.value)}
+          className="bg-white border border-gray-300 rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 cursor-pointer hover:border-primary-300 shadow-sm"
+        >
+          <option value="all">
+            {userRole === "regional_manager"
+              ? "All Branches in Region"
+              : "All Branches"}
+          </option>
+          {availableBranches.map((branch) => (
+            <option key={branch.id} value={branch.id}>
+              {branch.name}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {/* RO Filter */}
+      <select
+        value={selectedRO}
+        onChange={(e) => setSelectedRO(e.target.value)}
+        className="bg-white border border-gray-300 rounded-xl px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition duration-200 cursor-pointer hover:border-primary-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+        disabled={
+          (userRole === "regional_manager" && selectedBranch === "all") ||
+          (userRole === "credit_analyst_officer" &&
+            selectedBranch === "all") ||
+          (userRole === "customer_service_officer" &&
+            selectedBranch === "all")
+        }
+      >
+        {availableROs.map((ro) => (
+          <option key={ro.id} value={ro.id}>
+            {ro.full_name}
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+)}
+
+
+
+      
+      {/* Key Metrics Grid */}
+     <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <IconStatCard
+          icon={financialIcons.loan}
+          value={`Ksh ${(dashboardMetrics?.outstandingBalance ?? 0).toLocaleString()}`}
+          label="Outstanding Balance"
+          subtitle={`${(dashboardMetrics?.outstandingLoansCount ?? 0).toLocaleString()} Active Loans`}
+          backgroundImage="/images/bg1.jpg"
+          onClick={handleViewLoans}
         />
-        <MainStatCard
-          title="Clean Book"
-          amount={`Ksh ${(
-            dashboardMetrics?.cleanBookAmount ?? 0
-          ).toLocaleString()}`}
-          count={`${(
-            dashboardMetrics?.performingLoansCount ?? 0
-          ).toLocaleString()} Performing Loans`}
-          percentage={dashboardMetrics?.cleanBookPercentage ?? 0}
-          loading={loading}
-          gradient="bg-gradient-to-br from-emerald-600 via-green-500 to-teal-500"
+        <IconStatCard
+          icon={financialIcons.collection}
+          value={`Ksh ${(dashboardMetrics?.cleanBookAmount ?? 0).toLocaleString()}`}
+          label="Clean Book"
+              percentage={dashboardMetrics?.cleanBookPercentage ?? 0}
+          subtitle={`${(dashboardMetrics?.performingLoansCount ?? 0).toLocaleString()} Performing`}
+          backgroundImage="/images/bg2.jpg"
+          onClick={handleViewLoans}
         />
-        <MainStatCard
-          title="Total Customers"
-          amount={(dashboardMetrics?.totalCustomers ?? 0).toLocaleString()}
-          count={`${(
-            dashboardMetrics?.totalCustomers ?? 0
-          ).toLocaleString()} Registered`}
-          loading={loading}
-          gradient="bg-gradient-to-br from-purple-600 via-violet-500 to-indigo-500"
+        <IconStatCard
+          icon={financialIcons.customer}
+          value={(dashboardMetrics?.totalCustomers ?? 0).toLocaleString()}
+          label="Total Customers"
+          subtitle={`${dashboardMetrics.customerOverview.activeCustomers} Active`}
+          backgroundImage="/images/customer.jpg"
+          onClick={handleViewCustomers}
         />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <OverviewSection
-          title="Customers Overview"
+
+
+
+      {/* Main Content Grid */}
+      <div className="space-y-6 sm:space-y-0 sm:grid sm:grid-cols-1 lg:grid-cols-2 sm:gap-6 mb-6 sm:mb-8">
+        {/* Customers Overview with Unique Background */}
+        <OverviewSection 
+          title="Customers Overview" 
           onViewAll={handleViewCustomers}
+          backgroundImage="/images/bg1.jpg"
         >
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="text-center p-5 bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl border border-green-200 hover:shadow-md transition-shadow">
-              <p className="text-4xl font-bold text-green-700">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="text-center p-3 sm:p-5 bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl border border-green-200 hover:shadow-md transition-shadow">
+              <p className="text-xl sm:text-3xl font-bold text-green-700">
                 {dashboardMetrics.customerOverview.activeCustomers.toLocaleString()}
               </p>
-              <p className="text-xs text-green-600 mt-2 font-semibold uppercase tracking-wide">
+              <p className="text-xs text-green-600 mt-1 sm:mt-2 font-semibold uppercase tracking-wide">
                 Active
               </p>
             </div>
-            <div className="text-center p-5 bg-gradient-to-br from-red-50 to-rose-100 rounded-xl border border-red-200 hover:shadow-md transition-shadow">
-              <p className="text-4xl font-bold text-red-700">
+            <div className="text-center p-3 sm:p-5 bg-gradient-to-br from-red-50 to-rose-100 rounded-xl border border-red-200 hover:shadow-md transition-shadow">
+              <p className="text-xl sm:text-3xl font-bold text-red-700">
                 {dashboardMetrics.customerOverview.inactiveCustomers.toLocaleString()}
               </p>
-              <p className="text-xs text-red-600 mt-2 font-semibold uppercase tracking-wide">
+              <p className="text-xs text-red-600 mt-1 sm:mt-2 font-semibold uppercase tracking-wide">
                 Inactive
               </p>
             </div>
-            <div className="text-center p-5 bg-gradient-to-br from-indigo-50 to-blue-100 rounded-xl border border-indigo-200 hover:shadow-md transition-shadow">
-              <p className="text-4xl font-bold text-indigo-700">
+            <div className="text-center p-3 sm:p-5 bg-gradient-to-br from-blue-50 to-cyan-100 rounded-xl border border-blue-200 hover:shadow-md transition-shadow">
+              <p className="text-xl sm:text-3xl font-bold text-blue-700">
                 {dashboardMetrics.customerOverview.newCustomersToday}
               </p>
-              <p className="text-xs text-indigo-600 mt-2 font-semibold uppercase tracking-wide">
+              <p className="text-xs text-blue-600 mt-1 sm:mt-2 font-semibold uppercase tracking-wide">
                 New Today
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="text-center p-4 bg-gradient-to-br from-amber-50 to-orange-100 rounded-xl border border-amber-200">
-              <p className="text-2xl font-bold text-amber-700">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-amber-50 to-orange-100 rounded-xl border border-amber-200">
+              <p className="text-lg sm:text-2xl font-bold text-amber-700">
                 {dashboardMetrics.customerOverview.leadsThisMonth}
               </p>
               <p className="text-xs text-amber-600 mt-1 font-semibold">
                 Leads This Month
               </p>
             </div>
-            <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-violet-100 rounded-xl border border-purple-200">
-              <p className="text-2xl font-bold text-purple-700">
+            <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-violet-100 rounded-xl border border-purple-200">
+              <p className="text-lg sm:text-2xl font-bold text-purple-700">
                 {dashboardMetrics.customerOverview.leadsToday}
               </p>
               <p className="text-xs text-purple-600 mt-1 font-semibold">
@@ -1506,66 +1592,70 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-6">
-            <SemiCircularConverter
-              percentage={
-                dashboardMetrics.customerOverview.leadConversionRateMonth || 0
-              }
-              label="This Month Conversion"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <ConversionRateCard
+              percentage={dashboardMetrics.customerOverview.leadConversionRateMonth || 0}
+              label="Lead Conversion"
               total={dashboardMetrics.customerOverview.totalThisMonth || 0}
-              converted={
-                dashboardMetrics.customerOverview.customersThisMonth || 0
-              }
+              converted={dashboardMetrics.customerOverview.customersThisMonth || 0}
+              period="This Month"
+              backgroundImage="/images/conversion-bg.jpg"
             />
-            <SemiCircularConverter
-              percentage={
-                dashboardMetrics.customerOverview.leadConversionRateYear || 0
-              }
-              label="This Year Conversion"
+            <ConversionRateCard
+              percentage={dashboardMetrics.customerOverview.leadConversionRateYear || 0}
+              label="Lead Conversion"
               total={dashboardMetrics.customerOverview.totalThisYear || 0}
-              converted={
-                dashboardMetrics.customerOverview.customersThisYear || 0
-              }
+              converted={dashboardMetrics.customerOverview.customersThisYear || 0}
+              period="This Year"
+              backgroundImage="/images/conversion-bg2.jpg"
             />
           </div>
         </OverviewSection>
 
-        <OverviewSection title="Loans Overview" onViewAll={handleViewLoans}>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:shadow-md transition-shadow">
-              <span className="text-sm font-semibold text-gray-700">
-                Disbursed Loans
-              </span>
+        {/* Loans Overview with Unique Background */}
+        <OverviewSection 
+          title="Loans Overview" 
+          onViewAll={handleViewLoans}
+          backgroundImage="/images/bg2.jpg"
+        >
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex items-center justify-between p-4 sm:p-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hover:shadow-md transition-shadow">
+              <div className="flex items-center">
+                <div className="p-2 bg-blue-50 rounded-lg mr-3">
+                  {financialIcons.loan}
+                </div>
+                <span className="text-sm font-semibold text-gray-700">
+                  Disbursed Loans
+                </span>
+              </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-blue-700">
-                  Ksh{" "}
-                  {dashboardMetrics.loanOverview.disbursedLoansAmount.toLocaleString()}
+                <p className="text-lg sm:text-2xl font-bold text-blue-700">
+                  Ksh {dashboardMetrics.loanOverview.disbursedLoansAmount.toLocaleString()}
                 </p>
                 <p className="text-xs text-blue-600 font-medium">
-                  {dashboardMetrics.loanOverview.disbursedLoansCount.toLocaleString()}{" "}
-                  loans
+                  {dashboardMetrics.loanOverview.disbursedLoansCount.toLocaleString()} loans
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                <span className="text-sm font-semibold text-gray-700">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="flex items-center justify-between p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                <span className="text-xs sm:text-sm font-semibold text-gray-700">
                   Disbursed Today
                 </span>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-green-700">
+                  <p className="text-lg sm:text-xl font-bold text-green-700">
                     {dashboardMetrics.loanOverview.disbursedLoansToday}
                   </p>
                   <p className="text-xs text-green-600 font-medium">loans</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl border border-teal-100">
-                <span className="text-sm font-semibold text-gray-700">
-                  Disbursed This Month
+              <div className="flex items-center justify-between p-3 sm:p-4 bg-gradient-to-r from-teal-50 to-cyan-50 rounded-xl border border-teal-100">
+                <span className="text-xs sm:text-sm font-semibold text-gray-700">
+                  This Month
                 </span>
                 <div className="text-right">
-                  <p className="text-xl font-bold text-teal-700">
+                  <p className="text-lg sm:text-xl font-bold text-teal-700">
                     {dashboardMetrics.loanOverview.disbursedLoansThisMonth}
                   </p>
                   <p className="text-xs text-teal-600 font-medium">loans</p>
@@ -1573,19 +1663,20 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-5 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between p-4 sm:p-5 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-100 hover:shadow-md transition-shadow">
               <span className="text-sm font-semibold text-gray-700">
                 Loans Due Today
               </span>
               <div className="text-right">
-                <p className="text-2xl font-bold text-amber-700">
+                <p className="text-lg sm:text-2xl font-bold text-amber-700">
                   {dashboardMetrics.loanOverview.loansDueToday.toLocaleString()}
                 </p>
                 <p className="text-xs text-amber-600 font-medium">due today</p>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-5 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border-2 border-red-200 hover:shadow-md transition-shadow">
+
+               <div className="flex items-center justify-between p-5 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border-2 border-red-200 hover:shadow-md transition-shadow">
               <span className="text-sm font-semibold text-red-700">
                 Month to Date Arrears
               </span>
@@ -1598,452 +1689,194 @@ const Dashboard = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-5 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-100 hover:shadow-md transition-shadow">
-              <span className="text-sm font-semibold text-gray-700">
-                Total Loan Arrears
+            <div className="flex items-center justify-between p-4 sm:p-5 bg-gradient-to-r from-red-50 to-rose-50 rounded-xl border-2 border-red-200 hover:shadow-md transition-shadow">
+              <span className="text-sm font-semibold text-red-700">
+                Total Arrears
               </span>
               <div className="text-right">
-                <p className="text-2xl font-bold text-orange-700">
-                  Ksh{" "}
-                  {dashboardMetrics.loanOverview.totalLoanArrears.toLocaleString()}
+                <p className="text-lg sm:text-2xl font-bold text-red-700">
+                  Ksh {dashboardMetrics.loanOverview.totalLoanArrears.toLocaleString()}
                 </p>
-                <p className="text-xs text-orange-600 font-medium">
-                  outstanding
-                </p>
+                <p className="text-xs text-red-600 font-medium">outstanding</p>
               </div>
             </div>
           </div>
         </OverviewSection>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <OverviewSection title="Collections Overview">
-          <div className="grid grid-cols-2 gap-4">
+      {/* Bottom Grid */}
+      <div className="space-y-6 sm:space-y-0 sm:grid sm:grid-cols-1 lg:grid-cols-2 sm:gap-6 mb-6 sm:mb-8">
+        {/* Collections Performance with Background Image */}
+        <OverviewSection 
+          title="Collections Performance"
+          backgroundImage="/images/bg1.jpg"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <ProgressBar
               label="Today's Collection"
               value={dashboardMetrics.collectionOverview.todayCollectionAmount}
               total={dashboardMetrics.outstandingBalance}
+              type="collection"
             />
             <ProgressBar
               label="Monthly Collection"
               value={dashboardMetrics.collectionOverview.monthlyCollectionRate}
+              type="collection"
             />
             <ProgressBar
               label="Prepayment Rate"
               value={dashboardMetrics.collectionOverview.prepaymentRate}
+              type="collection"
             />
             <ProgressBar
               label="Portfolio at Risk"
               value={dashboardMetrics.collectionOverview.par}
+              type="collection"
             />
           </div>
         </OverviewSection>
 
-        <OverviewSection title="Pending Actions">
-          <div className="space-y-3">
-            <div
-              className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl cursor-pointer hover:shadow-md hover:scale-102 transition-all border border-gray-200"
-              onClick={handleCustomerApprovals}
-            >
-              <span className="text-sm font-semibold text-gray-700">
-                Customer Approvals
-              </span>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-indigo-600">
-                  {dashboardMetrics.pendingActions.pendingCustomerApprovals}
+        {/* Pending Actions with Background Image */}
+        <OverviewSection 
+          title="Pending Actions"
+          backgroundImage="/images/actions-bg.jpg"
+        >
+          <div className="space-y-2 sm:space-y-3">
+            {[
+              {
+                label: "Customer Approvals",
+                count: dashboardMetrics.pendingActions.pendingCustomerApprovals,
+                color: "blue",
+                action: handleCustomerApprovals
+              },
+              {
+                label: "Customer Amendments",
+                count: dashboardMetrics.pendingActions.pendingAmends,
+                color: "purple",
+                action: handlePendingAmendments
+              },
+              {
+                label: "BM Loan Approvals",
+                count: dashboardMetrics.pendingActions.pendingBMLoanApprovals,
+                color: "green",
+                action: handlePendingBMLoans
+              },
+              {
+                label: "RM Loan Approvals",
+                count: dashboardMetrics.pendingActions.pendingRMLoanApprovals,
+                color: "amber",
+                action: handlePendingRMLoans
+              },
+              {
+                label: "Pending Disbursement",
+                count: dashboardMetrics.pendingActions.pendingDisbursement,
+                color: "red",
+                action: handlePendingDisbursement
+              }
+            ].map((item, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 sm:p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl cursor-pointer hover:shadow-md hover:scale-102 transition-all border border-gray-200"
+                onClick={item.action}
+              >
+                <span className="text-sm font-semibold text-gray-700">
+                  {item.label}
                 </span>
-                <svg
-                  className="w-5 h-5 text-indigo-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <span className={`text-lg sm:text-2xl font-bold text-${item.color}-600`}>
+                    {item.count}
+                  </span>
+                  <svg className={`w-4 h-4 sm:w-5 sm:h-5 text-${item.color}-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
               </div>
-            </div>
-
-            <div
-              className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl cursor-pointer hover:shadow-md hover:scale-102 transition-all border border-gray-200"
-              onClick={handlePendingAmendments}
-            >
-              <span className="text-sm font-semibold text-gray-700">
-                Customer Amendments
-              </span>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-purple-600">
-                  {dashboardMetrics.pendingActions.pendingAmends}
-                </span>
-                <svg
-                  className="w-5 h-5 text-purple-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl cursor-pointer hover:shadow-md hover:scale-102 transition-all border border-gray-200">
-              <span className="text-sm font-semibold text-gray-700">
-                Limit Approvals
-              </span>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-blue-600">
-                  {dashboardMetrics.pendingActions.pendingLimitApprovals}
-                </span>
-                <svg
-                  className="w-5 h-5 text-blue-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <div
-              className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl cursor-pointer hover:shadow-md hover:scale-102 transition-all border border-gray-200"
-              onClick={handlePendingBMLoans}
-            >
-              <span className="text-sm font-semibold text-gray-700">
-                Loan Approvals
-              </span>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-green-600">
-                  {dashboardMetrics.pendingActions.pendingBMLoanApprovals}
-                </span>
-                <svg
-                  className="w-5 h-5 text-green-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <div
-              className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl cursor-pointer hover:shadow-md hover:scale-102 transition-all border border-gray-200"
-              onClick={handlePendingRMLoans}
-            >
-              <span className="text-sm font-semibold text-gray-700">
-                RM Loan Approvals
-              </span>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-orange-600">
-                  {dashboardMetrics.pendingActions.pendingRMLoanApprovals}
-                </span>
-                <svg
-                  className="w-5 h-5 text-orange-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            <div
-              className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl cursor-pointer hover:shadow-md hover:scale-102 transition-all border border-gray-200"
-              onClick={handlePendingDisbursement}
-            >
-              <span className="text-sm font-semibold text-gray-700">
-                Pending Disbursement
-              </span>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-rose-600">
-                  {dashboardMetrics.pendingActions.pendingDisbursement}
-                </span>
-                <svg
-                  className="w-5 h-5 text-rose-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </div>
-            </div>
+            ))}
           </div>
         </OverviewSection>
       </div>
-      <OverviewSection title="Recent Activity">
-        <div className="space-y-4">
-          {recentActivity.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                <svg
-                  className="w-10 h-10 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <p className="text-gray-500 font-medium">
-                No recent activity to display
-              </p>
-              <p className="text-sm text-gray-400 mt-1">
-                Activity will appear here as loans are processed
-              </p>
-            </div>
-          ) : (
-            recentActivity
-              .slice(0, 5) // ✅ Limit to the 5 most recent activities
-              .map((activity) => (
+
+      {/* Recent Activity & Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="lg:col-span-2">
+          <OverviewSection 
+            title="Recent Activity"
+            backgroundImage="/images/activity-bg.jpg"
+          >
+            <div className="space-y-4">
+              {recentActivity.slice(0, 5).map((activity) => (
                 <div
                   key={activity.id}
                   className="flex items-center p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-100 hover:shadow-md hover:border-gray-200 transition-all duration-300 group cursor-pointer"
                 >
-                  <div
-                    className={`${activity.iconBg} rounded-full p-3 mr-4 group-hover:scale-110 transition-transform duration-300`}
-                  >
+                  <div className={`${activity.iconBg} rounded-full p-3 mr-4 group-hover:scale-110 transition-transform duration-300`}>
                     {activity.icon}
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors">
+                    <p className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
                       {activity.message}
                     </p>
                     <div className="flex items-center mt-1">
-                      <span className="text-sm text-gray-500">
-                        {activity.time}
-                      </span>
+                      <span className="text-sm text-gray-500">{activity.time}</span>
                       <span className="mx-2 text-gray-300">•</span>
                       <span className="text-sm font-medium text-green-600">
                         {activity.amount}
                       </span>
                     </div>
                   </div>
-                  <svg
-                    className="w-5 h-5 text-gray-400 opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0 transition-all"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
                 </div>
-              ))
-          )}
+              ))}
+            </div>
+          </OverviewSection>
         </div>
-      </OverviewSection>
 
-      <div className="mt-8">
-        <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center">
-          <span className="w-1 h-6 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full mr-3"></span>
-          Quick Actions
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <button
-            onClick={handleViewCustomers}
-            className="p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-indigo-200 hover:scale-105 transition-all duration-300 group text-center"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+        <OverviewSection 
+          title="Quick Actions"
+          backgroundImage="/images/quick-actions-bg.jpg"
+        >
+          <div className="space-y-3">
+            {[
+              { label: "Manage Customers", icon: financialIcons.customer, action: handleViewCustomers, color: "blue" },
+              { label: "View Loans", icon: financialIcons.loan, action: handleViewLoans, color: "green" },
+              { label: "BM Approvals", icon: financialIcons.approval, action: handlePendingBMLoans, color: "amber" },
+              { label: "RM Approvals", icon: financialIcons.approval, action: handlePendingRMLoans, color: "purple" },
+              { label: "Disburse Loans", icon: financialIcons.collection, action: handlePendingDisbursement, color: "teal" },
+              { label: "Customer Approvals", icon: financialIcons.approval, action: handleCustomerApprovals, color: "red" }
+            ].map((action, index) => (
+              <button
+                key={index}
+                onClick={action.action}
+                className="w-full flex items-center p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:shadow-md hover:scale-102 transition-all duration-300 group"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"
-                />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors">
-              Manage Customers
-            </span>
-          </button>
-
-          <button
-            onClick={handleViewLoans}
-            className="p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-green-200 hover:scale-105 transition-all duration-300 group text-center"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-                />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold text-gray-700 group-hover:text-green-600 transition-colors">
-              View Loans
-            </span>
-          </button>
-
-          <button
-            onClick={handlePendingBMLoans}
-            className="p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-blue-200 hover:scale-105 transition-all duration-300 group text-center"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold text-gray-700 group-hover:text-blue-600 transition-colors">
-              BM Approvals (
-              {dashboardMetrics.pendingActions.pendingBMLoanApprovals})
-            </span>
-          </button>
-
-          <button
-            onClick={handlePendingRMLoans}
-            className="p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-purple-200 hover:scale-105 transition-all duration-300 group text-center"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">
-              RM Approvals (
-              {dashboardMetrics.pendingActions.pendingRMLoanApprovals})
-            </span>
-          </button>
-
-          <button
-            onClick={handlePendingDisbursement}
-            className="p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-amber-200 hover:scale-105 transition-all duration-300 group text-center"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold text-gray-700 group-hover:text-amber-600 transition-colors">
-              Disburse ({dashboardMetrics.pendingActions.pendingDisbursement})
-            </span>
-          </button>
-
-          <button
-            onClick={handleCustomerApprovals}
-            className="p-6 bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl hover:border-rose-200 hover:scale-105 transition-all duration-300 group text-center"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg
-                className="w-6 h-6 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-                />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold text-gray-700 group-hover:text-rose-600 transition-colors">
-              Approvals (
-              {dashboardMetrics.pendingActions.pendingCustomerApprovals})
-            </span>
-          </button>
-        </div>
+                <div className={`p-2 bg-${action.color}-100 rounded-lg mr-3 group-hover:scale-110 transition-transform`}>
+                  <div className={`text-${action.color}-600`}>
+                    {action.icon}
+                  </div>
+                </div>
+                <span className="text-sm font-semibold text-gray-700 group-hover:text-gray-900">
+                  {action.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </OverviewSection>
       </div>
 
-      <div className="mt-12 pt-8 border-t border-gray-200">
+      {/* Footer */}
+      <div className="mt-8 pt-6 border-t border-gray-200">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="flex items-center text-gray-600 mb-4 md:mb-0">
             <div className="w-3 h-3 bg-green-500 rounded-full mr-2 animate-pulse"></div>
             <span className="text-sm font-medium">
-              System Status: Operational
+              System Status: Operational • Last updated: {new Date().toLocaleTimeString()}
             </span>
           </div>
           <div className="text-sm text-gray-500">
-            Last updated:{" "}
-            {new Date().toLocaleString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-              hour12: true,
+            {new Date().toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
             })}
           </div>
         </div>

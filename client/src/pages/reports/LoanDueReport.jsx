@@ -332,10 +332,10 @@ const filteredData = dueLoans.filter((l) => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-[1800px] mx-auto space-y-6">
         {/* Header Section */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-green-600">Loan Due Report</h1>
+              <h1 className="text-sm font-semibold" style={{ color: "#586ab1" }}>Loan Due Report</h1>
               <p className="text-sm text-gray-600 mt-1">
                 Viewing loans due: <span className="font-semibold text-blue-600">{getDateRangeLabel()}</span>
               </p>
@@ -345,7 +345,7 @@ const filteredData = dueLoans.filter((l) => {
                 onClick={() => setShowFilters(!showFilters)}
                 className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
                   showFilters
-                    ? "bg-blue-600 text-white shadow-md"
+                    ? "bg-blue-300 text-white shadow-md"
                     : "bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
                 }`}
               >
@@ -367,7 +367,7 @@ const filteredData = dueLoans.filter((l) => {
         {showFilters && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Filter Options</h3>
+              <h3 className="text font-semibold text-gray-900">Filter Options</h3>
               {(filters.customerQuery || filters.officer || filters.branch) && (
                 <button
                   onClick={() => setFilters((p) => ({ ...p, customerQuery: "", officer: "", branch: "" }))}
@@ -487,15 +487,15 @@ const filteredData = dueLoans.filter((l) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <div className="text-sm font-medium text-gray-600 mb-2">Total Loans Due</div>
-            <div className="text-3xl font-bold text-gray-900">{filteredData.length}</div>
+            <div className="text font-bold text-slate-600">{filteredData.length}</div>
           </div>
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <div className="text-sm font-medium text-gray-600 mb-2">Total Amount Due</div>
-            <div className="text-3xl font-bold text-red-600">{formatCurrency(grandTotals.totalDue)}</div>
+            <div className=" font-bold text-red-600">{formatCurrency(grandTotals.totalDue)}</div>
           </div>
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
             <div className="text-sm font-medium text-gray-600 mb-2">Total Unpaid Balance</div>
-            <div className="text-3xl font-bold text-orange-600">{formatCurrency(grandTotals.totalUnpaid)}</div>
+            <div className=" font-bold text-orange-600">{formatCurrency(grandTotals.totalUnpaid)}</div>
           </div>
         </div>
 
@@ -592,18 +592,18 @@ const filteredData = dueLoans.filter((l) => {
       })}
 
       {/* === Grand Totals Row === */}
-      <tr className="bg-gradient-to-r from-gray-800 to-gray-900 text-white font-bold border-t-4 border-gray-400">
+      <tr className=" text-white font-bold border-t-4 border-gray-400">
         <td colSpan="2" className="px-4 py-4 text-right text-sm uppercase tracking-wider">
           Totals:
         </td>
-        <td className="px-4 py-4 text-right text-red-300 whitespace-nowrap">
+        <td className="px-4 py-4 text-right text-red-500 whitespace-nowrap">
           {formatCurrency(grandTotals.totalDue)}
         </td>
         <td colSpan="10"></td>
-        <td className="px-4 py-4 text-right text-green-300 whitespace-nowrap">
+        <td className="px-4 py-4 text-right text-green-600 whitespace-nowrap">
           {formatCurrency(grandTotals.totalPaid)}
         </td>
-        <td className="px-4 py-4 text-right text-orange-300 whitespace-nowrap">
+        <td className="px-4 py-4 text-right text-orange-500 whitespace-nowrap">
           {formatCurrency(grandTotals.totalUnpaid)}
         </td>
         <td colSpan="2"></td>

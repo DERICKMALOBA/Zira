@@ -139,15 +139,15 @@ const fetchOutstandingLoans = async () => {
         )
         .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-      // Compute totals
-      let totalDueAmountAtEOM = 0;
+      // // Compute totals
+      // let totalDueAmountAtEOM = 0;
       let overdueAmount = 0;
       let maxOverdueDays = 0;
 
       installmentsDueAtEOM.forEach((inst) => {
         const dueAmount = Number(inst.due_amount) || 0;
         const paidAmount = Number(inst.paid_amount) || 0;
-        totalDueAmountAtEOM += dueAmount;
+        // totalDueAmountAtEOM += dueAmount;
 
         if (inst.status === "overdue" || inst.status === "defaulted") {
           const unpaid = dueAmount - paidAmount;
@@ -357,9 +357,9 @@ const fetchOutstandingLoans = async () => {
   const startIdx = (currentPage - 1) * itemsPerPage;
   const endIdx = startIdx + itemsPerPage;
 
-  const totalOutstanding = allLoans.reduce((s, r) => s + (r.outstanding_balance || 0), 0);
-  const totalPaid = allLoans.reduce((s, r) => s + (r.total_amount_paid || 0), 0);
-  const totalArrears = allLoans.reduce((s, r) => s + (r.arrears_amount || 0), 0);
+  // const totalOutstanding = allLoans.reduce((s, r) => s + (r.outstanding_balance || 0), 0);
+  // const totalPaid = allLoans.reduce((s, r) => s + (r.total_amount_paid || 0), 0);
+  // const totalArrears = allLoans.reduce((s, r) => s + (r.arrears_amount || 0), 0);
 
   const cutoffDate = getCutoffDate();
 
@@ -368,7 +368,7 @@ const fetchOutstandingLoans = async () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-green-600">
+            <h1 className="text-lg font-semibold" style={{ color: "#586ab1" }}>
               Outstanding Loan Balance Report as at EOM
             </h1>
             <p className="text-sm text-gray-600 mt-1">
@@ -460,7 +460,7 @@ const fetchOutstandingLoans = async () => {
           )}
         </div>
       )}
-
+{/* 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <p className="text-gray-600 text-sm font-medium">Total Loans</p>
@@ -478,7 +478,7 @@ const fetchOutstandingLoans = async () => {
           <p className="text-gray-600 text-sm font-medium">Total Arrears</p>
           <p className="text-2xl font-bold text-red-600">{formatCurrency(totalArrears)}</p>
         </div>
-      </div>
+      </div> */}
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
         {loading ? (

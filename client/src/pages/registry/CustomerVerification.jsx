@@ -579,6 +579,7 @@ const handleVerificationChange = (
       if (statusError) throw statusError;
 
       toast.success("Draft saved successfully!");
+      navigate(-1);
     } catch (error) {
       console.error("Error saving draft:", error);
       toast.error("Error saving draft");
@@ -838,7 +839,7 @@ const handleVerificationChange = (
     <div className="bg-blue-50 py-8">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-md p-4 mb-4 border border-indigo-100">
+        <div className="  p-4 mb-4 ">
       <div className="flex items-center gap-3">
         {/* Back Arrow */}
         <button
@@ -850,10 +851,10 @@ const handleVerificationChange = (
 
         {/* Header Text */}
         <div>
-          <h1 className="text-lg font-semibold text-gray-800">
+          <h1 className="text-lg font-semibold text-slate-600">
             Customer Verification 
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-slate-500">
             Comprehensive verification of customer documents and information
           </p>
         </div>
@@ -861,7 +862,7 @@ const handleVerificationChange = (
     </div>
 
         {/* Progress Steps */}
-       <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
+       <div className="bg-white rounded-lg shadow-lg p-8 mb-8 border border-indigo-100">
         <div className="flex items-center justify-between overflow-x-auto"> 
           {steps.map(({ num, label, icon: Icon }) => (
             <div key={num} className="flex flex-col items-center flex-shrink-0"> 
@@ -898,7 +899,7 @@ const handleVerificationChange = (
           {step === 1 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Customer Verification
                 </h2>
@@ -942,11 +943,11 @@ const handleVerificationChange = (
                       )}
                     </div>
 
-                    <h3 className="text-2xl font-bold text-gray-900 mt-4 text-center">
+                    <h3 className="text-lg font-semibold text-slate-600 mt-4 text-center">
                       {customer.prefix} {customer.Firstname}{" "}
                       {customer.Middlename} {customer.Surname}
                     </h3>
-                    <p className="text-indigo-600 font-semibold">
+                    <p className="text-indigo-600 text-sm">
                       Primary Applicant
                     </p>
                   </div>
@@ -1036,7 +1037,7 @@ const handleVerificationChange = (
 
               {/* Verification Controls */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-2xl border border-blue-100">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                <h3 className="text-sm font-semibold text-slate-600 mb-6">
                   Verification Status
                 </h3>
 
@@ -1121,7 +1122,7 @@ const handleVerificationChange = (
           {step === 2 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <BuildingOffice2Icon className="h-8 w-8 text-indigo-600 mr-3" />
                   Business Verification
                 </h2>
@@ -1132,7 +1133,7 @@ const handleVerificationChange = (
 
               {/* Business Details */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="text font-semibold text-slate-600 mb-4 flex items-center gap-2">
                   <BuildingOffice2Icon className="h-6 w-6 text-indigo-600" />
                   Business Details
                 </h3>
@@ -1194,7 +1195,7 @@ const handleVerificationChange = (
               {businessImages.length === 0 ? (
                 <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                   <BuildingOffice2Icon className="mx-auto h-20 w-20 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <h3 className="text-lg font-semibold text-slate-600 mb-2">
                     No Business Images
                   </h3>
                   <p className="text-gray-600">
@@ -1210,7 +1211,7 @@ const handleVerificationChange = (
                         className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition-all duration-200"
                       >
                         <div className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 border-b">
-                          <h4 className="text-sm font-semibold text-gray-800 flex items-center">
+                          <h4 className="text-sm font-semibold text-slate-600 flex items-center">
                             <PhotoIcon className="h-4 w-4 text-indigo-600 mr-2" />
                             Business Image {index + 1}
                           </h4>
@@ -1256,7 +1257,7 @@ const handleVerificationChange = (
               {/* Business Verification Controls */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-2xl border border-blue-100 mt-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-slate-600">
                     Business Verification Status
                   </h3>
                   <ToggleSwitch
@@ -1300,7 +1301,7 @@ const handleVerificationChange = (
           {step === 3 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <UserGroupIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Guarantor Verification
                 </h2>
@@ -1312,7 +1313,7 @@ const handleVerificationChange = (
               {guarantors.length === 0 ? (
                 <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                   <UserGroupIcon className="mx-auto h-20 w-20 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <h3 className="text-lg font-semibold text-slate-600 mb-2">
                     No Guarantors
                   </h3>
                   <p className="text-gray-600">
@@ -1328,7 +1329,7 @@ const handleVerificationChange = (
                     >
                       {/* Header */}
                       <div className="flex items-center justify-between mb-8">
-                        <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                        <h3 className="text-lg font-semibold text-slate-600 flex items-center">
                           <UserGroupIcon className="h-6 w-6 text-indigo-600 mr-3" />
                           Guarantor {index + 1}
                         </h3>
@@ -1372,7 +1373,7 @@ const handleVerificationChange = (
                               )}
                             </div>
 
-                            <h3 className="text-2xl font-bold text-gray-900 mt-4 text-center">
+                            <h3 className="text-lg font-semibold text-slate-600 mt-4 text-center">
                               {guarantor.prefix} {guarantor.Firstname}{" "}
                               {guarantor.Middlename} {guarantor.Surname}
                             </h3>
@@ -1576,7 +1577,7 @@ const handleVerificationChange = (
           {step === 4 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <ShieldCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Security Verification
                 </h2>
@@ -1587,7 +1588,7 @@ const handleVerificationChange = (
 
               {/* Customer Security */}
               <div className="bg-white border border-gray-200 rounded-2xl p-8 mb-8 shadow-sm">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                <h3 className="text-lg  font-semibold text-slate-600 mb-6 flex items-center">
                   <ShieldCheckIcon className="h-6 w-6 text-indigo-600 mr-3" />
                   Customer Security Items
                 </h3>
@@ -1685,7 +1686,7 @@ const handleVerificationChange = (
                 {/* Verification */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900">
+                    <h4 className="text-lg font-semibold text-slate-600">
                       Customer Security Verification
                     </h4>
                     <ToggleSwitch
@@ -1724,7 +1725,7 @@ const handleVerificationChange = (
 
               {/* Guarantor Security */}
               <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                <h3 className="text-lg  font-semibold text-slate-600 mb-6 flex items-center">
                   <ShieldCheckIcon className="h-6 w-6 text-indigo-600 mr-3" />
                   Guarantor Security Items
                 </h3>
@@ -1735,7 +1736,7 @@ const handleVerificationChange = (
                     <h4 className="text-lg font-semibold text-gray-700 mb-2">
                       No Guarantor Security Items
                     </h4>
-                    <p className="text-gray-600">
+                    <p className="text-slate-600">
                       Guarantors have not provided security items
                     </p>
                   </div>
@@ -1832,7 +1833,7 @@ const handleVerificationChange = (
                 {/* Verification */}
                 <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-xl border border-purple-100">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900">
+                    <h4 className="text-lg font-semibold text-slate-600">
                       Guarantor Security Verification
                     </h4>
                     <ToggleSwitch
@@ -1848,7 +1849,7 @@ const handleVerificationChange = (
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-3">
+                    <label className="block text-sm font-semibold text-slate-600 mb-3">
                       Guarantor Security Comments
                     </label>
                     <textarea
@@ -1874,7 +1875,7 @@ const handleVerificationChange = (
           {step === 5 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Next of Kin Verification
                 </h2>
@@ -1886,7 +1887,7 @@ const handleVerificationChange = (
               {!nextOfKinInfo || nextOfKinInfo.length === 0 ? (
                 <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                   <UserCircleIcon className="mx-auto h-20 w-20 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <h3 className="text-xl font-semibold text-slate-600 mb-2">
                     No Next of Kin Information
                   </h3>
                   <p className="text-gray-600">
@@ -1901,7 +1902,7 @@ const handleVerificationChange = (
                   >
                     {/* Next of Kin Details */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 mb-8 border border-indigo-100">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                      <h3 className="text-lg font-semibold text-slate-600 mb-6 flex items-center">
                         <UserCircleIcon className="h-6 w-6 text-indigo-600 mr-3" />
                         Next of Kin Information
                       </h3>
@@ -1944,7 +1945,7 @@ const handleVerificationChange = (
                     {/* Next of Kin Verification Controls */}
                     <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-8 rounded-2xl border border-green-100">
                       <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-slate-600">
                           Next of Kin Verification Status
                         </h3>
                         <ToggleSwitch
@@ -1990,7 +1991,7 @@ const handleVerificationChange = (
           {step === 6 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <DocumentTextIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Document Verification
                 </h2>
@@ -2002,7 +2003,7 @@ const handleVerificationChange = (
               {documentImages.length === 0 ? (
                 <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                   <DocumentTextIcon className="mx-auto h-20 w-20 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <h3 className="text-xl font-semibold text-slate-600 mb-2">
                     No Document Images
                   </h3>
                   <p className="text-gray-600">
@@ -2011,7 +2012,7 @@ const handleVerificationChange = (
                 </div>
               ) : (
                 <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                  <h3 className="text-lg font-semibold text-slate-600 mb-6 flex items-center">
                     <DocumentTextIcon className="h-6 w-6 text-indigo-600 mr-3" />
                     Meeting Documentation
                   </h3>
@@ -2068,7 +2069,7 @@ const handleVerificationChange = (
                   {/* Document Verification Controls */}
                   <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-8 rounded-2xl border border-purple-100">
                     <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-lg font-semibold text-slate-600">
                         Document Verification Status
                       </h3>
                       <ToggleSwitch
@@ -2085,7 +2086,7 @@ const handleVerificationChange = (
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-800 mb-3">
+                      <label className="block text-sm font-semibold text-slate-600 mb-3">
                         Document Verification Comments
                       </label>
                       <textarea
@@ -2115,7 +2116,7 @@ const handleVerificationChange = (
               {userRole === "credit_analyst_officer" ? (
                 <>
                   <div className="border-b border-gray-200 pb-6 mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                       <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 mr-3" />
                       Loan Assessment
                     </h2>
@@ -2126,7 +2127,7 @@ const handleVerificationChange = (
 
                   {/* Loan Amount History - READ ONLY for CA */}
                   <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm mb-8">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                    <h3 className="text-lg font-semibold text-slate-600 mb-6 flex items-center">
                       <CurrencyDollarIcon className="h-6 w-6 text-indigo-600 mr-3" />
                       Loan Amount History
                     </h3>
@@ -2144,7 +2145,7 @@ const handleVerificationChange = (
                             </span>
                           </div>
                         </div>
-                        <p className="text-2xl font-bold text-blue-700 mb-2">
+                        <p className="text-lg font-bold text-blue-700 mb-2">
                           KES{" "}
                           {customer?.prequalifiedAmount?.toLocaleString(
                             "en-US"
@@ -2231,7 +2232,7 @@ const handleVerificationChange = (
 
                   {/* CA Assessment Section - EDITABLE */}
                   <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm mb-8">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                    <h3 className="text-lg font-semibold text-slate-600 mb-6 flex items-center">
                       <PencilSquareIcon className="h-6 w-6 text-emerald-600 mr-3" />
                       Your Assessment
                     </h3>
@@ -2359,7 +2360,7 @@ const handleVerificationChange = (
                 <>
                   {/* BM Loan Assessment */}
                   <div className="border-b border-gray-200 pb-6 mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <h2 className="text-lg font-semibold text-slate-900 flex items-center">
                       <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 mr-3" />
                       Loan Assessment
                     </h2>
@@ -2493,7 +2494,7 @@ const handleVerificationChange = (
                     )}
 
                     <div className="bg-gradient-to-r from-gray-50 to-slate-50 p-6 rounded-xl border border-gray-200">
-                      <h4 className="font-semibold text-gray-900 mb-4">
+                      <h4 className="font-semibold text-gray-600 mb-4">
                         Loan Assessment Comments
                       </h4>
                       <textarea
@@ -2521,7 +2522,7 @@ const handleVerificationChange = (
           {step === 8 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-bold text-slate-600 flex items-center">
                   <ClipboardDocumentCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Final Decision
                 </h2>

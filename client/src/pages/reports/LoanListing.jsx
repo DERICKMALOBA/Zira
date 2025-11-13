@@ -429,7 +429,7 @@ const LoanListing = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-emerald-600">
+            <h2 className="text-lg font-semibold" style={{ color: "#586ab1" }}>
               Complete Loan Listing
             </h2>
             <p className="text-sm text-gray-600 mt-1">
@@ -442,7 +442,7 @@ const LoanListing = () => {
               onClick={() => setShowFilters(!showFilters)}
               className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
                 showFilters
-                  ? "bg-blue-600 text-white shadow-md"
+                  ? "bg-blue-300 text-white shadow-md"
                   : "bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
               }`}
             >

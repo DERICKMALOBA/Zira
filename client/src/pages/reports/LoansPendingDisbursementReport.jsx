@@ -321,12 +321,12 @@ const PendingDisbursementReport = () => {
   const currentData = filtered.slice(startIdx, endIdx);
 
   // Calculate summary statistics
-  const totalAmount = filtered.reduce((sum, r) => sum + r.scored_amount, 0);
-  const totalNetDisbursement = filtered.reduce((sum, r) => sum + r.net_disbursement, 0);
-  const totalFees = filtered.reduce((sum, r) => sum + r.processing_fee + r.registration_fee, 0);
-  const averageDaysPending = filtered.length > 0 
-    ? (filtered.reduce((sum, r) => sum + r.days_pending, 0) / filtered.length).toFixed(1)
-    : 0;
+  // const totalAmount = filtered.reduce((sum, r) => sum + r.scored_amount, 0);
+  // const totalNetDisbursement = filtered.reduce((sum, r) => sum + r.net_disbursement, 0);
+  // const totalFees = filtered.reduce((sum, r) => sum + r.processing_fee + r.registration_fee, 0);
+  // const averageDaysPending = filtered.length > 0 
+  //   ? (filtered.reduce((sum, r) => sum + r.days_pending, 0) / filtered.length).toFixed(1)
+  //   : 0;
 
   return (
     <div className="space-y-6">
@@ -335,7 +335,7 @@ const PendingDisbursementReport = () => {
 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
-      <h1 className="text-2xl font-bold text-green-600">Loans Pending Disbursement</h1>
+      <h1 className="text-lg font-semibold" style={{ color: "#586ab1" }}>Loans Pending Disbursement</h1>
       <p className="text-sm text-gray-600 mt-1">
         Track approved loans awaiting disbursement to customers
       </p>
@@ -431,7 +431,7 @@ const PendingDisbursementReport = () => {
       )}
 
       {/* Data Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg border border-gray-200">
           <p className="text-gray-600 text-sm font-medium">Total Loans Pending</p>
           <p className="text-2xl font-bold text-blue-600">{filtered.length}</p>
@@ -448,7 +448,7 @@ const PendingDisbursementReport = () => {
           <p className="text-gray-600 text-sm font-medium">Net Disbursement</p>
           <p className="text-2xl font-bold text-green-600">{formatCurrency(totalNetDisbursement)}</p>
         </div>
-      </div>
+      </div> */}
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
@@ -464,7 +464,7 @@ const PendingDisbursementReport = () => {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-100 border-b border-gray-200 sticky top-0">
+                <thead className="bg-gray-100 border-b border-gray-200 sticky top-0 text-sm">
                   <tr>
                     <th className="px-4 py-4 font-semibold text-gray-700 text-left whitespace-nowrap">#</th>
                     <SortableHeader label="Customer Name" sortKey="customer_name" />

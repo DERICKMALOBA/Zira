@@ -208,7 +208,7 @@ const CustomerDetailsPage = () => {
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 flex items-center justify-center">
         <div className="text-center bg-white p-8 rounded-2xl shadow-lg">
           <DocumentMagnifyingGlassIcon className="mx-auto h-16 w-16 text-red-400 mb-4" />
-          <h3 className="text-xl font-semibold text-gray-600 mb-2">Customer Not Found</h3>
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">Customer Not Found</h3>
           <p className="text-gray-600">The requested customer details could not be loaded.</p>
           <button
             onClick={() => navigate(-1)}
@@ -233,20 +233,20 @@ const CustomerDetailsPage = () => {
           
        
        {/* Customer Profile */}
-<div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
+<div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-4 overflow-hidden">
   <div className="p-2 flex items-center">
     <button
       onClick={() => navigate(-1)}
       className="flex items-center text-gray-600 hover:text-gray-900 gap-2 px-2 py-1 rounded-lg hover:bg-gray-50 transition"
     >
       <ArrowLeftIcon className="h-5 w-5" />
-      <span className="font-medium">Back to Customers</span>
+      <span className="text-sm">Back to Customers</span>
     </button>
   </div>
 
   <div className="p-8">
-    <div className="border-b border-gray-200 pb-6 mb-8">
-      <h2 className="text-2xl font-bold text-gray-600 flex items-center">
+    <div className="border-b border-gray-200 pb-6 mb-2">
+      <h2 className=" text-lg flex items-center font-semibold" style={{ color: "#586ab1" }}>
         <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
         Customer Information
       </h2>
@@ -281,7 +281,7 @@ const CustomerDetailsPage = () => {
                       )}
                     </div>
 
-                    <h3 className="text-2xl font-bold text-gray-600 mt-4 text-center">
+                    <h3 className="text-lg font-bold text-slate-600 mt-4 text-center">
                       {customer.prefix} {customer.Firstname} {customer.Middlename} {customer.Surname}
                     </h3>
                   </div>
@@ -328,7 +328,7 @@ const CustomerDetailsPage = () => {
 
               {/* Documents Grid */}
               <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-600 mb-6">Customer Documents</h3>
+                <h3 className="text-lg font-semibold text-slate-600 mb-6">Customer Documents</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <DocumentCard
                     title="ID Front"
@@ -358,13 +358,11 @@ const CustomerDetailsPage = () => {
             <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
               <div className="p-8">
                 <div className="border-b border-gray-200 pb-6 mb-8">
-                  <h2 className="text-2xl font-bold text-gray-600 flex items-center">
+                  <h2 className="text-lg font-bold text-slate-600 flex items-center">
                     <UserGroupIcon className="h-8 w-8 text-indigo-600 mr-3" />
                     Next of Kin Information
                   </h2>
-                  <p className="text-gray-600 mt-2">
-                    Next of kin details for this customer
-                  </p>
+                  
                 </div>
 
                 <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-8 mb-8 border border-indigo-100">
@@ -396,7 +394,7 @@ const CustomerDetailsPage = () => {
           <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-600 flex items-center">
+                <h2 className="text-lg font-bold text-gray-600 flex items-center">
                   <BuildingOffice2Icon className="h-8 w-8 text-indigo-600 mr-3" />
                   Business Information
                 </h2>
@@ -428,7 +426,7 @@ const CustomerDetailsPage = () => {
                 </div>
               ) : (
                 <div>
-                  <h3 className="text-xl font-semibold text-gray-600 mb-6">Business Images</h3>
+                  <h3 className="text-xl font-semibold text-slate-600 mb-6">Business Images</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {businessImages.map((image, index) => (
                       <div
@@ -478,7 +476,7 @@ const CustomerDetailsPage = () => {
             <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
               <div className="p-8">
                 <div className="border-b border-gray-200 pb-6 mb-8">
-                  <h2 className="text-2xl font-bold text-gray-600 flex items-center">
+                  <h2 className="text-lg font-bold text-slate-600 flex items-center">
                     <UserGroupIcon className="h-8 w-8 text-indigo-600 mr-3" />
                     Guarantors
                   </h2>
@@ -493,7 +491,7 @@ const CustomerDetailsPage = () => {
                     >
                       {/* Header */}
                       <div className="flex items-center justify-between mb-8">
-                        <h3 className="text-xl font-semibold text-gray-600 flex items-center">
+                        <h3 className="text-lg font-semibold text-slate-600 flex items-center">
                           <UserGroupIcon className="h-6 w-6 text-indigo-600 mr-3" />
                           Guarantor {index + 1}
                         </h3>
@@ -530,7 +528,7 @@ const CustomerDetailsPage = () => {
                               )}
                             </div>
 
-                            <h4 className="text-2xl font-bold text-gray-600 mt-4 text-center">
+                            <h4 className="text-lg font-bold text-slate-600 mt-4 text-center">
                               {guarantor.Firstname} {guarantor.Middlename} {guarantor.Surname}
                             </h4>
                           </div>
@@ -607,7 +605,7 @@ const CustomerDetailsPage = () => {
             <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
               <div className="p-8">
                 <div className="border-b border-gray-200 pb-6 mb-8">
-                  <h2 className="text-2xl font-bold text-gray-600 flex items-center">
+                  <h2 className="text-lg font-bold text-slate-600 flex items-center">
                     <ShieldCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
                     Security Items
                   </h2>
@@ -617,7 +615,7 @@ const CustomerDetailsPage = () => {
                 {/* Customer Security */}
                 {securityItems.length > 0 && (
                   <div className="bg-white border border-gray-200 rounded-2xl p-8 mb-8 shadow-sm">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                    <h3 className="text-lg font-semibold text-slate-600 mb-6 flex items-center">
                       <ShieldCheckIcon className="h-6 w-6 text-indigo-600 mr-3" />
                       Customer Security Items
                     </h3>
@@ -683,7 +681,7 @@ const CustomerDetailsPage = () => {
                 {/* Guarantor Security */}
                 {guarantorSecurityItems.length > 0 && (
                   <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                    <h3 className="text-xl font-semibold text-gray-600 mb-6 flex items-center">
+                    <h3 className="text-lg font-semibold text-slate-600 mb-6 flex items-center">
                       <ShieldCheckIcon className="h-6 w-6 text-indigo-600 mr-3" />
                       Guarantor Security Items
                     </h3>
@@ -754,7 +752,7 @@ const CustomerDetailsPage = () => {
             <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
               <div className="p-8">
                 <div className="border-b border-gray-200 pb-6 mb-8">
-                  <h2 className="text-2xl font-bold text-gray-600 flex items-center">
+                  <h2 className="text-lg  font-bold text-slate-600 flex items-center">
                     <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 mr-3" />
                     Loan Information
                   </h2>
@@ -827,7 +825,7 @@ const CustomerDetailsPage = () => {
           <div className="bg-white rounded-2xl shadow-lg border border-indigo-100 mb-8 overflow-hidden">
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-600 flex items-center">
+                <h2 className="text-lg font-bold text-slate-600 flex items-center">
                   <DocumentTextIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Document Verification
                 </h2>

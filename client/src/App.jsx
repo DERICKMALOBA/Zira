@@ -546,14 +546,15 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
-                  <Route
-                    path="/reports/accountlist"
-                    element={
-                      <ProtectedRoute>
-                        <CustomerStatementModal userRole={role} />
-                      </ProtectedRoute>
-                    }
-                  />
+                <Route
+  path="/reports/accountlist/:customerId"
+  element={
+    <ProtectedRoute>
+      <CustomerStatementModal userRole={role} />
+    </ProtectedRoute>
+  }
+/>
+
                   <Route
                     path="/reports/outstandEOM"
                     element={
@@ -808,6 +809,17 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
+
+<Route
+  path="/reports/customer-statement/:customerId"
+  element={
+    <ProtectedRoute>
+                        <ReportWrapper component={CustomerStatementModal} userRole={role} />
+                      </ProtectedRoute>
+  }
+/>
+
+
                 </>
               )}
 

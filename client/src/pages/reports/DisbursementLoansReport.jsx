@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Download,
   Printer,
@@ -6,265 +6,56 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
-  ChevronDown,
 } from "lucide-react";
-import { supabase } from "../../supabaseClient";
-
+import { useDisbursementStore } from "../../stores/DisbursementStore";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell } from "docx";
 import { saveAs } from "file-saver";
 
-
 const DisbursementLoansReport = () => {
-  const [disbursedLoans, setDisbursedLoans] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
-  const [filters, setFilters] = useState({
-    search: "",
-    branch: "",
-    officer: "",
-    product: "",
-  });
-  const [dateFilter, setDateFilter] = useState("all");
-  const [customStartDate, setCustomStartDate] = useState("");
-  const [customEndDate, setCustomEndDate] = useState("");
-  const [exportFormat, setExportFormat] = useState("csv");
-  const [showFilters, setShowFilters] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  // Zustand store - destructure only what you need
+  const {
+    disbursedLoans,
+    filters,
+    dateFilter,
+    customStartDate,
+    customEndDate,
+    exportFormat,
+    showFilters,
+    loading,
+    currentPage,
+    itemsPerPage,
+    sortConfig,
+    setFilters,
+    setDateFilter,
+    setCustomDateRange,
+    setExportFormat,
+    toggleFilters,
+    setCurrentPage,
+        clearFilters,
+    fetchDisbursedLoans,
+  } = useDisbursementStore();
 
-  // Calculate branch and officer totals
-  const calculateTotals = (loans) => {
-    const branchTotals = {};
-    const officerTotals = {};
-
-    loans.forEach((loan) => {
-      // Branch totals
-      if (!branchTotals[loan.branch]) {
-        branchTotals[loan.branch] = 0;
-      }
-      branchTotals[loan.branch] += loan.disbursedAmount || 0;
-
-      // Officer totals within branch
-      const officerKey = `${loan.branch}-${loan.loanOfficer}`;
-      if (!officerTotals[officerKey]) {
-        officerTotals[officerKey] = 0;
-      }
-      officerTotals[officerKey] += loan.disbursedAmount || 0;
-    });
-
-    return { branchTotals, officerTotals };
-  };
-
-  const groupLoansForDisplay = (loans) => {
-    const { branchTotals, officerTotals } = calculateTotals(loans);
-    const groupedByBranch = {};
-
-    loans.forEach((loan) => {
-      if (!groupedByBranch[loan.branch]) {
-        groupedByBranch[loan.branch] = {
-          branch: loan.branch,
-          totalAmount: branchTotals[loan.branch] || 0,
-          officers: {},
-        };
-      }
-
-      if (!groupedByBranch[loan.branch].officers[loan.loanOfficer]) {
-        const officerKey = `${loan.branch}-${loan.loanOfficer}`;
-        groupedByBranch[loan.branch].officers[loan.loanOfficer] = {
-          officer: loan.loanOfficer,
-          roTotalAmount: officerTotals[officerKey] || 0,
-          customers: [],
-        };
-      }
-
-      groupedByBranch[loan.branch].officers[loan.loanOfficer].customers.push({
-        ...loan,
-        mpesaReference: loan.mpesaReference,
-        loanReferenceNumber: loan.loanReferenceNumber,
-        appliedLoanAmount: loan.appliedLoanAmount,
-        disbursedAmount: loan.disbursedAmount,
-        interestAmount: loan.interestAmount,
-        nextPaymentDate: loan.nextPaymentDate,
-        disbursementDate: loan.disbursementDate,
-        // Store raw date for filtering
-        rawDisbursementDate: loan.rawDisbursementDate,
-      });
-    });
-
-    return groupedByBranch;
-  };
-
+  // Fetch data on mount
   useEffect(() => {
-    const fetchDisbursedLoans = async () => {
-      try {
-        setLoading(true);
-        console.log(" Fetching disbursed loans from Supabase...");
-
-        const { data, error } = await supabase
-          .from("loans")
-          .select(
-            `
-            id,
-            scored_amount,
-            total_interest,
-            total_payable,
-            product_name,
-            product_type,
-            disbursed_at,
-            repayment_state,
-            status,
-            branch:branch_id(name),
-            loan_officer:booked_by(full_name),
-            customer:customer_id(
-              id,
-              Firstname,
-              Middlename,
-              Surname,
-              mobile,
-              id_number,
-              business_name,
-              business_type
-            ),
-            installments:loan_installments(
-              due_date,
-              status,
-              loan_id
-            ),
-            mpesa:mpesa_b2c_transactions(
-              transaction_id,
-              loan_id,
-              status
-            )
-          `
-          )
-          .eq("status", "disbursed")
-          .order("disbursed_at", { ascending: false });
-
-        if (error) {
-          console.error(" Supabase error:", error);
-          throw error;
-        }
-
-        console.log("Raw Supabase data:", data);
-
-        const formatted = data.map((loan) => {
-          const customer = loan.customer || {};
-
-          const fullName =
-            [customer.Firstname, customer.Middlename, customer.Surname]
-              .filter(Boolean)
-              .join(" ") || "N/A";
-
-          const pendingInstallment = Array.isArray(loan.installments)
-            ? loan.installments.find((inst) => inst.status === "pending")
-            : null;
-          const nextPaymentDate = pendingInstallment?.due_date
-            ? new Date(pendingInstallment.due_date).toLocaleDateString()
-            : "N/A";
-
-          const mpesaTx =
-            Array.isArray(loan.mpesa) && loan.mpesa.length > 0
-              ? loan.mpesa.find((tx) => tx.status === "success")
-              : null;
-          const mpesaReference = mpesaTx?.transaction_id || "N/A";
-
-          const loanReferenceNumber = `LN${String(loan.id).padStart(5, "0")}`;
-
-          const appliedLoanAmount = loan.scored_amount ?? 0;
-          const disbursedAmount = loan.total_payable ?? 0;
-
-          const rawDisbursementDate = loan.disbursed_at;
-          const disbursementDate = loan.disbursed_at
-            ? new Date(loan.disbursed_at).toLocaleString()
-            : "N/A";
-
-          return {
-            id: loan.id,
-            branch: loan.branch?.name || "N/A",
-            loanOfficer: loan.loan_officer?.full_name || "N/A",
-            customerName: fullName,
-            mobile: customer.mobile || "N/A",
-            idNumber: customer.id_number || "N/A", // Fixed property name
-            mpesaReference,
-            loanNumber: loanReferenceNumber, // Added for search filter
-            loanReferenceNumber,
-            appliedLoanAmount,
-            disbursedAmount,
-            interestAmount: loan.total_interest || 0,
-            business_name: customer.business_name || "N/A",
-            business_type: customer.business_type || "N/A",
-            productName: loan.product_type || "N/A", // Added for product filter
-            product_type: loan.product_type || "N/A",
-            nextPaymentDate,
-            disbursementDate,
-            rawDisbursementDate, // Store raw date for filtering
-            repaymentStatus: loan.repayment_state || "N/A",
-          };
-        });
-
-        console.log(" Formatted loans:", formatted);
-
-        const grouped = [];
-        let branchCounter = 1;
-        const branches = [...new Set(formatted.map((l) => l.branch))];
-        console.log("Unique branches found:", branches);
-
-        for (const branch of branches) {
-          const branchLoans = formatted.filter((l) => l.branch === branch);
-          const branchTotal = branchLoans.reduce(
-            (sum, l) => sum + (l.disbursedAmount || 0),
-            0
-          );
-
-          const officers = [...new Set(branchLoans.map((l) => l.loanOfficer))];
-          console.log(` Officers in ${branch}:`, officers);
-
-          for (const officer of officers) {
-            const officerLoans = branchLoans.filter(
-              (l) => l.loanOfficer === officer
-            );
-            const officerTotal = officerLoans.reduce(
-              (sum, l) => sum + (l.disbursedAmount || 0),
-              0
-            );
-
-            officerLoans.forEach((loan, index) => {
-              grouped.push({
-                ...loan,
-                branchNumber: branchCounter,
-                branch,
-                loanOfficer: officer,
-                branchTotalAmount: branchTotal,
-                roTotalAmount: officerTotal,
-                isFirstInBranch: index === 0 && officers.indexOf(officer) === 0,
-                isFirstInOfficer: index === 0,
-              });
-            });
-          }
-          branchCounter++;
-        }
-
-        console.log("Grouped loan data ready:", grouped);
-
-        setDisbursedLoans(grouped);
-        setFilteredData(grouped);
-      } catch (err) {
-        console.error(" Error fetching disbursed loans:", err);
-      } finally {
-        setLoading(false);
-        console.log(" Fetch process completed.");
-      }
-    };
-
     fetchDisbursedLoans();
-  }, []);
+  }, [fetchDisbursedLoans]);
 
-  // Enhanced Date Filtering - FIXED
+  // Helper functions
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-KE", {
+      style: "currency",
+      currency: "KES",
+      minimumFractionDigits: 0,
+    }).format(amount);
+
+  const getCurrentTimestamp = () => {
+    const now = new Date();
+    return now.toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" });
+  };
+
   const getDateRange = (filter) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -311,12 +102,55 @@ const DisbursementLoansReport = () => {
     return { start, end };
   };
 
-  // Filter logic - FIXED
-  useEffect(() => {
+  const groupLoansForDisplay = (loans) => {
+    const branchTotals = {};
+    const officerTotals = {};
+
+    loans.forEach((loan) => {
+      if (!branchTotals[loan.branch]) {
+        branchTotals[loan.branch] = 0;
+      }
+      branchTotals[loan.branch] += loan.disbursedAmount || 0;
+
+      const officerKey = `${loan.branch}-${loan.loanOfficer}`;
+      if (!officerTotals[officerKey]) {
+        officerTotals[officerKey] = 0;
+      }
+      officerTotals[officerKey] += loan.disbursedAmount || 0;
+    });
+
+    const groupedByBranch = {};
+
+    loans.forEach((loan) => {
+      if (!groupedByBranch[loan.branch]) {
+        groupedByBranch[loan.branch] = {
+          branch: loan.branch,
+          totalAmount: branchTotals[loan.branch] || 0,
+          officers: {},
+        };
+      }
+
+      if (!groupedByBranch[loan.branch].officers[loan.loanOfficer]) {
+        const officerKey = `${loan.branch}-${loan.loanOfficer}`;
+        groupedByBranch[loan.branch].officers[loan.loanOfficer] = {
+          officer: loan.loanOfficer,
+          roTotalAmount: officerTotals[officerKey] || 0,
+          customers: [],
+        };
+      }
+
+      groupedByBranch[loan.branch].officers[loan.loanOfficer].customers.push(loan);
+    });
+
+    return groupedByBranch;
+  };
+
+  // Filtered and sorted data - using useMemo for performance
+  const filteredData = useMemo(() => {
     let result = [...disbursedLoans];
     const q = filters.search.toLowerCase();
 
-    // Text search - FIXED property names
+    // Text search
     if (filters.search) {
       result = result.filter((i) => {
         const idNum = i.idNumber ? String(i.idNumber) : "";
@@ -341,7 +175,7 @@ const DisbursementLoansReport = () => {
     if (filters.product)
       result = result.filter((i) => i.productName === filters.product);
 
-    // Date filter - FIXED: using rawDisbursementDate instead of disbursed_at
+    // Date filter
     if (dateFilter !== "all") {
       const range = getDateRange(dateFilter);
       if (range) {
@@ -366,220 +200,112 @@ const DisbursementLoansReport = () => {
       });
     }
 
-    setFilteredData(result);
-    setCurrentPage(1);
-  }, [
-    filters,
-    disbursedLoans,
-    sortConfig,
-    dateFilter,
-    customStartDate,
-    customEndDate,
-  ]);
+    return result;
+  }, [disbursedLoans, filters, sortConfig, dateFilter, customStartDate, customEndDate]);
 
-  // Utility Functions
-  const formatCurrency = (amount) =>
-    new Intl.NumberFormat("en-KE", {
-      style: "currency",
-      currency: "KES",
-      minimumFractionDigits: 0,
-    }).format(amount);
+  // Export functions
+  const exportToPDF = () => {
+    if (filteredData.length === 0) return alert("No data to export");
 
+    const doc = new jsPDF({ orientation: "landscape" });
+    doc.setFontSize(14);
+    doc.text("Mula Credit Ltd - Loan Disbursement Report", 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${getCurrentTimestamp()}`, 14, 22);
 
-    // Utility: Get current timestamp
-const getCurrentTimestamp = () => {
-  const now = new Date();
-  return now.toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" });
-};
+    const headers = [
+      [
+        "No.", "Branch Name", "Total Amount", "Loan Officer", "RO Total Amount",
+        "Customer Name", "Mobile Number", "ID Number", "Mpesa Reference",
+        "Loan Reference Number", "Applied Loan Amount", "Disbursed Amount",
+        "Interest Amount", "Business Name", "Business Type",
+        "Product", "Next Payment Date", "Disbursement Date"
+      ],
+    ];
 
-// 🔹 PDF Export
-const exportToPDF = () => {
-  const data = getExportData();
-  if (data.length === 0) return alert("No data to export");
+    const groupedData = groupLoansForDisplay(filteredData);
+    const rows = [];
+    let branchNum = 1;
+    
+    Object.values(groupedData).forEach(branch => {
+      Object.values(branch.officers).forEach(officer => {
+        officer.customers.forEach((cust, i) => {
+          rows.push([
+            i === 0 ? branchNum : "",
+            i === 0 ? branch.branch : "",
+            i === 0 ? formatCurrency(branch.totalAmount) : "",
+            i === 0 ? officer.officer : "",
+            i === 0 ? formatCurrency(officer.roTotalAmount) : "",
+            cust.customerName,
+            cust.mobile,
+            cust.idNumber,
+            cust.mpesaReference,
+            cust.loanReferenceNumber,
+            formatCurrency(cust.appliedLoanAmount),
+            formatCurrency(cust.disbursedAmount),
+            formatCurrency(cust.interestAmount),
+            cust.business_name,
+            cust.business_type,
+            cust.productName,
+            cust.nextPaymentDate,
+            cust.disbursementDate,
+          ]);
+        });
+      });
+      branchNum++;
+    });
 
-  const doc = new jsPDF({ orientation: "landscape" });
-  const title = "Mula Credit Ltd - Loan Disbursement Report";
-  const generated = `Generated on: ${getCurrentTimestamp()}`;
+    autoTable(doc, {
+      head: headers,
+      body: rows,
+      startY: 28,
+      styles: { fontSize: 8 },
+    });
 
-  doc.setFontSize(14);
-  doc.text(title, 14, 15);
-  doc.setFontSize(10);
-  doc.text(generated, 14, 22);
+    doc.save(`loan-disbursement-report-${new Date().toISOString().split("T")[0]}.pdf`);
+  };
 
-  const headers = [
-    [
+  const exportToExcel = () => {
+    if (filteredData.length === 0) return alert("No data to export");
+
+    const ws = XLSX.utils.json_to_sheet(
+      filteredData.map((d, index) => ({
+        No: index + 1,
+        Branch: d.branch,
+        "Loan Officer": d.loanOfficer,
+        "Customer Name": d.customerName,
+        Mobile: d.mobile,
+        "ID Number": d.idNumber,
+        "Mpesa Reference": d.mpesaReference,
+        "Loan Ref": d.loanReferenceNumber,
+        "Applied Amount": d.appliedLoanAmount,
+        "Disbursed Amount": d.disbursedAmount,
+        "Interest Amount": d.interestAmount,
+        "Business Name": d.business_name,
+        "Business Type": d.business_type,
+        Product: d.productName,
+        "Next Payment Date": d.nextPaymentDate,
+        "Disbursement Date": d.disbursementDate,
+      }))
+    );
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Disbursement Report");
+    XLSX.writeFile(wb, `loan-disbursement-report-${new Date().toISOString().split("T")[0]}.xlsx`);
+  };
+
+  const exportToCSV = () => {
+    if (filteredData.length === 0) return alert("No data to export");
+
+    const headers = [
       "No.", "Branch Name", "Total Amount", "Loan Officer", "RO Total Amount",
       "Customer Name", "Mobile Number", "ID Number", "Mpesa Reference",
       "Loan Reference Number", "Applied Loan Amount", "Disbursed Amount",
       "Interest Amount", "Business Name", "Business Type",
-      "Product", "Next Payment Date", "Disbursement Date"
-    ],
-  ];
-
-  const groupedData = groupLoansForDisplay(data);
-  const rows = [];
-  let branchNum = 1;
-  Object.values(groupedData).forEach(branch => {
-    Object.values(branch.officers).forEach(officer => {
-      officer.customers.forEach((cust, i) => {
-        rows.push([
-          i === 0 ? branchNum : "",
-          i === 0 ? branch.branch : "",
-          i === 0 ? formatCurrency(branch.totalAmount) : "",
-          i === 0 ? officer.officer : "",
-          i === 0 ? formatCurrency(officer.roTotalAmount) : "",
-          cust.customerName,
-          cust.mobile,
-          cust.idNumber,
-          cust.mpesaReference,
-          cust.loanReferenceNumber,
-          formatCurrency(cust.appliedLoanAmount),
-          formatCurrency(cust.disbursedAmount),
-          formatCurrency(cust.interestAmount),
-          cust.business_name,
-          cust.business_type,
-          cust.productName,
-          cust.nextPaymentDate,
-          cust.disbursementDate,
-        ]);
-      });
-    });
-    branchNum++;
-  });
-
-  autoTable(doc, {
-    head: headers,
-    body: rows,
-    startY: 28,
-    styles: { fontSize: 8 },
-  });
-
-  doc.save(getExportFileName("pdf"));
-};
-
-// 🔹 Excel Export
-const exportToExcel = () => {
-  const data = getExportData();
-  if (data.length === 0) return alert("No data to export");
-
-  const ws = XLSX.utils.json_to_sheet(
-    data.map((d, index) => ({
-      No: index + 1,
-      Branch: d.branch,
-      "Loan Officer": d.loanOfficer,
-      "Customer Name": d.customerName,
-      Mobile: d.mobile,
-      "ID Number": d.idNumber,
-      "Mpesa Reference": d.mpesaReference,
-      "Loan Ref": d.loanReferenceNumber,
-      "Applied Amount": d.appliedLoanAmount,
-      "Disbursed Amount": d.disbursedAmount,
-      "Interest Amount": d.interestAmount,
-      "Business Name": d.business_name,
-      "Business Type": d.business_type,
-      Product: d.productName,
-      "Next Payment Date": d.nextPaymentDate,
-      "Disbursement Date": d.disbursementDate,
-    }))
-  );
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Disbursement Report");
-  XLSX.writeFile(wb, getExportFileName("xlsx"));
-};
-
-// 🔹 Word Export
-const exportToWord = async () => {
-  const data = getExportData();
-  if (data.length === 0) return alert("No data to export");
-
-  const rows = data.map((d, i) => new TableRow({
-    children: [
-      new TableCell({ children: [new Paragraph(String(i + 1))] }),
-      new TableCell({ children: [new Paragraph(d.branch)] }),
-      new TableCell({ children: [new Paragraph(d.loanOfficer)] }),
-      new TableCell({ children: [new Paragraph(d.customerName)] }),
-      new TableCell({ children: [new Paragraph(String(d.mobile))] }),
-      new TableCell({ children: [new Paragraph(d.loanReferenceNumber)] }),
-      new TableCell({ children: [new Paragraph(formatCurrency(d.disbursedAmount))] }),
-    ]
-  }));
-
-  const doc = new Document({
-    sections: [{
-      properties: {},
-      children: [
-        new Paragraph({ children: [new TextRun({ text: "Mula Credit Ltd - Loan Disbursement Report", bold: true, size: 28 })] }),
-        new Paragraph({ children: [new TextRun({ text: `Generated on: ${getCurrentTimestamp()}`, italics: true, size: 22 })] }),
-        new Paragraph(" "),
-        new Table({
-          rows: [
-            new TableRow({
-              children: [
-                "No.", "Branch", "Loan Officer", "Customer Name", "Mobile", "Loan Ref", "Disbursed Amount"
-              ].map(h => new TableCell({ children: [new Paragraph({ text: h, bold: true })] }))
-            }),
-            ...rows,
-          ]
-        })
-      ],
-    }],
-  });
-
-  const blob = await Packer.toBlob(doc);
-  saveAs(blob, getExportFileName("docx"));
-};
-
-
-  // Export Functions
-  const getExportData = () => {
-    return filteredData;
-  };
-
-  const getExportFileName = (ext) => {
-    const timestamp = new Date().toISOString().split("T")[0];
-    return `loan-disbursement-report-${timestamp}.${ext}`;
-  };
-
-  const downloadFile = (content, fileName, mimeType) => {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  // CSV Export
-  const exportToCSV = () => {
-    const data = getExportData();
-    if (data.length === 0) return alert("No data to export");
-
-    const headers = [
-      "No.",
-      "Branch Name",
-      "Total Amount",
-      "Loan Officer",
-      "RO Total Amount",
-      "Customer Name",
-      "Mobile Number",
-      "ID Number",
-      "Mpesa Reference",
-      "Loan Reference Number",
-      "Applied Loan Amount",
-      "Disbursed Amount",
-      "Interest Amount",
-      "Business Name",
-      "Business Type",
-      "Product",
-      "Next Payment Date",
-      "Disbursement Date",
+      "Product", "Next Payment Date", "Disbursement Date",
     ];
 
-    const groupedData = groupLoansForDisplay(data);
+    const groupedData = groupLoansForDisplay(filteredData);
     let flattenedData = [];
     let branchNumber = 1;
 
@@ -594,7 +320,7 @@ const exportToWord = async () => {
             customerIndex === 0 ? formatCurrency(officer.roTotalAmount) : "",
             customer.customerName,
             customer.mobile,
-            customer.idNumber || customer.id_number,
+            customer.idNumber,
             customer.mpesaReference,
             customer.loanReferenceNumber,
             formatCurrency(customer.appliedLoanAmount),
@@ -602,7 +328,7 @@ const exportToWord = async () => {
             formatCurrency(customer.interestAmount),
             customer.business_name,
             customer.business_type,
-            customer.productName || customer.product_type,
+            customer.productName,
             customer.nextPaymentDate,
             customer.disbursementDate,
           ]);
@@ -624,62 +350,80 @@ const exportToWord = async () => {
       ),
     ].join("\n");
 
-    downloadFile(csv, getExportFileName("csv"), "text/csv;charset=utf-8;");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `loan-disbursement-report-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
-const handleExport = () => {
-  switch (exportFormat) {
-    case "pdf":
-      exportToPDF();
-      break;
-    case "word":
-      exportToWord();
-      break;
-    case "excel":
-      exportToExcel();
-      break;
-    case "csv":
-    default:
-      exportToCSV();
-      break;
-  }
-};
 
+  const exportToWord = async () => {
+    if (filteredData.length === 0) return alert("No data to export");
 
-  const handlePrint = () => window.print();
+    const rows = filteredData.map((d, i) => new TableRow({
+      children: [
+        new TableCell({ children: [new Paragraph(String(i + 1))] }),
+        new TableCell({ children: [new Paragraph(d.branch)] }),
+        new TableCell({ children: [new Paragraph(d.loanOfficer)] }),
+        new TableCell({ children: [new Paragraph(d.customerName)] }),
+        new TableCell({ children: [new Paragraph(String(d.mobile))] }),
+        new TableCell({ children: [new Paragraph(d.loanReferenceNumber)] }),
+        new TableCell({ children: [new Paragraph(formatCurrency(d.disbursedAmount))] }),
+      ]
+    }));
 
-  const handleFilterChange = (key, value) =>
-    setFilters((prev) => ({ ...prev, [key]: value }));
-
-  const clearFilters = () => {
-    setFilters({
-      search: "",
-      branch: "",
-      officer: "",
-      product: "",
+    const doc = new Document({
+      sections: [{
+        properties: {},
+        children: [
+          new Paragraph({ children: [new TextRun({ text: "Mula Credit Ltd - Loan Disbursement Report", bold: true, size: 28 })] }),
+          new Paragraph({ children: [new TextRun({ text: `Generated on: ${getCurrentTimestamp()}`, italics: true, size: 22 })] }),
+          new Paragraph(" "),
+          new Table({
+            rows: [
+              new TableRow({
+                children: [
+                  "No.", "Branch", "Loan Officer", "Customer Name", "Mobile", "Loan Ref", "Disbursed Amount"
+                ].map(h => new TableCell({ children: [new Paragraph({ text: h, bold: true })] }))
+              }),
+              ...rows,
+            ]
+          })
+        ],
+      }],
     });
-    setDateFilter("all");
-    setCustomStartDate("");
-    setCustomEndDate("");
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `loan-disbursement-report-${new Date().toISOString().split("T")[0]}.docx`);
   };
 
-  // Dropdown options - FIXED: using correct property names
-  const branches = [
-    ...new Set(
-      disbursedLoans.map((i) => i.branch).filter((b) => b && b !== "N/A")
-    ),
-  ];
-  const officers = [
-    ...new Set(
-      disbursedLoans.map((i) => i.loanOfficer).filter((o) => o && o !== "N/A")
-    ),
-  ];
-  const products = [
-    ...new Set(
-      disbursedLoans.map((i) => i.productName).filter((p) => p && p !== "N/A")
-    ),
-  ];
+  const handleExport = () => {
+    switch (exportFormat) {
+      case "pdf":
+        exportToPDF();
+        break;
+      case "word":
+        exportToWord();
+        break;
+      case "excel":
+        exportToExcel();
+        break;
+      case "csv":
+      default:
+        exportToCSV();
+        break;
+    }
+  };
 
-  // Date filter options
+  // Dropdown options
+  const branches = [...new Set(disbursedLoans.map((i) => i.branch).filter((b) => b && b !== "N/A"))];
+  const officers = [...new Set(disbursedLoans.map((i) => i.loanOfficer).filter((o) => o && o !== "N/A"))];
+  const products = [...new Set(disbursedLoans.map((i) => i.productName).filter((p) => p && p !== "N/A"))];
+
   const dateFilterOptions = [
     { value: "all", label: "All Time" },
     { value: "today", label: "Today" },
@@ -690,7 +434,6 @@ const handleExport = () => {
     { value: "custom", label: "Custom Range" },
   ];
 
-  // Export format options
   const exportFormatOptions = [
     { value: "csv", label: "CSV" },
     { value: "excel", label: "Excel" },
@@ -709,10 +452,9 @@ const handleExport = () => {
     });
   });
 
-  // Pagination
   const totalPages = Math.ceil(totalRows / itemsPerPage);
 
-  // Get current page data with proper numbering and grouping
+  // Get current page data
   const getCurrentPageData = () => {
     const allRows = [];
     let globalIndex = 0;
@@ -736,12 +478,9 @@ const handleExport = () => {
               loanOfficer: officer.officer,
               roTotalAmount: officer.roTotalAmount,
               branchNumber:
-                customerIndex === 0 && isFirstOfficerInBranch
-                  ? branchNumber
-                  : "",
+                customerIndex === 0 && isFirstOfficerInBranch ? branchNumber : "",
               isFirstInBranch: customerIndex === 0 && isFirstOfficerInBranch,
               isFirstInOfficer: customerIndex === 0,
-              rowNumber: globalIndex,
             });
           }
         });
@@ -755,109 +494,89 @@ const handleExport = () => {
 
   const currentData = getCurrentPageData();
 
-  if (loading)
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 p-8 text-center">
         <p className="text-gray-500">Fetching disbursed loans...</p>
       </div>
     );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-[1600px] mx-auto space-y-6">
-     
-       {/* Header Section  */}
-{/* Header Section */}
-<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-      <h1 className="text-2xl font-bold text-green-600">
-        Disbursed Loan Report
-      </h1>
-      <p className="text-sm text-gray-600 mt-1">
-        Viewing disbursed loans for{" "}
-        <span className="font-semibold text-blue-600">
-          {(() => {
-            switch (dateFilter) {
-              case "today":
-                return "Today";
-              case "week":
-                return "This Week";
-              case "month":
-                return "This Month";
-              case "quarter":
-                return "This Quarter";
-              case "year":
-                return "This Year";
-              case "custom":
-                return customStartDate && customEndDate
-                  ? `${customStartDate} to ${customEndDate}`
-                  : "Custom Range";
-              default:
-                return "All Time";
-            }
-          })()}
-        </span>
-      </p>
-    </div>
+        {/* Header Section */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-lg font-semibold" style={{ color: "#586ab1" }}>
+                Disbursed Loan Report
+              </h1>
+              {/* <p className="text-sm text-gray-600 mt-1">
+                Viewing disbursed loans for{" "}
+                <span className="font-semibold text-blue-600">
+                  {(() => {
+                    switch (dateFilter) {
+                      case "today": return "Today";
+                      case "week": return "This Week";
+                      case "month": return "This Month";
+                      case "quarter": return "This Quarter";
+                      case "year": return "This Year";
+                      case "custom":
+                        return customStartDate && customEndDate
+                          ? `${customStartDate} to ${customEndDate}`
+                          : "Custom Range";
+                      default: return "All Time";
+                    }
+                  })()}
+                </span>
+              </p> */}
+            </div>
 
-    <div className="flex flex-wrap gap-3">
-      {/* Filters Button */}
-      <button
-        onClick={() => setShowFilters(!showFilters)}
-        className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
-          showFilters
-            ? "bg-blue-600 text-white shadow-md"
-            : "bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
-        }`}
-      >
-        <Filter className="w-4 h-4" />
-        <span>Filters</span>
-      </button>
-
-      {/* Print Button */}
-      <button
-        onClick={handlePrint}
-        className="px-5 py-2.5 bg-white text-gray-700 border-2 border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2 font-medium shadow-sm transition-all"
-      >
-        <Printer className="w-4 h-4" />
-        <span>Print</span>
-      </button>
-
-      {/* Export Options */}
-      <div className="flex gap-2 items-center">
-        <select
-          value={exportFormat}
-          onChange={(e) => setExportFormat(e.target.value)}
-          className="border-2 border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {exportFormatOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-
-        <button
-          onClick={handleExport}
-          className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 font-medium shadow-md transition-all"
-        >
-          <Download className="w-4 h-4" />
-          <span>Export</span>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={toggleFilters}
+                className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
+                  showFilters
+                    ? "bg-blue-300 text-white shadow-md"
+                    : "bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                <span>Filters</span>
+              </button>
 
 
+              <div className="flex gap-2 items-center">
+                <select
+                  value={exportFormat}
+                  onChange={(e) => setExportFormat(e.target.value)}
+                  className="border-2 border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {exportFormatOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
 
-        {/* FILTER SECTION */}
+                <button
+                  onClick={handleExport}
+                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 font-medium"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Section */}
         {showFilters && (
           <div className="bg-white p-6 border border-gray-200 rounded-lg shadow-sm space-y-4">
             <h3 className="font-semibold text-gray-900">Filter Results</h3>
 
-            {/* Date Filter Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <select
                 value={dateFilter}
@@ -876,74 +595,60 @@ const handleExport = () => {
                   <input
                     type="date"
                     value={customStartDate}
-                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    onChange={(e) => setCustomDateRange(e.target.value, customEndDate)}
                     className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    placeholder="Start Date"
                   />
                   <input
                     type="date"
                     value={customEndDate}
-                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    onChange={(e) => setCustomDateRange(customStartDate, e.target.value)}
                     className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    placeholder="End Date"
                   />
                 </>
               )}
             </div>
 
-            {/* Other Filters */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <input
                 type="text"
                 value={filters.search}
-                onChange={(e) => handleFilterChange("search", e.target.value)}
+                onChange={(e) => setFilters({ search: e.target.value })}
                 placeholder="Search name, ID, or phone"
                 className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
               <select
                 value={filters.branch}
-                onChange={(e) => handleFilterChange("branch", e.target.value)}
+                onChange={(e) => setFilters({ branch: e.target.value })}
                 className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">All Branches</option>
                 {branches.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
+                  <option key={b} value={b}>{b}</option>
                 ))}
               </select>
               <select
                 value={filters.officer}
-                onChange={(e) => handleFilterChange("officer", e.target.value)}
+                onChange={(e) => setFilters({ officer: e.target.value })}
                 className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">All Officers</option>
                 {officers.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
+                  <option key={o} value={o}>{o}</option>
                 ))}
               </select>
               <select
                 value={filters.product}
-                onChange={(e) => handleFilterChange("product", e.target.value)}
+                onChange={(e) => setFilters({ product: e.target.value })}
                 className="border border-gray-300 px-4 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">All Products</option>
                 {products.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
+                  <option key={p} value={p}>{p}</option>
                 ))}
               </select>
             </div>
 
-            {/* Clear Filters */}
-            {(filters.search ||
-              filters.branch ||
-              filters.officer ||
-              filters.product ||
-              dateFilter !== "all") && (
+            {(filters.search || filters.branch || filters.officer || filters.product || dateFilter !== "all") && (
               <button
                 onClick={clearFilters}
                 className="text-red-600 text-sm font-medium flex items-center gap-1 mt-2 hover:text-red-700"
@@ -954,16 +659,15 @@ const handleExport = () => {
           </div>
         )}
 
-        {/* PAGINATION CONTROLS */}
+        {/* Pagination Controls */}
         <div className="flex justify-between items-center">
           <div className="text-sm text-gray-600">
             Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-            {Math.min(currentPage * itemsPerPage, totalRows)} of {totalRows}{" "}
-            entries
+            {Math.min(currentPage * itemsPerPage, totalRows)} of {totalRows} entries
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
               disabled={currentPage === 1}
               className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
             >
@@ -973,9 +677,7 @@ const handleExport = () => {
               Page {currentPage} of {totalPages}
             </span>
             <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
+              onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
               disabled={currentPage === totalPages}
               className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
             >
@@ -984,122 +686,68 @@ const handleExport = () => {
           </div>
         </div>
 
-        {/* TABLE */}
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="min-w-full border border-gray-300 text-sm text-left whitespace-nowrap">
             <thead className="bg-gray-100">
               <tr>
-                <th className="border p-2 text-center font-semibold text-gray-700">
-                  No.
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Branch Name
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Total Amount
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Loan Officer
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  RO Total Amount
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Customer Name
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Mobile Number
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  ID Number
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Mpesa Reference
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Loan Reference
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Applied Amount
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Disbursed Amount
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Interest Amount
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Business Name
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Business Type
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Product
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Next Payment Date
-                </th>
-                <th className="border p-2 font-semibold text-gray-700">
-                  Disbursement Date
-                </th>
+                <th className="border p-2 text-center font-semibold text-gray-700">No.</th>
+                <th className="border p-2 font-semibold text-gray-700">Branch Name</th>
+                <th className="border p-2 font-semibold text-gray-700">Total Amount</th>
+                <th className="border p-2 font-semibold text-gray-700">Loan Officer</th>
+                <th className="border p-2 font-semibold text-gray-700">RO Total Amount</th>
+                <th className="border p-2 font-semibold text-gray-700">Customer Name</th>
+                <th className="border p-2 font-semibold text-gray-700">Mobile Number</th>
+                <th className="border p-2 font-semibold text-gray-700">ID Number</th>
+                <th className="border p-2 font-semibold text-gray-700">Mpesa Reference</th>
+                <th className="border p-2 font-semibold text-gray-700">Loan Reference</th>
+                <th className="border p-2 font-semibold text-gray-700">Applied Amount</th>
+                <th className="border p-2 font-semibold text-gray-700">Disbursed Amount</th>
+                <th className="border p-2 font-semibold text-gray-700">Interest Amount</th>
+                <th className="border p-2 font-semibold text-gray-700">Business Name</th>
+                <th className="border p-2 font-semibold text-gray-700">Business Type</th>
+                <th className="border p-2 font-semibold text-gray-700">Product</th>
+                <th className="border p-2 font-semibold text-gray-700">Next Payment Date</th>
+                <th className="border p-2 font-semibold text-gray-700">Disbursement Date</th>
               </tr>
             </thead>
-
             <tbody>
               {currentData.length > 0 ? (
                 currentData.map((row, index) => (
                   <tr key={`${row.id}-${index}`} className="hover:bg-gray-50">
-                    <td className="border p-2 text-center font-medium">
+                     <td className="border p-2 text-center font-medium">
                       {row.branchNumber}
                     </td>
                     <td className="border p-2 font-semibold">
                       {row.isFirstInBranch ? row.branch : ""}
                     </td>
                     <td className="border p-2">
-                      {row.isFirstInBranch
-                        ? formatCurrency(row.branchTotalAmount)
-                        : ""}
+                      {row.isFirstInBranch ? formatCurrency(row.branchTotalAmount) : ""}
                     </td>
                     <td className="border p-2">
                       {row.isFirstInOfficer ? row.loanOfficer : ""}
                     </td>
                     <td className="border p-2">
-                      {row.isFirstInOfficer
-                        ? formatCurrency(row.roTotalAmount)
-                        : ""}
+                      {row.isFirstInOfficer ? formatCurrency(row.roTotalAmount) : ""}
                     </td>
                     <td className="border p-2">{row.customerName}</td>
                     <td className="border p-2">{row.mobile}</td>
-                    <td className="border p-2">
-                      {row.idNumber || row.id_number}
-                    </td>
+                    <td className="border p-2">{row.idNumber}</td>
                     <td className="border p-2">{row.mpesaReference}</td>
                     <td className="border p-2">{row.loanReferenceNumber}</td>
-                    <td className="border p-2">
-                      {formatCurrency(row.appliedLoanAmount)}
-                    </td>
-                    <td className="border p-2">
-                      {formatCurrency(row.disbursedAmount)}
-                    </td>
-                    <td className="border p-2">
-                      {formatCurrency(row.interestAmount)}
-                    </td>
+                    <td className="border p-2">{formatCurrency(row.appliedLoanAmount)}</td>
+                    <td className="border p-2">{formatCurrency(row.disbursedAmount)}</td>
+                    <td className="border p-2">{formatCurrency(row.interestAmount)}</td>
                     <td className="border p-2">{row.business_name}</td>
                     <td className="border p-2">{row.business_type}</td>
-                    <td className="border p-2">
-                      {row.productName || row.product_type}
-                    </td>
+                    <td className="border p-2">{row.productName}</td>
                     <td className="border p-2">{row.nextPaymentDate}</td>
                     <td className="border p-2">{row.disbursementDate}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan="18"
-                    className="border p-4 text-center text-gray-500"
-                  >
+                  <td colSpan="18" className="border p-4 text-center text-gray-500">
                     No disbursed loans found matching your filters
                   </td>
                 </tr>
@@ -1108,17 +756,16 @@ const handleExport = () => {
           </table>
         </div>
 
-        {/* PAGINATION CONTROLS - BOTTOM */}
+        {/* Pagination Controls - Bottom */}
         {totalPages > 1 && (
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
               Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-              {Math.min(currentPage * itemsPerPage, totalRows)} of {totalRows}{" "}
-              entries
+              {Math.min(currentPage * itemsPerPage, totalRows)} of {totalRows} entries
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
                 disabled={currentPage === 1}
                 className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
               >
@@ -1128,9 +775,7 @@ const handleExport = () => {
                 Page {currentPage} of {totalPages}
               </span>
               <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
                 disabled={currentPage === totalPages}
                 className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50"
               >

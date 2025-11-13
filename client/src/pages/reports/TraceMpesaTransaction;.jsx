@@ -119,7 +119,7 @@ const TraceMpesaTransaction = () => {
 
   return (
     <div className="p-6 bg-white rounded-2xl shadow-md">
-      <h2 className="text-xl font-semibold mb-4 text-green-600">Trace M-Pesa Transaction</h2>
+      <h2 className="text-lg font-semibold" style={{ color: "#586ab1" }}>Trace M-Pesa Transaction</h2>
 
       <form onSubmit={handleSearch} className="mb-6 flex flex-col sm:flex-row gap-3">
         <input
@@ -132,7 +132,8 @@ const TraceMpesaTransaction = () => {
         <button
           type="submit"
           disabled={loading}
-          className="bg-blue-600 text-white rounded-lg px-6 py-2 hover:bg-blue-700 transition disabled:opacity-50"
+   className="flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg"
+                style={{ backgroundColor: "#586ab1" }}
         >
           {loading ? "Searching..." : "Search"}
         </button>

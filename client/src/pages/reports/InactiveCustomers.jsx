@@ -40,7 +40,7 @@ const InactiveCustomers = () => {
   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     {/* Title and Description */}
     <div>
-      <h1 className="text-2xl font-bold text-emerald-600">Inactive Customers</h1>
+      <h1 className="text-sm font-semibold" style={{ color: "#586ab1" }}>Inactive Customers</h1>
       <p className="text-sm text-gray-600 mt-1">
         View customers who haven’t made transactions within a selected period
       </p>
@@ -61,8 +61,8 @@ const InactiveCustomers = () => {
       </select>
       <button
         onClick={fetchInactiveCustomers}
-        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
-                   font-medium shadow-md transition-all"
+        className="flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg"
+                style={{ backgroundColor: "#586ab1" }}
       >
         <Search size={18} /> Refresh
       </button>
@@ -108,9 +108,9 @@ const InactiveCustomers = () => {
                     <td className="px-4 py-2">{index + 1}</td>
                     <td className="px-4 py-2">{cust.customer_name}</td>
                     <td className="px-4 py-2">{cust.mobile}</td>
-                    <td className="px-4 py-2">{cust.national_id}</td>
+                    <td className="px-4 py-2">{cust.id_number}</td>
                     <td className="px-4 py-2">{cust.branch_name || "-"}</td>
-                    <td className="px-4 py-2">{cust.loan_officer || "-"}</td>
+                  <td className="px-4 py-2">{cust.loan_officer || "-"}</td>
                     <td className="px-4 py-2">
                       {cust.disbursement_date
                         ? new Date(cust.disbursement_date).toLocaleDateString()
