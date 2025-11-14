@@ -116,7 +116,8 @@ import ViewLoansPendingDisbursement from "./pages/loaning/ViewLoansPendingDisbur
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const { profile, loading } = useAuth();
+const { user, profile, loading } = useAuth();
+
 
   if (loading) return <div>Loading...</div>;
 
@@ -218,7 +219,11 @@ function App() {
           <div className="flex-1 overflow-y-auto p-6">
             <Routes>
               {/* Public route */}
-              <Route path="/login" element={<Login />} />
+            <Route
+  path="/login"
+  element={!user ? <Login /> : <Navigate to={getDefaultRoute()} replace />}
+/>
+
 
               {/* Default redirect based on role */}
               <Route path="/" element={<Navigate to={getDefaultRoute()} />} />
