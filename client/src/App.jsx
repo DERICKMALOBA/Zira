@@ -217,16 +217,26 @@ const { user, profile, loading } = useAuth();
           {profile && renderHeader()}
 
           <div className="flex-1 overflow-y-auto p-6">
+
             <Routes>
               {/* Public route */}
-            <Route
-  path="/login"
-  element={!user ? <Login /> : <Navigate to={getDefaultRoute()} replace />}
-/>
+
+              
+ <Route
+    path="/login"
+    element={!user ? <Login /> : <Navigate to={getDefaultRoute()} replace />}
+  />
 
 
               {/* Default redirect based on role */}
-              <Route path="/dashboard" element={<Navigate to={getDefaultRoute()} />} />
+             <Route
+    path="/dashboard"
+    element={
+      <ProtectedRoute>
+        <Dashboard userRole={role} />
+      </ProtectedRoute>
+    }
+  />
 
               {/* Shared Routes for RM, BM, CA, CSO, and Relationship Officer */}
               {isSharedRole && (
