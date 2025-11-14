@@ -10,10 +10,11 @@ function AmendmentsTable({ amendments, loading, onEdit, onView, onRefresh }) {
     <div className="bg-white shadow-md rounded-lg overflow-hidden">
       {/* Header */}
       <div className="p-4 flex justify-between items-center bg-gray-50">
-        <h2 className="text-lg font-semibold text-gray-700">Pending Amendments</h2>
+        <h2 className="text-lg font-semibold text-slate-600">Pending Amendments</h2>
         <button 
           onClick={onRefresh}
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
+           className="flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg"
+                style={{ backgroundColor: "#586ab1" }}
         >
           Refresh
         </button>

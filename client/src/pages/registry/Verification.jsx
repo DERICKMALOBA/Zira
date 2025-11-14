@@ -24,6 +24,7 @@ import {
   PhoneIcon,
   BookmarkIcon,
   PencilSquareIcon,
+  ArrowLeftIcon,
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 
@@ -678,25 +679,37 @@ const Verification = ({  onClose }) => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Customer Verification</h1>
-              <p className="text-gray-600 mt-2">
-                Final review and verification of customer application
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50"
-            >
-              <XCircleIcon className="h-8 w-8" />
-            </button>
-          </div>
-        </div>
+      <div className="  p-4 mb-2">
+  <div className="flex items-center justify-between">
+
+    {/* Back Button */}
+    {/* <button
+      onClick={() => navigate(-1)}
+      className="flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition-colors"
+    >
+      <ArrowLeftIcon className="h-5 w-5" />
+      <span className="text-sm font-medium">Back</span>
+    </button> */}
+
+    {/* Title */}
+    <h1 className="text-lg font-semibold text-slate-600">
+      Customer Verification
+    </h1>
+
+    {/* Close Button */}
+    {/* <button
+      onClick={onClose}
+      className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50"
+    >
+      <XCircleIcon className="h-5 w-5" />
+    </button> */}
+
+  </div>
+</div>
+
 
         {/* Progress Steps */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-indigo-100">
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-4 border border-indigo-100">
           <div className="flex items-center justify-between">
             {[
               { num: 1, label: "Customer", icon: UserCircleIcon },
@@ -710,9 +723,9 @@ const Verification = ({  onClose }) => {
             ].map(({ num, label, icon: Icon }) => (
               <div key={num} className="flex flex-col items-center">
                 <div
-                  className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
                     step === num
-                      ? "border-indigo-500 bg-indigo-500 text-white shadow-lg shadow-indigo-200 scale-110"
+                      ? "border-blue-300 bg-blue-300 text-white shadow-lg shadow-indigo-200 scale-110"
                       : step > num
                       ? "border-emerald-500 bg-emerald-500 text-white shadow-md"
                       : "border-gray-300 bg-white text-gray-400 hover:border-gray-400"
@@ -742,11 +755,11 @@ const Verification = ({  onClose }) => {
           {step === 1 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Customer Verification
                 </h2>
-                <p className="text-gray-600 mt-2">
+                <p className="text-gray-600 mt-2 text-sm">
                   Verify customer identity and contact information
                 </p>
               </div>
@@ -786,11 +799,11 @@ const Verification = ({  onClose }) => {
                       )}
                     </div>
 
-                    <h3 className="text-2xl font-bold text-gray-900 mt-4 text-center">
+                    <h3 className="text-lg font-semibold text-slate-600 mt-4 text-center">
                       {customer.prefix} {customer.Firstname}{" "}
                       {customer.Middlename} {customer.Surname}
                     </h3>
-                    <p className="text-indigo-600 font-semibold">
+                    <p className="text-indigo-500 text-xs font-semibold">
                       Primary Applicant
                     </p>
                   </div>
@@ -880,7 +893,7 @@ const Verification = ({  onClose }) => {
 
               {/* Verification Controls */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-2xl border border-blue-100">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                <h3 className="text-lg font-semibold text-slate-600 mb-6">
                   Verification Status
                 </h3>
 
@@ -889,7 +902,7 @@ const Verification = ({  onClose }) => {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center">
                         <IdentificationIcon className="h-5 w-5 text-indigo-600 mr-2" />
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-slate-600">
                           ID Verification
                         </span>
                       </div>
@@ -913,7 +926,7 @@ const Verification = ({  onClose }) => {
                         <p className="inline-block bg-green-50 text-green-700 px-4 py-2 rounded-lg font-semibold shadow-sm flex items-center justify-center">
                           <PhoneIcon className="h-5 w-5 text-green-600" />
                         </p>
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-slate-600">
                           Phone Verification
                         </span>
                       </div>
@@ -962,7 +975,7 @@ const Verification = ({  onClose }) => {
           {step === 2 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <BuildingOffice2Icon className="h-8 w-8 text-indigo-600 mr-3" />
                   Business Verification
                 </h2>
@@ -973,7 +986,7 @@ const Verification = ({  onClose }) => {
 
               {/* Business Details */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-slate-600 mb-4 flex items-center gap-2">
                   <BuildingOffice2Icon className="h-6 w-6 text-indigo-600" />
                   Business Details
                 </h3>
@@ -1097,7 +1110,7 @@ const Verification = ({  onClose }) => {
               {/* Business Verification Controls */}
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-2xl border border-blue-100 mt-8">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-slate-600">
                     Business Verification Status
                   </h3>
                   <ToggleSwitch
@@ -1114,7 +1127,7 @@ const Verification = ({  onClose }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3">
+                  <label className="block text-sm font-semibold text-slate-600 mb-3">
                     Business Verification Comments
                   </label>
                   <textarea
@@ -1141,7 +1154,7 @@ const Verification = ({  onClose }) => {
           {step === 3 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-bold text-slate-600 flex items-center">
                   <UserGroupIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Guarantor Verification
                 </h2>
@@ -1169,7 +1182,7 @@ const Verification = ({  onClose }) => {
                     >
                       {/* Header */}
                       <div className="flex items-center justify-between mb-8">
-                        <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                        <h3 className="text-xl font-semibold text-slate-600 flex items-center">
                           <UserGroupIcon className="h-6 w-6 text-indigo-600 mr-3" />
                           Guarantor {index + 1}
                         </h3>
@@ -1213,7 +1226,7 @@ const Verification = ({  onClose }) => {
                               )}
                             </div>
 
-                            <h3 className="text-2xl font-bold text-gray-900 mt-4 text-center">
+                            <h3 className="text-lg font-semibold text-slate-600 mt-4 text-center">
                               {guarantor.prefix} {guarantor.Firstname}{" "}
                               {guarantor.Middlename} {guarantor.Surname}
                             </h3>
@@ -1320,7 +1333,7 @@ const Verification = ({  onClose }) => {
 
                       {/* Verification Controls */}
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-8 rounded-2xl border border-blue-100">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                        <h3 className="text-lg font-semibold text-slate-600 mb-6">
                           Verification Status
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
@@ -1354,7 +1367,7 @@ const Verification = ({  onClose }) => {
                                 <p className="inline-block bg-green-50 text-green-700 px-4 py-2 rounded-lg font-semibold shadow-sm flex items-center justify-center">
                                   <PhoneIcon className="h-5 w-5 text-green-600" />
                                 </p>
-                                <span className="font-medium text-gray-900">
+                                <span className="font-medium text-slate-600">
                                   Phone Verification
                                 </span>
                               </div>
@@ -1413,7 +1426,7 @@ const Verification = ({  onClose }) => {
           {step === 4 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <ShieldCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Security Verification
                 </h2>
@@ -1424,7 +1437,7 @@ const Verification = ({  onClose }) => {
 
               {/* Customer Security */}
               <div className="bg-white border border-gray-200 rounded-2xl p-8 mb-8 shadow-sm">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                <h3 className="text-lg font-semibold text-slate-600 mb-6 flex items-center">
                   <ShieldCheckIcon className="h-6 w-6 text-indigo-600 mr-3" />
                   Customer Security Items
                 </h3>
@@ -1522,7 +1535,7 @@ const Verification = ({  onClose }) => {
                 {/* Verification */}
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900">
+                    <h4 className="text-lg font-semibold text-slate-600">
                       Customer Security Verification
                     </h4>
                     <ToggleSwitch
@@ -1561,7 +1574,7 @@ const Verification = ({  onClose }) => {
 
               {/* Guarantor Security */}
               <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                <h3 className="text-lg font-semibold text-slate-600 mb-6 flex items-center">
                   <ShieldCheckIcon className="h-6 w-6 text-indigo-600 mr-3" />
                   Guarantor Security Items
                 </h3>
@@ -1669,7 +1682,7 @@ const Verification = ({  onClose }) => {
                 {/* Verification */}
                 <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-xl border border-purple-100">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900">
+                    <h4 className=" font-semibold text-slate-600">
                       Guarantor Security Verification
                     </h4>
                     <ToggleSwitch
@@ -1712,7 +1725,7 @@ const Verification = ({  onClose }) => {
           {step === 5 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Next of Kin Verification
                 </h2>
@@ -1739,7 +1752,7 @@ const Verification = ({  onClose }) => {
                   >
                     {/* Next of Kin Details */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 mb-8 border border-indigo-100">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                      <h3 className="text-lg font-semibold text-slate-600 mb-6 flex items-center">
                         <UserCircleIcon className="h-6 w-6 text-indigo-600 mr-3" />
                         Next of Kin Information
                       </h3>
@@ -1782,7 +1795,7 @@ const Verification = ({  onClose }) => {
                     {/* Next of Kin Verification Controls */}
                     <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-8 rounded-2xl border border-green-100">
                       <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-slate-600">
                           Next of Kin Verification Status
                         </h3>
                         <ToggleSwitch
@@ -1829,7 +1842,7 @@ const Verification = ({  onClose }) => {
           {step === 6 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <DocumentTextIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Document Verification
                 </h2>
@@ -1841,7 +1854,7 @@ const Verification = ({  onClose }) => {
               {documentImages.length === 0 ? (
                 <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
                   <DocumentTextIcon className="mx-auto h-20 w-20 text-gray-400 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <h3 className="text-xl font-semibold text-slate-600 mb-2">
                     No Document Images
                   </h3>
                   <p className="text-gray-600">
@@ -1850,7 +1863,7 @@ const Verification = ({  onClose }) => {
                 </div>
               ) : (
                 <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                  <h3 className="text-lg font-semibold text-slate-600 mb-6 flex items-center">
                     <DocumentTextIcon className="h-6 w-6 text-indigo-600 mr-3" />
                     Meeting Documentation
                   </h3>
@@ -1907,7 +1920,7 @@ const Verification = ({  onClose }) => {
                   {/* Document Verification Controls */}
                   <div className="bg-gradient-to-r from-purple-50 to-indigo-50 p-8 rounded-2xl border border-purple-100">
                     <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-lg font-semibold text-slate-600">
                         Document Verification Status
                       </h3>
                       <ToggleSwitch
@@ -1924,7 +1937,7 @@ const Verification = ({  onClose }) => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-gray-800 mb-3">
+                      <label className="block text-sm font-semibold text-slate-600 mb-3">
                         Document Verification Comments
                       </label>
                       <textarea
@@ -1951,7 +1964,7 @@ const Verification = ({  onClose }) => {
 {step === 7 && (
   <div className="p-8">
     <div className="border-b border-gray-200 pb-6 mb-8">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+      <h2 className="text-lg font-semibold text-slate-600 flex items-center">
         <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 mr-3" />
         Loan Assessment & Recommendation
       </h2>
@@ -1961,7 +1974,7 @@ const Verification = ({  onClose }) => {
     </div>
 
     <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
-      <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+      <h3 className="text-xl font-semibold text-slate-600 mb-6 flex items-center">
         <CurrencyDollarIcon className="h-6 w-6 text-indigo-600 mr-3" />
         Loan Assessment Review
       </h3>
@@ -1980,7 +1993,7 @@ const Verification = ({  onClose }) => {
               </span>
             </div>
           </div>
-          <p className="text-3xl font-bold text-blue-700 mb-2">
+          <p className="text-lg font-semibold text-blue-700 mb-2">
             KES {prequalifiedAmount?.toLocaleString("en-US") || "0"}
           </p>
           <p className="text-sm text-blue-600">
@@ -2073,7 +2086,7 @@ const Verification = ({  onClose }) => {
           {step === 8 && (
             <div className="p-8">
               <div className="border-b border-gray-200 pb-6 mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                   <ClipboardDocumentCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
                   Final Decision
                 </h2>
@@ -2087,7 +2100,7 @@ const Verification = ({  onClose }) => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
                   {/* Decision Selection */}
                   <div className="lg:col-span-1">
-                    <label className="block text-lg font-semibold text-gray-900 mb-4">
+                    <label className="block text-lg font-semibold text-gray-600 mb-4">
                       Verification Decision
                     </label>
                     <div className="space-y-3">
@@ -2315,8 +2328,11 @@ const Verification = ({  onClose }) => {
                        setStep(step + 1);
                      }
                    }}
-                   className="flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-blue-700 transition-all shadow-md hover:shadow-lg"
-                 >
+className="flex items-center px-6 py-3 text-white rounded-xl font-medium transition-all shadow-md hover:shadow-lg"
+  style={{
+    backgroundColor: "#586ab1",
+    hover: { backgroundColor: "#49579a" } 
+  }}                 >
                    Next
                    <ChevronRightIcon className="h-5 w-5 ml-2" />
                  </button>

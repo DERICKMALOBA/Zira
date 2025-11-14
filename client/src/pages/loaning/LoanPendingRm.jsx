@@ -118,14 +118,14 @@ const LoanPendingRm = () => {
         <div className=" mb-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-sm bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
+              <h2 className="text-sm bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
                 Loans Pending Regional Manager Approval
-              </h1>
+              </h2>
              
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-blue-100 border border-indigo-200">
-              <ClockIcon className="h-5 w-5 text-indigo-600" />
-              <span className="font-medium text-indigo-700">
+              <ClockIcon className="h-4 w-4 text-indigo-600" />
+              <span className="font-small text-indigo-600">
                 {filteredLoans.length} Pending
               </span>
             </div>
@@ -152,7 +152,10 @@ const LoanPendingRm = () => {
             <table className="min-w-full border-collapse">
               {/* Table Header */}
               <thead>
-                <tr className="text-sm bg-blue-300 text-slate-500">
+                <tr
+          className="text-sm text-white"
+          style={{ backgroundColor: "#586ab1" }}
+        >
                   <th className="px-6 py-3 text-left font-medium">Loan ID</th>
                   <th className="px-6 py-3 text-left font-medium">Customer</th>
                   <th className="px-6 py-3 text-left font-medium">Branch</th>

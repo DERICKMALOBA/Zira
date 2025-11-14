@@ -122,9 +122,9 @@ const LoanPendingBm = () => {
         <div className="mb-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-gray-600 text-base font-semibold">
+              <h2 className="text-sm font-semibold" style={{ color: "#586ab1" }}>
                 Loans Pending Branch Manager Approval
-              </h1>
+              </h2>
             </div>
 
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100">
@@ -150,135 +150,132 @@ const LoanPendingBm = () => {
           </div>
         </div>
 
-        {/* Pending Loans Table */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full border-collapse">
-              {/* Table Header */}
-              <thead>
-                <tr className="text-sm bg-blue-300 text-slate-600">
-                  <th className="px-6 py-3 text-left font-medium">Loan ID</th>
-                  <th className="px-6 py-3 text-left font-medium">Customer</th>
-                  {!isBranchManager && (
-                    <th className="px-6 py-3 text-left font-medium">Branch</th>
-                  )}
-                  <th className="px-6 py-3 text-left font-medium">Product</th>
-                  <th className="px-6 py-3 text-right font-medium">Amount</th>
-                  <th className="px-6 py-3 text-center font-medium">Duration</th>
-                  <th className="px-6 py-3 text-center font-medium">Applied Date</th>
-                  <th className="px-6 py-3 text-center font-medium">Actions</th>
-                </tr>
-              </thead>
-
-              {/* Table Body */}
-              <tbody className="divide-y divide-gray-200">
-                {filteredLoans.map((loan, index) => (
-                  <tr
-                    key={loan.id}
-                    className={`${
-                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                    } hover:bg-gray-100 transition-colors text-gray-900`}
-                  >
-                    <td className="px-6 py-3 whitespace-nowrap">
-                      <span className="font-mono text-indigo-600 font-semibold">
-                        #{loan.id}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="h-5 w-5 text-gray-400" />
-                        <div>
-                          <div className="font-semibold">
-                            {loan.customers?.Firstname} {loan.customers?.Surname}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {loan.customers?.mobile}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {!isBranchManager && (
-                      <td className="px-6 py-3 whitespace-nowrap">
-                        <span className="text-sm text-gray-600">
-                          {loan.customers?.branches?.name || 'N/A'}
-                        </span>
-                      </td>
-                    )}
-
-                    <td className="px-6 py-3 whitespace-nowrap">
-                      <span className="font-semibold text-purple-600">
-                        {loan.product_name || loan.product}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-3 text-right whitespace-nowrap">
-                      <div className="font-bold text-emerald-600">
-                        KES {loan.scored_amount?.toLocaleString()}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Total: KES {loan.total_payable?.toLocaleString()}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-3 text-center whitespace-nowrap">
-                      <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
-                        {loan.duration_weeks} weeks
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-3 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-1 text-gray-600">
-                        <CalendarIcon className="h-4 w-4" />
-                        <span className="text-xs">
-                          {new Date(loan.created_at).toLocaleDateString('en-GB')}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-3 text-center whitespace-nowrap">
-                      {isBranchManager ? (
-                        <button 
-                          onClick={() => setSelectedLoan(loan)}
-                          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition text-sm"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                          Review
-                        </button>
-                      ) : (
-                        <button 
-                          disabled
-                          className="flex items-center gap-2 px-3 py-1.5 bg-gray-200 text-gray-500 rounded-md cursor-not-allowed text-sm"
-                        >
-                          <LockClosedIcon className="h-4 w-4" />
-                          View Only
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Empty State */}
-          {filteredLoans.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              <ClockIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                {searchTerm ? "No loans found" : "No pending approvals"}
-              </h3>
-              <p>
-                {searchTerm 
-                  ? "No loans match your search criteria."
-                  : isBranchManager 
-                    ? "All loans have been reviewed by the branch manager."
-                    : "There are no loans pending branch manager approval in your area."}
-              </p>
-            </div>
+        {/* Pending Loans Table */}<div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+  <div className="overflow-x-auto">
+    <table className="min-w-full border-collapse">
+      {/* Table Header */}
+      <thead>
+        <tr
+          className="text-sm text-white"
+          style={{ backgroundColor: "#586ab1" }}
+        >
+          <th className="px-6 py-3 text-left font-medium whitespace-nowrap">Loan ID</th>
+          <th className="px-6 py-3 text-left font-medium whitespace-nowrap">Customer Name</th>
+          <th className="px-6 py-3 text-left font-medium whitespace-nowrap">Mobile</th>
+          {!isBranchManager && (
+            <th className="px-6 py-3 text-left font-medium whitespace-nowrap">Branch</th>
           )}
-        </div>
+          <th className="px-6 py-3 text-left font-medium whitespace-nowrap">Product</th>
+          <th className="px-6 py-3 text-right font-medium whitespace-nowrap">Amount</th>
+          <th className="px-6 py-3 text-center font-medium whitespace-nowrap">Duration</th>
+          <th className="px-6 py-3 text-center font-medium whitespace-nowrap">Applied Date</th>
+          <th className="px-6 py-3 text-center font-medium whitespace-nowrap">Actions</th>
+        </tr>
+      </thead>
+
+      {/* Table Body */}
+      <tbody className="divide-y divide-gray-200">
+        {filteredLoans.map((loan, index) => (
+          <tr
+            key={loan.id}
+            className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 transition-colors text-gray-900`}
+          >
+            <td className="px-6 py-3 whitespace-nowrap">
+              <span className="font-mono text-indigo-600 font-semibold">
+                #{loan.id}
+              </span>
+            </td>
+
+            <td className="px-6 py-3 whitespace-nowrap">
+              <span className="font-semibold">
+                {loan.customers?.Firstname} {loan.customers?.Surname}
+              </span>
+            </td>
+
+            <td className="px-6 py-3 whitespace-nowrap">
+              <span>{loan.customers?.mobile}</span>
+            </td>
+
+            {!isBranchManager && (
+              <td className="px-6 py-3 whitespace-nowrap">
+                <span className="text-sm text-gray-600">
+                  {loan.customers?.branches?.name || 'N/A'}
+                </span>
+              </td>
+            )}
+
+            <td className="px-6 py-3 whitespace-nowrap">
+              <span className="font-semibold text-purple-600">
+                {loan.product_name || loan.product}
+              </span>
+            </td>
+
+            <td className="px-6 py-3 text-right whitespace-nowrap">
+              <div className="font-bold text-emerald-600">
+                KES {loan.scored_amount?.toLocaleString()}
+              </div>
+            </td>
+
+            <td className="px-6 py-3 text-center whitespace-nowrap">
+              <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-medium">
+                {loan.duration_weeks} weeks
+              </span>
+            </td>
+
+            <td className="px-6 py-3 text-center whitespace-nowrap">
+              <div className="flex items-center justify-center gap-1 text-gray-600">
+                <CalendarIcon className="h-4 w-4" />
+                <span className="text-xs">
+                  {new Date(loan.created_at).toLocaleDateString('en-GB')}
+                </span>
+              </div>
+            </td>
+
+            <td className="px-6 py-3 text-center whitespace-nowrap">
+              {isBranchManager ? (
+                <button
+                  onClick={() => setSelectedLoan(loan)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-md text-lg font-semibold transition hover:shadow-lg"
+                  style={{ color: "#586ab1" }}
+                >
+                  <EyeIcon className="h-4 w-4" />
+                  Review
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-200 text-gray-500 rounded-md cursor-not-allowed text-sm"
+                >
+                  <LockClosedIcon className="h-4 w-4" />
+                  View Only
+                </button>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {/* Empty State */}
+  {filteredLoans.length === 0 && (
+    <div className="text-center py-12 text-gray-500">
+      <ClockIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-semibold text-gray-800 mb-2">
+        {searchTerm ? "No loans found" : "No pending approvals"}
+      </h3>
+      <p>
+        {searchTerm
+          ? "No loans match your search criteria."
+          : isBranchManager
+          ? "All loans have been reviewed by the branch manager."
+          : "There are no loans pending branch manager approval in your area."}
+      </p>
+    </div>
+  )}
+</div>
+
+
       </div>
     </div>
   );

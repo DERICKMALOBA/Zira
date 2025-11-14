@@ -134,7 +134,8 @@ function CustomersTable({ customers, loading}) {
               </button> */}
               <button
                  onClick={handleAddCustomer}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                className="flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg"
+                style={{ backgroundColor: "#586ab1" }}
               >
                 <PlusIcon className="h-5 w-5 mr-2" />
                 Add Customer
@@ -208,8 +209,8 @@ function CustomersTable({ customers, loading}) {
                     <td className="px-3 py-2 text-sm">
                       <button
                         onClick={() => handleView(customer)}
-                        className="inline-flex items-center px-2 py-1 text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded hover:bg-green-100 hover:text-green-700"
-                      >
+ className="flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg"
+                style={{ backgroundColor: "#586ab1" }}                      >
                         <EyeIcon className="h-3 w-3 mr-1" />
                         View
                       </button>

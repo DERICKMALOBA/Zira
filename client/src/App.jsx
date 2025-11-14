@@ -111,6 +111,8 @@ import LoanInteraction from "./pages/loaning/LoanInteraction.jsx";
 
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ViewDisbursedLoan from "./pages/loaning/ViewDisbursedLoan.jsx";
+import ViewLoansPendingDisbursement from "./pages/loaning/ViewLoansPendingDisbursement.jsx";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -661,6 +663,28 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
+
+                  <Route path="/viewdisbursedloans/:loanId" element={
+                    
+                  <ProtectedRoute>
+                        <ViewDisbursedLoan userRole={role} />
+                      </ProtectedRoute>
+                    
+                    
+                    } />
+
+
+
+                       <Route
+                    path="/view-disbursed-loans/:id"
+                    element={
+                      <ProtectedRoute>
+                        <ViewLoansPendingDisbursement userRole={role} />
+                      </ProtectedRoute>
+                    }
+                  />
+
+
                   <Route
                     path="/loaning/loan-approval"
                     element={

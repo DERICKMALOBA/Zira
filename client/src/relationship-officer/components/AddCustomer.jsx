@@ -214,9 +214,6 @@ const AddCustomer = ({  onClose }) => {
   ];
 
 
-    const handleClose = () => {
-    navigate('/officer/customers'); // or wherever your customers list is
-  };
   // Fixed change handlers with useCallback to prevent re-renders
   const handleChange = useCallback(
     (e) => {
@@ -1517,27 +1514,7 @@ const handleSaveDraft = async () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-      <div className=" bg-gradient-to-br from-indigo-50 via-white to-blue-50 p-3 border-b  rounded-t-lg">
-  <div className="flex items-center justify-between">
-    <div>
-      <h1 className="text-xl font-semibold text-gray-900">
-        Customer Application
-      </h1>
-      <p className="text-sm text-gray-500">
-        Complete customer onboarding and loan application
-      </p>
-    </div>
-    <button
-      onClick={handleClose}
-      className="flex items-center text-indigo-600 hover:text-indigo-800 transition-colors"
-      disabled={isSubmitting}
-    >
-      <ArrowLeftIcon className="h-5 w-5 mr-1" />
-      <span className="text-sm font-medium">Back to Customers</span>
-    </button>
-  </div>
-</div>
+       
 
 
         {/* Navigation Tabs */}
@@ -1567,7 +1544,7 @@ const handleSaveDraft = async () => {
             {activeSection === "personal" && (
               <div className="space-y-8">
                 <div className="border-b border-gray-200 pb-6">
-                  <h2 className="text-2xl font-bold text-gray-600 flex items-center">
+                  <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                     <UserCircleIcon className="h-8 w-8 text-indigo-600 mr-3" />
                     Personal Information
                   </h2>
@@ -1719,7 +1696,7 @@ const handleSaveDraft = async () => {
 
                 {/* Document Uploads */}
                 <div className="mt-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                  <h3 className="text-lg font-semibold text-slate-600 mb-6">
                     Personal Documents
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1810,7 +1787,7 @@ const handleSaveDraft = async () => {
             {activeSection === "business" && (
               <div className="space-y-8">
                 <div className="border-b border-gray-200 pb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                     <BuildingOffice2Icon className="h-8 w-8 text-indigo-600 mr-3" />
                     Business Information
                   </h2>
@@ -1901,7 +1878,7 @@ const handleSaveDraft = async () => {
                 {/* Business Images */}
                 <div className="mt-8">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-slate-600">
                       Business Images
                     </h3>
                     <label className="flex items-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg cursor-pointer hover:bg-blue-500 transition-colors">
@@ -1954,7 +1931,7 @@ const handleSaveDraft = async () => {
     )}
     
     <div className="border-b border-gray-200 pb-6">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+      <h2 className="text-lg font-semibold text-slate-600 flex items-center">
         <ShieldCheckIcon className="h-8 w-8 text-indigo-600 mr-3" />
         Borrower Security Items
       </h2>
@@ -1970,7 +1947,7 @@ const handleSaveDraft = async () => {
           className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-6 border border-gray-200"
         >
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <h3 className="text-lg font-semibold text-slate-600 flex items-center">
               <ShieldCheckIcon className="h-5 w-5 text-indigo-600 mr-2" />
               Security Item {index + 1}
             </h3>
@@ -2032,7 +2009,7 @@ const handleSaveDraft = async () => {
 
           {/* Security Item Images */}
           <div className="mt-6">
-            <label className="block text-sm font-medium mb-2 text-gray-800">
+            <label className="block text-sm font-medium mb-2 text-slate-600">
               Item Images
             </label>
             <div className="flex gap-3 mb-3">
@@ -2127,7 +2104,7 @@ const handleSaveDraft = async () => {
             {activeSection === "loan" && (
               <div className="space-y-8">
                 <div className="border-b border-gray-200 pb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                     <CurrencyDollarIcon className="h-8 w-8 text-indigo-600 mr-3" />
                     Loan Information
                   </h2>
@@ -2158,7 +2135,7 @@ const handleSaveDraft = async () => {
             {activeSection === "guarantor" && (
               <div className="space-y-8">
                 <div className="border-b border-gray-200 pb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                     <UserGroupIcon className="h-8 w-8 text-indigo-600 mr-3" />
                     Guarantor Information
                   </h2>
@@ -2319,7 +2296,7 @@ const handleSaveDraft = async () => {
 
                 {/* Guarantor Documents */}
                 <div className="mt-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                  <h3 className="text-lg font-semibold text-slate-600 mb-6">
                     Guarantor Documents
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -2349,7 +2326,7 @@ const handleSaveDraft = async () => {
                       >
                         <div className="flex items-center gap-2 mb-4">
                           <file.icon className="h-6 w-6 text-indigo-600" />
-                          <h4 className="text-md font-medium text-gray-900">
+                          <h4 className="text-md font-medium text-slate-600">
                             {file.label}
                           </h4>
                         </div>
@@ -2420,7 +2397,7 @@ const handleSaveDraft = async () => {
     )}
     
     <div className="border-b border-gray-200 pb-6">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+      <h2 className="text-lg font-bold text-slate-600 flex items-center">
         <ShieldCheckIcon className="h-8 w-8 text-blue-300 mr-3" />
         Guarantor Security Items
       </h2>
@@ -2436,7 +2413,7 @@ const handleSaveDraft = async () => {
           className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-200"
         >
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <h3 className="text-lg font-semibold text-slate-600 flex items-center">
               <ShieldCheckIcon className="h-5 w-5 text-purple-600 mr-2" />
               Guarantor Security Item {index + 1}
             </h3>
@@ -2505,7 +2482,7 @@ const handleSaveDraft = async () => {
 
           {/* Guarantor Security Item Images */}
           <div className="mt-6">
-            <label className="block text-sm font-medium mb-2 text-gray-800">
+            <label className="block text-sm font-medium mb-2 text-slate-600">
               Item Images
             </label>
             <div className="flex gap-3 mb-3">
@@ -2602,7 +2579,7 @@ const handleSaveDraft = async () => {
             {activeSection === "nextOfKin" && (
               <div className="space-y-8">
                 <div className="border-b border-gray-200 pb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                     <UserGroupIcon className="h-8 w-8 text-indigo-600 mr-3" />
                     Next of Kin Information
                   </h2>
@@ -2707,7 +2684,7 @@ const handleSaveDraft = async () => {
             {activeSection === "documents" && (
               <div className="space-y-8">
                 <div className="border-b border-gray-200 pb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <h2 className="text-lg font-semibold text-slate-600 flex items-center">
                     <DocumentTextIcon className="h-8 w-8 text-blue-300 mr-3" />
                     Document Verification
                   </h2>

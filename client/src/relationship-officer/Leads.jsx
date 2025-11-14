@@ -355,7 +355,8 @@ const Leads = () => {
               </p>
               <button
                 onClick={() => setShowLeadForm(true)}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-600 text-white rounded-xl hover:from-green-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl font-medium"
+                className="flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg"
+                style={{ backgroundColor: "#586ab1" }}
               >
                 <PlusIcon className="h-5 w-5" />
                 Add Your First Lead
@@ -451,14 +452,14 @@ const Leads = () => {
           <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
             <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-8 m-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold bg-gradient-to-r from-slate-700 to-slate-700 bg-clip-text text-transparent">
+                <h2 className="text-sm font-semibold bg-gradient-to-r from-slate-700 to-slate-700 bg-clip-text text-transparent">
                   Add New Lead
                 </h2>
                 <button
                   onClick={() => setShowLeadForm(false)}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <XCircleIcon className="h-6 w-6" />
+                  <XCircleIcon className="h-4 w-4" />
                 </button>
               </div>
 
@@ -585,7 +586,7 @@ const Leads = () => {
                     className={`flex items-center gap-2 px-6 py-3 text-white rounded-xl font-medium transition-all ${
                       isSaving
                         ? "bg-gray-400 cursor-not-allowed"
-                        : "bg-gradient-to-r from-green-600 to-green-600 hover:from-green-700 hover:to-green-700 shadow-lg hover:shadow-xl"
+                        : "bg-gradient-to-r from-blue-300 to-blue-300 hover:from-blue-300 hover:to-green-500 shadow-lg hover:shadow-xl"
                     }`}
                   >
                     {isSaving ? (

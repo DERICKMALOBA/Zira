@@ -301,12 +301,12 @@ const ApproveLoan = ({ loan, onComplete }) => {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-sm  bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
+              <h1 className="text-xsm  bg-slate-600 bg-clip-text text-transparent">
                 {isRegionalManager ? 'Regional Manager Loan Review' : 'Branch Manager Loan Approval'}
               </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              {/* <p className="text-xsm text-gray-500 mt-1">
                 Role: {profile?.role?.replace(/_/g, " ").toUpperCase()} 
-              </p>
+              </p> */}
               <div className="mt-2 text-sm text-gray-600">
                 {isRegionalManager && bmDecision?.decision && (
                   <span className="ml-4">
@@ -323,7 +323,7 @@ const ApproveLoan = ({ loan, onComplete }) => {
               </div>
             </div>
             <div className="text-right">
-              <div className="text-sm font-bold text-indigo-600">
+              <div className="text-sm font-semibold text-indigo-600">
                 Loan #{loanDetails.id}
               </div>
               <div className="text-sm text-gray-500">
@@ -344,7 +344,7 @@ const ApproveLoan = ({ loan, onComplete }) => {
             <div className="flex items-start">
               <ExclamationTriangleIcon className="h-6 w-6 text-amber-600 mr-3 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="text-lg font-semibold text-amber-800 mb-1">
+                <h3 className="text-sm font-semibold text-amber-800 mb-1">
                   Fee Payment Required
                 </h3>
                 <p className="text-amber-700 text-sm">
@@ -369,14 +369,14 @@ const ApproveLoan = ({ loan, onComplete }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Customer Information */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <h3 className="text-xl font-bold text-gray-600 flex items-center mb-6">
+            <h3 className="text-lg font-semibold text-slate-600 flex items-center mb-6">
               <UserIcon className="h-6 w-6 text-indigo-600 mr-3" />
               Customer Information
             </h3>
             <div className="space-y-4">
               <div className="flex justify-between">
                 <span className="text-gray-600 font-medium">Full Name:</span>
-                <span className="text-gray-900 font-semibold">
+                <span className="text-slate-600 font-semibold">
                   {customer.Firstname} {customer.Surname}
                 </span>
               </div>
@@ -403,7 +403,7 @@ const ApproveLoan = ({ loan, onComplete }) => {
 
           {/* Loan Details */}
           <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-            <h3 className="text-xl font-bold text-gray-600 flex items-center mb-6">
+            <h3 className="text-lgs font-semibold text-gray-600 flex items-center mb-6">
               <CurrencyDollarIcon className="h-6 w-6 text-emerald-600 mr-3" />
               Loan Details
             </h3>
@@ -451,12 +451,12 @@ const ApproveLoan = ({ loan, onComplete }) => {
         </div>
 
         {/* Wallet & Fee Status Section */}
-        <div className={`rounded-2xl shadow-lg p-6 border mt-8 ${
+        <div className={`rounded-lg shadow-lg p-6 border mt-8 ${
           feesPaid 
             ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200' 
             : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300'
         }`}>
-          <h3 className="text-xl font-bold text-gray-600 flex items-center mb-6">
+          <h3 className="text-lg font-semibold text-slate-600 flex items-center mb-6">
             <BanknotesIcon className="h-6 w-6 text-emerald-600 mr-3" />
             Wallet & Fee Payment Status
           </h3>
@@ -471,7 +471,7 @@ const ApproveLoan = ({ loan, onComplete }) => {
             <div className="bg-white rounded-xl p-5 shadow-sm">
               <div className="text-sm text-gray-600 mb-2">Processing Fee</div>
               <div className="flex items-center justify-between">
-                <span className="text-lg font-semibold text-gray-900">
+                <span className="text-lg font-semibold text-slate-600">
                   KES {loanDetails.processing_fee?.toLocaleString()}
                 </span>
                 {walletInfo.processing_fee_paid ? (
@@ -515,7 +515,7 @@ const ApproveLoan = ({ loan, onComplete }) => {
         {/* Branch Manager Decision (Visible to RM) */}
         {isRegionalManager && bmDecision && (
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 mt-8">
-            <h3 className="text-xl font-bold text-gray-600 flex items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-600 flex items-center mb-4">
               <IdentificationIcon className="h-6 w-6 text-blue-600 mr-3" />
               Branch Manager Decision
             </h3>
@@ -556,7 +556,7 @@ const ApproveLoan = ({ loan, onComplete }) => {
 
         {/* Booked By Information */}
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200 mt-8">
-          <h3 className="text-xl font-bold text-gray-600 flex items-center mb-4">
+          <h3 className="text-lg font-semibold text-slate-600 flex items-center mb-4">
             <IdentificationIcon className="h-6 w-6 text-purple-600 mr-3" />
             Booked By
           </h3>
@@ -586,8 +586,8 @@ const ApproveLoan = ({ loan, onComplete }) => {
         {/* Repayment Schedule */}
         {repaymentSchedule.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden mt-8">
-            <div className="bg-gray-600 text-gray-200 p-4">
-              <h3 className="text-xl font-bold flex items-center">
+            <div className="bg-gray-100 text-gray-100 p-4">
+              <h3 className="text-lg font-semibold flex items-center">
                 <DocumentTextIcon className="h-6 w-6 mr-3" />
                 Repayment Schedule
               </h3>
@@ -639,7 +639,7 @@ const ApproveLoan = ({ loan, onComplete }) => {
 
         {/* Manager Decision Section */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mt-8 border border-gray-200">
-          <h3 className="text-xl font-bold text-gray-600 flex items-center mb-6">
+          <h3 className="text-lg font-semibold text-slate-600 flex items-center mb-6">
             <ChatBubbleLeftRightIcon className="h-6 w-6 text-blue-600 mr-3" />
             {isRegionalManager ? 'Regional Manager Decision' : 'Branch Manager Decision'}
           </h3>
@@ -659,34 +659,35 @@ const ApproveLoan = ({ loan, onComplete }) => {
               />
             </div>
 
-            <div className="flex gap-4 justify-end">
-              <button
-                onClick={() => handleApprovalDecision(false)}
-                disabled={loading || !comment.trim()}
-                className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 transition-all shadow-lg hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                ) : (
-                  <XCircleIcon className="h-5 w-5" />
-                )}
-                Reject Loan
-              </button>
-              
-              <button
-                onClick={() => handleApprovalDecision(true)}
-                disabled={loading || !comment.trim() || !feesPaid}
-                className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl hover:from-emerald-700 hover:to-green-700 transition-all shadow-lg hover:shadow-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                title={!feesPaid ? feeMessage : ''}
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                ) : (
-                  <CheckCircleIcon className="h-5 w-5" />
-                )}
-                {`Approve & Forward to ${getNextStage(true)}`}
-              </button>
-            </div>
+           <div className="flex gap-3 justify-end">
+  <button
+    onClick={() => handleApprovalDecision(false)}
+    disabled={loading || !comment.trim()}
+    className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all shadow-md hover:shadow-lg font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    {loading ? (
+      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+    ) : (
+      <XCircleIcon className="h-4 w-4" />
+    )}
+    Reject Loan
+  </button>
+
+  <button
+    onClick={() => handleApprovalDecision(true)}
+    disabled={loading || !comment.trim() || !feesPaid}
+    className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-lg hover:from-emerald-700 hover:to-green-700 transition-all shadow-md hover:shadow-lg font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+    title={!feesPaid ? feeMessage : ''}
+  >
+    {loading ? (
+      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+    ) : (
+      <CheckCircleIcon className="h-4 w-4" />
+    )}
+    {`Approve & Forward to ${getNextStage(true)}`}
+  </button>
+</div>
+
           </div>
         </div>
       </div>

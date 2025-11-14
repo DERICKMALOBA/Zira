@@ -339,11 +339,11 @@ const handleBookLoan = async () => {
       
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-md p-4 mb-4 border border-indigo-100 flex items-center justify-between">
+        <div className=" p-4 mb-4 flex items-center justify-between">
       {/* Back Button */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-1 text-blue-600 hover:text-blue-800"
+        className="flex items-center gap-1 text-slate-600 hover:text-slate-800"
       >
         <ArrowLeftIcon className="w-5 h-5" />
         <span className="text-sm font-medium">Back</span>
@@ -351,7 +351,7 @@ const handleBookLoan = async () => {
 
       {/* Title & Subtitle */}
       <div className=" text-center">
-        <h1 className="text-lg font-bold bg-gradient-to-r from-gray-700 to-gray-700 bg-clip-text text-transparent">
+        <h1 className=" font-semibold bg-slate-600 bg-clip-text text-transparent">
           Loan Booking Confirmation
         </h1>
         <p className="text-gray-600 text-sm mt-1">
@@ -381,7 +381,7 @@ const handleBookLoan = async () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Customer Details */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-indigo-100">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
+                <h3 className="text-lg font-semibold text-slate-600 flex items-center mb-4">
                   <UserIcon className="h-6 w-6 text-indigo-600 mr-3" />
                   Customer Information
                 </h3>
@@ -421,7 +421,7 @@ const handleBookLoan = async () => {
 
               {/* Loan Summary */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-indigo-100">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center mb-4">
+                <h3 className="text-lg font-semibold text-slate-600 flex items-center mb-4">
                   <CurrencyDollarIcon className="h-6 w-6 text-emerald-600 mr-3" />
                   Loan Summary
                 </h3>
@@ -527,7 +527,7 @@ const handleBookLoan = async () => {
           {/* Repayment Terms Configuration */}
           <div className="p-8">
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200 mb-8">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center mb-6">
+              <h3 className="text-lg font-semibold text-slate-600 flex items-center mb-6">
                 <ClockIcon className="h-6 w-6 text-blue-600 mr-3" />
                 Repayment Configuration
               </h3>
@@ -566,16 +566,17 @@ const handleBookLoan = async () => {
             {/* Repayment Schedule */}
             {repaymentSchedule.length > 0 && (
               <div className="mb-8">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center mb-6">
+                <h3 className="text-lg font-semibold text-slate-600 flex items-center mb-6">
                   <DocumentTextIcon className="h-6 w-6 text-purple-600 mr-3" />
                   Repayment Schedule - {selectedProductType}
                 </h3>
                 
-                <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-200 overflow-hidden">
+                <div className="bg-gradient-to-br from-blue-50 to-slate-50 rounded-xl border border-gray-200 overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="min-w-full">
                       <thead>
-                        <tr className="bg-blue-300 text-slate-600">
+                     <tr className="text-white text-sm" style={{ backgroundColor: "#586ab1" }}>
+
                           <th className="px-6 py-4 text-left font-semibold">Week</th>
                           <th className="px-6 py-4 text-left font-semibold">Due Date</th>
                           <th className="px-6 py-4 text-right font-semibold">Principal</th>
@@ -600,30 +601,30 @@ const handleBookLoan = async () => {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center text-gray-900">
+                            <td className="px-6 py-4 text-sm">
+                              <div className="flex items-center text-slate-600">
                                 <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
                                 {new Date(payment.due_date).toLocaleDateString('en-GB')}
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-right font-semibold text-gray-900">
+                            <td className="px-6 py-4 text-right font-semibold text-slate-600">
                               KES {payment.principal.toLocaleString()}
                             </td>
                             <td className="px-6 py-4 text-right font-semibold text-amber-600">
                               KES {(payment.processing_fee + payment.registration_fee).toLocaleString()}
                             </td>
-                            <td className="px-6 py-4 text-right font-bold text-indigo-600">
+                            <td className="px-6 py-4 text-right font-semibold text-indigo-600">
                               KES {payment.total.toLocaleString()}
                             </td>
                           </tr>
                         ))}
 
                         {/* Totals Row */}
-                        <tr className="bg-gradient-to-r from-indigo-100 to-blue-100 border-t-2 border-indigo-200">
-                          <td className="px-6 py-4 font-bold text-gray-900" colSpan="2">
+                        <tr className="bg-gradient-to-r from-indigo-100 to-blue-100 border-t-2 border-indigo-200 text-sm">
+                          <td className="px-6 py-4 font-semibold text-slate-600" colSpan="2">
                             TOTAL
                           </td>
-                          <td className="px-6 py-4 text-right font-bold text-gray-900">
+                          <td className="px-6 py-4 text-right font-bold text-slate-600">
                             KES {principalAmount?.toLocaleString()}
                           </td>
                           <td className="px-6 py-4 text-right font-bold text-amber-600">
@@ -649,7 +650,7 @@ const handleBookLoan = async () => {
 
             {/* Loan Product Information */}
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200 mb-8">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center mb-6">
+              <h3 className="text-sm font-semibold text-slate-600 flex items-center mb-6">
                 <TagIcon className="h-6 w-6 text-purple-600 mr-3" />
                 Loan Product Details
               </h3>
@@ -687,29 +688,29 @@ const handleBookLoan = async () => {
             </div>
 
             {/* Action Button */}
-            <div className="flex justify-end pt-8 border-t border-gray-200">
-              <button
-                onClick={handleBookLoan}
-                disabled={loading || !isValidAmount()}
-                className={`flex items-center gap-3 px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed ${
-                  isValidAmount() 
-                    ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700' 
-                    : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
-                }`}
-              >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    Processing Booking...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircleIcon className="h-6 w-6" />
-                    {isValidAmount() ? `Book ${selectedProductType}` : 'Enter Valid Amount & Product'}
-                  </>
-                )}
-              </button>
-            </div>
+           <div className="flex justify-end pt-8 border-t border-gray-200">
+  <button
+    onClick={handleBookLoan}
+    disabled={loading || !isValidAmount()}
+    className={`flex items-center gap-1 px-3 py-1 text-white text-sm rounded-xl transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+    style={{
+      backgroundColor: isValidAmount() ? "#586ab1" : "#9aa1c9",
+    }}
+  >
+    {loading ? (
+      <>
+        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+        Processing...
+      </>
+    ) : (
+      <>
+        <CheckCircleIcon className="h-6 w-6" />
+        {isValidAmount() ? `Book ${selectedProductType}` : "Enter Valid Amount"}
+      </>
+    )}
+  </button>
+</div>
+
           </div>
         </div>
       </div>
