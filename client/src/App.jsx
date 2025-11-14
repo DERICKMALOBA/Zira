@@ -226,7 +226,7 @@ const { user, profile, loading } = useAuth();
 
 
               {/* Default redirect based on role */}
-              <Route path="/" element={<Navigate to={getDefaultRoute()} />} />
+              <Route path="/dashboard" element={<Navigate to={getDefaultRoute()} />} />
 
               {/* Shared Routes for RM, BM, CA, CSO, and Relationship Officer */}
               {isSharedRole && (
