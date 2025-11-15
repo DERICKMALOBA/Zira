@@ -1456,7 +1456,6 @@ prepaymentDue: prepaymentData.totalDueTomorrow,
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <h3 className="text sm:text  text-slate-600 flex items-center">
-            {/* <span className="w-1 h-5 sm:h-6 bg-gradient-to-b from-blue-600 to-cyan-500 rounded-full mr-3"></span> */}
             {title}
           </h3>
           {onViewAll && (
