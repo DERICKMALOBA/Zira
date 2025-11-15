@@ -217,136 +217,147 @@ const Dashboard = () => {
       return [];
     }
   };
+const fetchRecentActivities = async (profile) => {
+  try {
+    const { role, regionId, branchId, id } = profile;
 
-  const fetchRecentActivities = async (profile) => {
-    try {
-      const { role, regionId, branchId, id } = profile;
-
-      let loansQuery = supabase
-        .from("loans")
-        .select(
-          `
-          id,
-          scored_amount,
-          status,
-          created_at,
-          disbursed_date,
-          customers!inner(
-            Firstname,
-            Surname
-          )
+    let loansQuery = supabase
+      .from("loans")
+      .select(
         `
+        id,
+        scored_amount,
+        status,
+        created_at,
+        disbursed_date,
+        booked_by,
+        region_id,
+        branch_id,
+        customers!inner(
+          Firstname,
+          Surname
         )
-        .order("created_at", { ascending: false })
-        .limit(10);
+      `
+      )
+      .order("created_at", { ascending: false })
+      .limit(20); 
 
-      // ✅ Filter for relationship_officer
-      if (role === "relationship_officer") {
-        loansQuery = loansQuery.eq("booked_by", id);
-      } else if (role === "branch_manager") {
-        loansQuery = loansQuery.eq("branch_id", branchId);
-      } else if (role === "regional_manager") {
-        loansQuery = loansQuery.eq("region_id", regionId);
-      }
-
-      const { data: recentLoans, error: loansError } = await loansQuery;
-      if (loansError) throw loansError;
-
-      const activities =
-        recentLoans?.map((loan) => {
-          const customerName = `${loan.customers.Firstname} ${loan.customers.Surname}`;
-          const timeAgo = getTimeAgo(new Date(loan.created_at));
-
-          let message = "";
-          let iconBg = "";
-          let icon = null;
-
-          if (loan.status === "disbursed") {
-            message = `Loan disbursed to ${customerName}`;
-            iconBg = "bg-green-100";
-            icon = (
-              <svg
-                className="w-5 h-5 text-green-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            );
-          } else if (loan.status === "approved") {
-            message = `Loan approved for ${customerName}`;
-            iconBg = "bg-blue-100";
-            icon = (
-              <svg
-                className="w-5 h-5 text-blue-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            );
-          } else {
-            message = `New loan application from ${customerName}`;
-            iconBg = "bg-amber-100";
-            icon = (
-              <svg
-                className="w-5 h-5 text-amber-600"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            );
-          }
-
-          return {
-            id: loan.id,
-            message,
-            time: timeAgo,
-            amount: `Ksh ${loan.scored_amount?.toLocaleString() || 0}`,
-            icon,
-            iconBg,
-          };
-        }) || [];
-
-      return activities;
-    } catch (error) {
-      console.error("Error fetching recent activities:", error);
-      return [];
+    if (role === "relationship_officer") {
+      loansQuery = loansQuery.eq("booked_by", id);
+    } else if (role === "branch_manager") {
+      loansQuery = loansQuery.eq("branch_id", branchId);
+    } else if (role === "regional_manager") {
+      loansQuery = loansQuery.eq("region_id", regionId);
     }
-  };
 
-  const getTimeAgo = (date) => {
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+    const { data: recentLoans, error } = await loansQuery;
+    if (error) throw error;
 
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? "s" : ""} ago`;
-    if (diffHours < 24)
-      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-  };
+    const activities =
+      recentLoans?.map((loan) => {
+        const customerName = `${loan.customers.Firstname} ${loan.customers.Surname}`;
+
+       
+        const createdAtLocal = new Date(loan.created_at);
+
+        const timeAgo = getTimeAgo(createdAtLocal);
+
+       
+        let message = "";
+        let iconBg = "";
+        let icon = null;
+
+        if (loan.status === "disbursed") {
+          message = `Loan disbursed to ${customerName}`;
+          iconBg = "bg-green-100";
+          icon = (
+            <svg
+              className="w-5 h-5 text-green-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          );
+        } else if (loan.status === "approved") {
+          message = `Loan approved for ${customerName}`;
+          iconBg = "bg-blue-100";
+          icon = (
+            <svg
+              className="w-5 h-5 text-blue-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          );
+        } else {
+          message = `New loan application from ${customerName}`;
+          iconBg = "bg-amber-100";
+          icon = (
+            <svg
+              className="w-5 h-5 text-amber-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          );
+        }
+
+        return {
+          id: loan.id,
+          message,
+          time: timeAgo,
+          amount: `Ksh ${loan.scored_amount?.toLocaleString() || 0}`,
+          icon,
+          iconBg,
+        };
+      }) || [];
+
+    return activities;
+  } catch (error) {
+    console.error("Error fetching recent activities:", error);
+    return [];
+  }
+};
+
+
+ const getTimeAgo = (date) => {
+  const now = new Date();
+
+  const diff = now - date;
+
+  if (diff < 0) return "Just now"; 
+
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min${mins > 1 ? "s" : ""} ago`;
+  if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+  return `${days} day${days > 1 ? "s" : ""} ago`;
+};
+
 
   const fetchTotalPaidAmount = async (loanIds) => {
     if (!loanIds || loanIds.length === 0) return 0;
@@ -372,122 +383,169 @@ const Dashboard = () => {
       return 0;
     }
   };
+// Utility for consistent date formatting
+const getTodayDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
-  const fetchMonthlyCollectionData = async (loanIds) => {
-    if (!loanIds || loanIds.length === 0)
-      return { monthlyAmount: 0, monthlyRate: 0 };
+const getTomorrowDate = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const year = tomorrow.getFullYear();
+  const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const day = String(tomorrow.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
-    try {
-      const now = new Date();
-      const startOfMonth = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        1
-      ).toISOString();
-      const endOfMonth = new Date(
-        now.getFullYear(),
-        now.getMonth() + 1,
-        0,
-        23,
-        59,
-        59
-      ).toISOString();
+// Fetch today's collection
+const fetchTodaysCollection = async (loanIds) => {
+  if (!loanIds?.length) {
+    console.log("⚠️ No loan IDs provided for today's collection");
+    return { amount: 0, rate: 0, due: 0, paid: 0 };
+  }
+  
+  try {
+    const today = getTodayDate();
+    console.log("📅 Fetching today's collection for date:", today);
+    console.log("🔍 Checking", loanIds.length, "loans");
+    
+    const { data: installments, error } = await supabase
+      .from("loan_installments")
+      .select("due_amount, paid_amount, due_date, status")
+      .in("loan_id", loanIds)
+      .eq("due_date", today);
 
-      const { data: repayments, error: repayError } = await supabase
-        .from("mpesa_c2b_transactions")
-        .select("amount, loan_id, created_at")
-        .in("loan_id", loanIds)
-        .eq("status", "applied")
-        .eq("payment_type", "repayment")
-        .gte("created_at", startOfMonth)
-        .lte("created_at", endOfMonth);
-
-      if (repayError) throw repayError;
-
-      const monthlyAmount = repayments?.reduce(
-        (sum, r) => sum + (parseFloat(r.amount) || 0),
-        0
-      );
-
-      const { data: installments, error: instError } = await supabase
-        .from("loan_installments")
-        .select("due_amount")
-        .in("loan_id", loanIds)
-        .gte("due_date", startOfMonth)
-        .lte("due_date", endOfMonth);
-
-      if (instError) throw instError;
-
-      const totalMonthlyExpected = installments?.reduce(
-        (sum, inst) => sum + (parseFloat(inst.due_amount) || 0),
-        0
-      );
-
-      const monthlyRate =
-        totalMonthlyExpected > 0
-          ? Math.round((monthlyAmount / totalMonthlyExpected) * 100)
-          : 0;
-
-      return { monthlyAmount, monthlyRate };
-    } catch (error) {
-      console.error("Error fetching monthly collection data:", error);
-      return { monthlyAmount: 0, monthlyRate: 0 };
+    if (error) {
+      console.error("❌ Error fetching today's installments:", error);
+      throw error;
     }
-  };
 
-  const fetchPrepaymentData = async (loanIds) => {
-    if (!loanIds || loanIds.length === 0)
-      return { prepaymentAmount: 0, prepaymentRate: 0 };
+    console.log("✅ Today's installments found:", installments?.length || 0);
+    console.log("📊 Today's data:", installments);
 
-    try {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = tomorrow.toISOString().split("T")[0];
+    const paid = installments?.reduce((sum, inst) => sum + (parseFloat(inst.paid_amount) || 0), 0) || 0;
+    const due = installments?.reduce((sum, inst) => sum + (parseFloat(inst.due_amount) || 0), 0) || 0;
+    const rate = due > 0 ? Math.round((paid / due) * 100) : 0;
 
-      const { data: tomorrowInstallments, error } = await supabase
-        .from("loan_installments")
-        .select("due_amount, loan_id")
-        .in("loan_id", loanIds)
-        .eq("due_date", tomorrowStr);
+    console.log(`💰 Today: Paid=${paid}, Due=${due}, Rate=${rate}%`);
 
-      if (error) throw error;
+    return { amount: paid, paid, due, rate };
+  } catch (err) {
+    console.error("❌ Error in fetchTodaysCollection:", err);
+    return { amount: 0, rate: 0, due: 0, paid: 0 };
+  }
+};
 
-      const totalDueTomorrow =
-        tomorrowInstallments?.reduce(
-          (sum, inst) => sum + (parseFloat(inst.due_amount) || 0),
-          0
-        ) || 0;
+// Fetch monthly collection
+const fetchMonthlyCollection = async (loanIds) => {
+  if (!loanIds?.length) {
+    console.log("⚠️ No loan IDs provided for monthly collection");
+    return { amount: 0, rate: 0, due: 0, paid: 0 };
+  }
+  
+  try {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const startOfMonth = `${year}-${month}-01`;
+    
+    // Get last day of current month
+    const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+    const endOfMonth = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
 
-      const { data: prepayments, error: prepayError } = await supabase
-        .from("mpesa_c2b_transactions")
-        .select("amount, loan_id")
-        .in("loan_id", loanIds)
-        .eq("status", "applied")
-        .eq("payment_type", "repayment")
-        .gte("created_at", new Date().toISOString().split("T")[0]);
+    console.log(" Fetching monthly collection from", startOfMonth, "to", endOfMonth);
+    console.log(" Checking", loanIds.length, "loans");
 
-      if (prepayError) throw prepayError;
+    const { data: installments, error } = await supabase
+      .from("loan_installments")
+      .select("due_amount, paid_amount, due_date, status")
+      .in("loan_id", loanIds)
+      .gte("due_date", startOfMonth)
+      .lte("due_date", endOfMonth);
 
-      const prepaymentAmount =
-        prepayments?.reduce(
-          (sum, transaction) => sum + (parseFloat(transaction.amount) || 0),
-          0
-        ) || 0;
-      const prepaymentRate =
-        totalDueTomorrow > 0
-          ? Math.round((prepaymentAmount / totalDueTomorrow) * 100)
-          : 0;
-
-      return {
-        prepaymentAmount,
-        prepaymentRate,
-        totalDueTomorrow,
-      };
-    } catch (error) {
-      console.error("Error fetching prepayment data:", error);
-      return { prepaymentAmount: 0, prepaymentRate: 0, totalDueTomorrow: 0 };
+    if (error) {
+      console.error(" Error fetching monthly installments:", error);
+      throw error;
     }
-  };
+
+    console.log(" Monthly installments found:", installments?.length || 0);
+    console.log(" Monthly data sample:", installments?.slice(0, 3));
+
+    const paid = installments?.reduce((sum, inst) => sum + (parseFloat(inst.paid_amount) || 0), 0) || 0;
+    const due = installments?.reduce((sum, inst) => sum + (parseFloat(inst.due_amount) || 0), 0) || 0;
+    const rate = due > 0 ? Math.round((paid / due) * 100) : 0;
+
+    console.log(`💰 Monthly: Paid=${paid}, Due=${due}, Rate=${rate}%`);
+
+    return { amount: paid, paid, due, rate };
+  } catch (err) {
+    console.error(" Error in fetchMonthlyCollection:", err);
+    return { amount: 0, rate: 0, due: 0, paid: 0 };
+  }
+};
+
+// Prepayment / tomorrow collection
+const fetchPrepaymentData = async (loanIds) => {
+  if (!loanIds?.length) {
+    console.log(" No loan IDs provided for prepayment data");
+    return { prepaymentAmount: 0, prepaymentRate: 0, totalDueTomorrow: 0 };
+  }
+  
+  try {
+    const tomorrow = getTomorrowDate();
+    console.log(" Fetching tomorrow's collection for date:", tomorrow);
+    console.log(" Checking", loanIds.length, "loans");
+    
+    const { data: installments, error: instError } = await supabase
+      .from("loan_installments")
+      .select("due_amount, loan_id, due_date, status")
+      .in("loan_id", loanIds)
+      .eq("due_date", tomorrow);
+
+    if (instError) {
+      console.error(" Error fetching tomorrow's installments:", instError);
+      throw instError;
+    }
+
+    console.log(" Tomorrow's installments found:", installments?.length || 0);
+    console.log(" Tomorrow's data:", installments);
+
+    const totalDueTomorrow = installments?.reduce((sum, inst) => sum + (parseFloat(inst.due_amount) || 0), 0) || 0;
+
+    // Get today's prepayments (payments made today for tomorrow's dues)
+    const today = getTodayDate();
+    const { data: prepayments, error: payError } = await supabase
+      .from("mpesa_c2b_transactions")
+      .select("amount, loan_id, created_at")
+      .in("loan_id", loanIds)
+      .eq("status", "applied")
+      .eq("payment_type", "repayment")
+      .gte("created_at", `${today}T00:00:00`)
+      .lte("created_at", `${today}T23:59:59`);
+
+    if (payError) {
+      console.error(" Error fetching prepayments:", payError);
+      throw payError;
+    }
+
+    console.log(" Today's prepayments found:", prepayments?.length || 0);
+
+    const prepaymentAmount = prepayments?.reduce((sum, tx) => sum + (parseFloat(tx.amount) || 0), 0) || 0;
+    const prepaymentRate = totalDueTomorrow > 0 ? Math.round((prepaymentAmount / totalDueTomorrow) * 100) : 0;
+
+    console.log(` Prepayment: Amount=${prepaymentAmount}, Due Tomorrow=${totalDueTomorrow}, Rate=${prepaymentRate}%`);
+
+    return { prepaymentAmount, prepaymentRate, totalDueTomorrow };
+  } catch (err) {
+    console.error(" Error in fetchPrepaymentData:", err);
+    return { prepaymentAmount: 0, prepaymentRate: 0, totalDueTomorrow: 0 };
+  }
+};
+
 
   const fetchLeadsConversionRate = async (
     regionId,
@@ -510,7 +568,7 @@ const Dashboard = () => {
             query = query.eq("branch_id", selectedBranch);
           }
         } else if (role === "relationship_officer") {
-          // ✅ Filter by created_by for relationship_officer
+          //  Filter by created_by for relationship_officer
           query = query.eq("created_by", userId);
         } else if (
           role === "credit_analyst_officer" ||
@@ -623,56 +681,76 @@ const Dashboard = () => {
     }
   };
 
-  const fetchPerformingLoans = async (loansData) => {
-    if (!loansData || loansData.length === 0) return [];
 
-    try {
-      const loanIds = loansData.map((l) => l.id);
+const fetchPerformingLoans = async (loansData) => {
+  if (!loansData || loansData.length === 0) return [];
 
-      const { data: installments, error } = await supabase
-        .from("loan_installments")
-        .select("loan_id, status, days_overdue")
-        .in("loan_id", loanIds);
+  try {
+    // Only consider disbursed loans
+    const disbursedLoans = loansData.filter(
+      (loan) => loan.status === "disbursed" && loan.repayment_state !== "completed"
+    );
 
-      if (error) throw error;
+    const loanIds = disbursedLoans.map((l) => l.id);
+    if (loanIds.length === 0) return [];
 
-      const grouped =
-        installments?.reduce((acc, inst) => {
-          if (!acc[inst.loan_id]) acc[inst.loan_id] = [];
-          acc[inst.loan_id].push(inst);
-          return acc;
-        }, {}) || {};
+    const { data: installments, error } = await supabase
+      .from("loan_installments")
+      .select("loan_id, status, days_overdue, due_amount, paid_amount")
+      .in("loan_id", loanIds);
 
-      const performingLoanIds = loansData
-        .filter((loan) => {
-          if (
-            loan.status === "completed" ||
-            loan.repayment_state === "completed"
-          ) {
+    if (error) throw error;
+
+    const grouped =
+      installments?.reduce((acc, inst) => {
+        if (!acc[inst.loan_id]) acc[inst.loan_id] = [];
+        acc[inst.loan_id].push(inst);
+        return acc;
+      }, {}) || {};
+
+    const performingLoanIds = disbursedLoans
+      .filter((loan) => {
+        const loanInstallments = grouped[loan.id] || [];
+
+        // If no installments yet but loan is disbursed, consider it performing
+        if (loanInstallments.length === 0) return true;
+
+        // Check if all installments are performing (no overdue, paid on time and in full)
+        const allPerforming = loanInstallments.every((inst) => {
+          // Check if overdue
+          const isOverdue = inst.days_overdue && inst.days_overdue > 0;
+          if (isOverdue) return false;
+
+          // If status is paid, check if paid in full
+          if (inst.status === "paid") {
+            const paidAmount = parseFloat(inst.paid_amount) || 0;
+            const dueAmount = parseFloat(inst.due_amount) || 0;
+            return paidAmount >= dueAmount;
+          }
+
+          // Pending installments are okay if not overdue
+          if (inst.status === "pending") {
+            return !isOverdue;
+          }
+
+          // Partial payments mean not performing
+          if (inst.status === "partial") {
             return false;
           }
 
-          const loanInstallments = grouped[loan.id] || [];
+          return true;
+        });
 
-          if (loanInstallments.length === 0 && loan.status === "disbursed")
-            return true;
+        return allPerforming;
+      })
+      .map((l) => l.id);
 
-          const allOnTime = loanInstallments.every(
-            (inst) =>
-              ["paid", "pending", "partial"].includes(inst.status) &&
-              (!inst.days_overdue || inst.days_overdue <= 0)
-          );
-
-          return allOnTime;
-        })
-        .map((l) => l.id);
-
-      return loansData.filter((l) => performingLoanIds.includes(l.id));
-    } catch (error) {
-      console.error("Error fetching performing loans:", error);
-      return [];
-    }
-  };
+    return disbursedLoans.filter((l) => performingLoanIds.includes(l.id));
+  } catch (error) {
+    console.error("Error fetching performing loans:", error);
+    return [];
+  }
+};
 
   const fetchPerformingLoansPaidAmount = async (performingLoanIds) => {
     if (!performingLoanIds || performingLoanIds.length === 0) return 0;
@@ -699,284 +777,370 @@ const Dashboard = () => {
     }
   };
 
-  const calculateDashboardMetrics = async (
-    loansData,
-    customersData,
-    profile
-  ) => {
-    const { role, branchId, regionId, id } = profile;
 
-    let filteredLoans = loansData;
-    let filteredCustomers = customersData;
 
-    // ✅ Filter data for relationship_officer
-    if (role === "relationship_officer") {
-      filteredCustomers = customersData.filter(
-        (customer) => customer.created_by === id
+  /**
+ * Calculate Month-to-Date Arrears
+ * Definition: Total unpaid dues from installments that became overdue THIS MONTH
+ */
+const fetchMonthToDateArrears = async (loanIds) => {
+  if (!loanIds || loanIds.length === 0) return 0;
+
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      .toISOString()
+      .split("T")[0];
+    const today = now.toISOString().split("T")[0];
+
+    // Get all overdue installments where due_date is within this month
+    const { data: overdueInstallments, error } = await supabase
+      .from("loan_installments")
+      .select("due_amount, paid_amount, due_date, status")
+      .in("loan_id", loanIds)
+      .eq("status", "overdue")
+      .gte("due_date", startOfMonth)
+      .lte("due_date", today);
+
+    if (error) throw error;
+
+    // Calculate arrears as (due_amount - paid_amount) for each overdue installment
+    const monthToDateArrears = overdueInstallments?.reduce((sum, inst) => {
+      const dueAmount = parseFloat(inst.due_amount) || 0;
+      const paidAmount = parseFloat(inst.paid_amount) || 0;
+      const arrears = dueAmount - paidAmount;
+      return sum + (arrears > 0 ? arrears : 0);
+    }, 0) || 0;
+
+    return monthToDateArrears;
+  } catch (error) {
+    console.error("Error fetching month-to-date arrears:", error);
+    return 0;
+  }
+};
+
+
+const calculatePAR = (totalArrears, outstandingBalance) => {
+  if (!outstandingBalance || outstandingBalance === 0) return 0;
+  return Math.round((totalArrears / outstandingBalance) * 100);
+};
+
+/**
+ * Calculate Total Arrears (All Time)
+ * Definition: Total unpaid dues from ALL overdue installments (current + past months)
+ */
+const fetchTotalArrears = async (loanIds) => {
+  if (!loanIds || loanIds.length === 0) return 0;
+
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    // Get ALL overdue and partial installments (past due date)
+    const { data: overdueInstallments, error } = await supabase
+      .from("loan_installments")
+      .select("due_amount, paid_amount, status, due_date")
+      .in("loan_id", loanIds)
+      .in("status", ["overdue", "partial"])
+      .lte("due_date", today);
+
+    if (error) throw error;
+
+    // Calculate total arrears as sum of (due_amount - paid_amount)
+    const totalArrears = overdueInstallments?.reduce((sum, inst) => {
+      const dueAmount = parseFloat(inst.due_amount) || 0;
+      const paidAmount = parseFloat(inst.paid_amount) || 0;
+      const arrears = dueAmount - paidAmount;
+      return sum + (arrears > 0 ? arrears : 0);
+    }, 0) || 0;
+
+    return totalArrears;
+  } catch (error) {
+    console.error("Error fetching total arrears:", error);
+    return 0;
+  }
+};
+
+const fetchOutstandingArrears = async (loanIds) => {
+  return await fetchTotalArrears(loanIds);
+};
+
+
+
+ const calculateDashboardMetrics = async (
+  loansData,
+  customersData,
+  profile
+) => {
+  const { role, branchId, regionId, id } = profile;
+
+  let filteredLoans = loansData;
+  let filteredCustomers = customersData;
+
+  //  Filter data for relationship_officer
+  if (role === "relationship_officer") {
+    filteredCustomers = customersData.filter(
+      (customer) => customer.created_by === id
+    );
+    const customerIds = filteredCustomers.map((c) => c.id);
+    filteredLoans = loansData.filter(
+      (loan) => loan.booked_by === id || customerIds.includes(loan.customer_id)
+    );
+  } else if (role === "branch_manager") {
+    filteredLoans = loansData.filter((loan) => loan.branch_id === branchId);
+    filteredCustomers = customersData.filter(
+      (customer) => customer.branch_id === branchId
+    );
+
+    if (selectedRO !== "all") {
+      filteredCustomers = filteredCustomers.filter(
+        (customer) => customer.created_by === selectedRO
       );
       const customerIds = filteredCustomers.map((c) => c.id);
-      filteredLoans = loansData.filter(
-        (loan) => loan.booked_by === id || customerIds.includes(loan.customer_id)
+      filteredLoans = filteredLoans.filter(
+        (loan) =>
+          loan.booked_by === selectedRO ||
+          customerIds.includes(loan.customer_id)
       );
-    } else if (role === "branch_manager") {
-      filteredLoans = loansData.filter((loan) => loan.branch_id === branchId);
-      filteredCustomers = customersData.filter(
-        (customer) => customer.branch_id === branchId
+    }
+  } else if (role === "regional_manager") {
+    filteredLoans = loansData.filter((loan) => loan.region_id === regionId);
+    filteredCustomers = customersData.filter(
+      (customer) => customer.region_id === regionId
+    );
+
+    if (selectedBranch !== "all") {
+      filteredLoans = filteredLoans.filter(
+        (loan) => loan.branch_id === selectedBranch
       );
-
-      if (selectedRO !== "all") {
-        filteredCustomers = filteredCustomers.filter(
-          (customer) => customer.created_by === selectedRO
-        );
-        const customerIds = filteredCustomers.map((c) => c.id);
-        filteredLoans = filteredLoans.filter(
-          (loan) =>
-            loan.booked_by === selectedRO ||
-            customerIds.includes(loan.customer_id)
-        );
-      }
-    } else if (role === "regional_manager") {
-      filteredLoans = loansData.filter((loan) => loan.region_id === regionId);
-      filteredCustomers = customersData.filter(
-        (customer) => customer.region_id === regionId
+      filteredCustomers = filteredCustomers.filter(
+        (customer) => customer.branch_id === selectedBranch
       );
-
-      if (selectedBranch !== "all") {
-        filteredLoans = filteredLoans.filter(
-          (loan) => loan.branch_id === selectedBranch
-        );
-        filteredCustomers = filteredCustomers.filter(
-          (customer) => customer.branch_id === selectedBranch
-        );
-      }
-
-      if (selectedRO !== "all") {
-        filteredCustomers = filteredCustomers.filter(
-          (customer) => customer.created_by === selectedRO
-        );
-        const customerIds = filteredCustomers.map((c) => c.id);
-        filteredLoans = filteredLoans.filter(
-          (loan) =>
-            loan.booked_by === selectedRO ||
-            customerIds.includes(loan.customer_id)
-        );
-      }
-    } else if (
-      role === "credit_analyst_officer" ||
-      role === "customer_service_officer"
-    ) {
-      if (selectedRegion !== "all") {
-        filteredLoans = filteredLoans.filter(
-          (loan) => loan.region_id === selectedRegion
-        );
-        filteredCustomers = filteredCustomers.filter(
-          (customer) => customer.region_id === selectedRegion
-        );
-      }
-
-      if (selectedBranch !== "all") {
-        filteredLoans = filteredLoans.filter(
-          (loan) => loan.branch_id === selectedBranch
-        );
-        filteredCustomers = filteredCustomers.filter(
-          (customer) => customer.branch_id === selectedBranch
-        );
-      }
-
-      if (selectedRO !== "all") {
-        filteredCustomers = filteredCustomers.filter(
-          (customer) => customer.created_by === selectedRO
-        );
-        const customerIds = filteredCustomers.map((c) => c.id);
-        filteredLoans = filteredLoans.filter(
-          (loan) =>
-            loan.booked_by === selectedRO ||
-            customerIds.includes(loan.customer_id)
-        );
-      }
     }
 
-    const performingLoans = await fetchPerformingLoans(filteredLoans);
-    const loanIds = filteredLoans.map((loan) => loan.id);
-    const totalPaidAmount = await fetchTotalPaidAmount(loanIds);
-    const monthlyCollectionData = await fetchMonthlyCollectionData(loanIds);
-    const prepaymentData = await fetchPrepaymentData(loanIds);
-
-    const totalLoanAmount = filteredLoans.reduce(
-      (sum, loan) => sum + (loan.total_payable || loan.scored_amount || 0),
-      0
-    );
-
-    const outstandingBalance = totalLoanAmount - totalPaidAmount;
-
-    const outstandingLoans = filteredLoans.filter(
-      (loan) =>
-        loan.status === "disbursed" && loan.repayment_state !== "completed"
-    );
-
-    const performingLoanIds = performingLoans.map((loan) => loan.id);
-    const performingLoanTotalPayable = performingLoans.reduce(
-      (sum, loan) => sum + (loan.total_payable || loan.scored_amount || 0),
-      0
-    );
-    const performingLoansPaid = await fetchPerformingLoansPaidAmount(
-      performingLoanIds
-    );
-    const performingLoanBalance =
-      performingLoanTotalPayable - performingLoansPaid;
-
-    const activeCustomerIds = new Set();
-
-    filteredLoans.forEach((loan) => {
-      if (loan.repayment_state?.toLowerCase() !== "completed") {
-        activeCustomerIds.add(loan.customer_id);
-      }
-    });
-
-    const activeCustomers = activeCustomerIds.size;
-    const inactiveCustomers = filteredCustomers.length - activeCustomers;
-
-    const today = new Date().toISOString().split("T")[0];
-    const newCustomersToday = filteredCustomers.filter(
-      (c) => c.created_at && c.created_at.split("T")[0] === today
-    ).length;
-
-    const leadConversionRate = await fetchLeadsConversionRate(
-      regionId,
-      branchId,
-      role,
-      profile?.id,
-      selectedRegion,
-      selectedBranch,
-      selectedRO
-    );
-
-    const disbursedLoans = filteredLoans.filter(
-      (loan) => loan.status === "disbursed"
-    );
-    const disbursedLoansAmount = disbursedLoans.reduce(
-      (sum, loan) => sum + (loan.scored_amount || 0),
-      0
-    );
-
-    const todayCollectionAmount = filteredLoans.reduce(
-      (sum, loan) => sum + (loan.today_collection || 0),
-      0
-    );
-
-    const cleanBookAmount = performingLoanTotalPayable - performingLoansPaid;
-    const cleanBookPercentage =
-      outstandingBalance > 0
-        ? Math.round((cleanBookAmount / outstandingBalance) * 100)
-        : 0;
-
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthToDateArrears = outstandingLoans.reduce((sum, loan) => {
-      const loanArrears = loan.arrears_amount || 0;
-      const loanDate = new Date(loan.disbursed_date || loan.created_at);
-      return loanDate >= startOfMonth ? sum + loanArrears : sum;
-    }, 0);
-
-    const disbursedLoansToday = disbursedLoans.filter(
-      (loan) =>
-        loan.disbursed_date && loan.disbursed_date.split("T")[0] === today
-    ).length;
-
-    const disbursedLoansThisMonth = disbursedLoans.filter((loan) => {
-      const loanDate = new Date(loan.disbursed_date || loan.created_at);
-      return (
-        loanDate.getMonth() === now.getMonth() &&
-        loanDate.getFullYear() === now.getFullYear()
+    if (selectedRO !== "all") {
+      filteredCustomers = filteredCustomers.filter(
+        (customer) => customer.created_by === selectedRO
       );
-    }).length;
+      const customerIds = filteredCustomers.map((c) => c.id);
+      filteredLoans = filteredLoans.filter(
+        (loan) =>
+          loan.booked_by === selectedRO ||
+          customerIds.includes(loan.customer_id)
+      );
+    }
+  } else if (
+    role === "credit_analyst_officer" ||
+    role === "customer_service_officer"
+  ) {
+    if (selectedRegion !== "all") {
+      filteredLoans = filteredLoans.filter(
+        (loan) => loan.region_id === selectedRegion
+      );
+      filteredCustomers = filteredCustomers.filter(
+        (customer) => customer.region_id === selectedRegion
+      );
+    }
 
-    const pendingCustomerApprovals = filteredCustomers.filter((c) =>
-      ["pending", "bm_review", "ca_review", "cso_review"].includes(c.status)
-    ).length;
+    if (selectedBranch !== "all") {
+      filteredLoans = filteredLoans.filter(
+        (loan) => loan.branch_id === selectedBranch
+      );
+      filteredCustomers = filteredCustomers.filter(
+        (customer) => customer.branch_id === selectedBranch
+      );
+    }
 
-    const pendingBMLoanApprovals = filteredLoans.filter(
-      (l) => l.status === "bm_review"
-    ).length;
-    const pendingRMLoanApprovals = filteredLoans.filter(
-      (l) => l.status === "rm_review"
-    ).length;
-    const pendingDisbursement = filteredLoans.filter(
-      (l) => l.status === "approved" && !l.disbursed_date
-    ).length;
+    if (selectedRO !== "all") {
+      filteredCustomers = filteredCustomers.filter(
+        (customer) => customer.created_by === selectedRO
+      );
+      const customerIds = filteredCustomers.map((c) => c.id);
+      filteredLoans = filteredLoans.filter(
+        (loan) =>
+          loan.booked_by === selectedRO ||
+          customerIds.includes(loan.customer_id)
+      );
+    }
+  }
 
-    return {
-      totalLoanAmount,
-      totalLoanCount: filteredLoans.length,
-      outstandingBalance,
-      outstandingLoansCount: outstandingLoans.length,
-      performingLoanBalance,
-      performingLoanAmount: performingLoanTotalPayable,
-      performingLoansCount: performingLoans.length,
-      totalCustomers: filteredCustomers.length,
-      cleanBookAmount,
-      cleanBookPercentage,
-      customerOverview: {
-        activeCustomers,
-        inactiveCustomers,
-        newCustomersToday,
-        leadConversionRateMonth: leadConversionRate.conversionRateMonth,
-        leadConversionRateYear: leadConversionRate.conversionRateYear,
-        totalThisMonth: leadConversionRate.totalThisMonth,
-        customersThisMonth: leadConversionRate.customersThisMonth,
-        totalThisYear: leadConversionRate.totalThisYear,
-        customersThisYear: leadConversionRate.customersThisYear,
-        leadsThisMonth: leadConversionRate.leadsThisMonth,
-        leadsToday: leadConversionRate.leadsToday,
-      },
-      loanOverview: {
-        disbursedLoansAmount,
-        disbursedLoansCount: disbursedLoans.length,
-        loansDueToday: filteredLoans.filter((l) => l.due_date === today).length,
-        outstandingArrears: outstandingLoans.reduce(
-          (sum, l) => sum + (l.arrears_amount || 0),
-          0
-        ),
-        monthToDateArrears,
-        totalLoanArrears: outstandingLoans.reduce(
-          (sum, l) => sum + (l.arrears_amount || 0),
-          0
-        ),
-        disbursedLoansToday,
-        disbursedLoansThisMonth,
-      },
-      collectionOverview: {
-        todayCollectionAmount,
-        todayCollectionRate:
-          outstandingBalance > 0
-            ? Math.round((todayCollectionAmount / outstandingBalance) * 100)
-            : 0,
-        tomorrowCollection: prepaymentData.prepaymentAmount,
-        monthlyCollectionAmount: monthlyCollectionData.monthlyAmount,
-        monthlyCollectionRate: monthlyCollectionData.monthlyRate,
-        prepaymentAmount: prepaymentData.prepaymentAmount,
-        prepaymentRate: prepaymentData.prepaymentRate,
-        par:
-          outstandingLoans.length > 0
-            ? Math.round(
-                (outstandingLoans.filter((l) => l.is_delinquent).length /
-                  outstandingLoans.length) *
-                  100
-              )
-            : 0,
-      },
-      pendingActions: {
-        pendingCustomerApprovals,
-        pendingAmends: filteredCustomers.filter((c) =>
-          c.status?.includes("amend")
-        ).length,
-        pendingLimitApprovals: 0,
-        pendingBMLoanApprovals,
-        pendingRMLoanApprovals,
-        pendingDisbursement,
-      },
-    };
+  //  Only consider disbursed loans for calculations
+  const disbursedLoans = filteredLoans.filter(
+    (loan) => loan.status === "disbursed"
+  );
+
+  // Outstanding loans must be disbursed and not completed
+  const outstandingLoans = disbursedLoans.filter(
+    (loan) => loan.repayment_state !== "completed"
+  );
+
+  //  Get performing loans (only from disbursed loans)
+  const performingLoans = await fetchPerformingLoans(filteredLoans);
+
+  // Calculate amounts based on disbursed loans only
+  const loanIds = disbursedLoans.map((loan) => loan.id);
+  const totalPaidAmount = await fetchTotalPaidAmount(loanIds);
+  const prepaymentData = await fetchPrepaymentData(loanIds);
+  const todaysCollection = await fetchTodaysCollection(loanIds);
+const monthlyCollection = await fetchMonthlyCollection(loanIds);
+
+  // Total loan amount should be based on disbursed loans
+  const totalLoanAmount = disbursedLoans.reduce(
+    (sum, loan) => sum + (loan.total_payable || loan.scored_amount || 0),
+    0
+  );
+
+  const outstandingBalance = totalLoanAmount - totalPaidAmount;
+
+  // Performing loan calculations
+  const performingLoanIds = performingLoans.map((loan) => loan.id);
+  const performingLoanTotalPayable = performingLoans.reduce(
+    (sum, loan) => sum + (loan.total_payable || loan.scored_amount || 0),
+    0
+  );
+  const performingLoansPaid = await fetchPerformingLoansPaidAmount(
+    performingLoanIds
+  );
+  const performingLoanBalance =
+    performingLoanTotalPayable - performingLoansPaid;
+
+
+      //  NEW: Calculate arrears correctly from installments
+  const monthToDateArrears = await fetchMonthToDateArrears(loanIds);
+  const totalArrears = await fetchTotalArrears(loanIds);
+  const outstandingArrears = await fetchOutstandingArrears(loanIds);
+  const par = calculatePAR(totalArrears, outstandingBalance);
+
+  // Active customers calculation
+  const activeCustomerIds = new Set();
+  disbursedLoans.forEach((loan) => {
+    if (loan.repayment_state?.toLowerCase() !== "completed") {
+      activeCustomerIds.add(loan.customer_id);
+    }
+  });
+
+  const activeCustomers = activeCustomerIds.size;
+  const inactiveCustomers = filteredCustomers.length - activeCustomers;
+
+  const today = new Date().toISOString().split("T")[0];
+  const newCustomersToday = filteredCustomers.filter(
+    (c) => c.created_at && c.created_at.split("T")[0] === today
+  ).length;
+
+  const leadConversionRate = await fetchLeadsConversionRate(
+    regionId,
+    branchId,
+    role,
+    profile?.id,
+    selectedRegion,
+    selectedBranch,
+    selectedRO
+  );
+
+  const disbursedLoansAmount = disbursedLoans.reduce(
+    (sum, loan) => sum + (loan.scored_amount || 0),
+    0
+  );
+
+
+
+  const cleanBookAmount = performingLoanTotalPayable - performingLoansPaid;
+  const cleanBookPercentage =
+    outstandingBalance > 0
+      ? Math.round((cleanBookAmount / outstandingBalance) * 100)
+      : 0;
+
+  const now = new Date();
+
+
+  const disbursedLoansToday = disbursedLoans.filter(
+    (loan) =>
+      loan.disbursed_date && loan.disbursed_date.split("T")[0] === today
+  ).length;
+
+  const disbursedLoansThisMonth = disbursedLoans.filter((loan) => {
+    const loanDate = new Date(loan.disbursed_date || loan.created_at);
+    return (
+      loanDate.getMonth() === now.getMonth() &&
+      loanDate.getFullYear() === now.getFullYear()
+    );
+  }).length;
+
+  const pendingCustomerApprovals = filteredCustomers.filter((c) =>
+    ["pending", "bm_review", "ca_review", "cso_review"].includes(c.status)
+  ).length;
+
+  const pendingBMLoanApprovals = filteredLoans.filter(
+    (l) => l.status === "bm_review"
+  ).length;
+  const pendingRMLoanApprovals = filteredLoans.filter(
+    (l) => l.status === "rm_review"
+  ).length;
+  const pendingDisbursement = filteredLoans.filter(
+    (l) => l.status === "approved" && !l.disbursed_date
+  ).length;
+
+  return {
+    totalLoanAmount,
+    totalLoanCount: disbursedLoans.length, 
+    outstandingBalance,
+    outstandingLoansCount: outstandingLoans.length,
+    performingLoanBalance,
+    performingLoanAmount: performingLoanTotalPayable,
+    performingLoansCount: performingLoans.length,
+    totalCustomers: filteredCustomers.length,
+    cleanBookAmount,
+    cleanBookPercentage,
+    customerOverview: {
+      activeCustomers,
+      inactiveCustomers,
+      newCustomersToday,
+      leadConversionRateMonth: leadConversionRate.conversionRateMonth,
+      leadConversionRateYear: leadConversionRate.conversionRateYear,
+      totalThisMonth: leadConversionRate.totalThisMonth,
+      customersThisMonth: leadConversionRate.customersThisMonth,
+      totalThisYear: leadConversionRate.totalThisYear,
+      customersThisYear: leadConversionRate.customersThisYear,
+      leadsThisMonth: leadConversionRate.leadsThisMonth,
+      leadsToday: leadConversionRate.leadsToday,
+    },
+    loanOverview: {
+      disbursedLoansAmount,
+      disbursedLoansCount: disbursedLoans.length,
+      loansDueToday: disbursedLoans.filter((l) => l.due_date === today).length,
+    
+       outstandingArrears,           
+  monthToDateArrears,           
+  totalLoanArrears: totalArrears,
+      disbursedLoansToday,
+      disbursedLoansThisMonth,
+    },
+    collectionOverview: {
+   todayCollectionDue: todaysCollection.due,
+monthlyCollectionDue: monthlyCollection.due,
+prepaymentDue: prepaymentData.totalDueTomorrow,
+
+      tomorrowCollection: prepaymentData.prepaymentAmount,
+     todayCollectionAmount: todaysCollection.amount,
+    todayCollectionRate: todaysCollection.rate,
+    monthlyCollectionAmount: monthlyCollection.amount,
+    monthlyCollectionRate: monthlyCollection.rate,
+      prepaymentAmount: prepaymentData.prepaymentAmount,
+      
+      prepaymentRate: prepaymentData.prepaymentRate,
+     par,
+    },
+    pendingActions: {
+      pendingCustomerApprovals,
+      pendingAmends: filteredCustomers.filter((c) =>
+        c.status?.includes("amend")
+      ).length,
+      pendingLimitApprovals: 0,
+      pendingBMLoanApprovals,
+      pendingRMLoanApprovals,
+      pendingDisbursement,
+    },
   };
+};
 
   const fetchDashboardData = async () => {
     try {
@@ -1124,6 +1288,7 @@ const Dashboard = () => {
       setSelectedRO("all");
     }
   }, [selectedBranch, userRole, userBranchId, userRegionId]);
+  
 
   const handleViewCustomers = () => navigate("/registry/customers");
   const handleViewLoans = () => navigate("/loaning/all");
@@ -1151,7 +1316,7 @@ const Dashboard = () => {
   }) => {
     return (
       <div
-        className="relative rounded-2xl shadow-lg p-4 sm:p-6 text-white hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer border border-white/20 overflow-hidden min-h-[140px] sm:min-h-[160px] flex-1"
+        className="relative rounded-xl shadow-lg p-4 sm:p-6 text-white hover:shadow-xl transition-all duration-300 hover:scale-105 cursor-pointer border border-white/20 overflow-hidden min-h-[140px] sm:min-h-[160px] flex-1"
         onClick={onClick}
       >
         {/* Background Image with reduced opacity */}
@@ -1190,7 +1355,7 @@ const Dashboard = () => {
                   {label}
                 </p>
               </div>
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mb-1">
+              <p className="text-2xl sm:text-xl lg:text-3xl font-bold tracking-tight mb-1">
                 {value}
               </p>
               {subtitle && (
@@ -1236,11 +1401,11 @@ const Dashboard = () => {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
-              <div className="p-2 bg-amber-100 rounded-lg mr-3">
+              {/* <div className="p-2 bg-amber-100 rounded-lg mr-3">
                 <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-              </div>
+              </div> */}
               <span className="text-sm font-semibold text-gray-700">{label}</span>
             </div>
             <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
@@ -1248,19 +1413,18 @@ const Dashboard = () => {
             </span>
           </div>
           
-          <div className="text-center mb-4">
-            <p className="text-3xl font-bold text-gray-800">{percentage}%</p>
-            <p className="text-sm text-gray-600 mt-1">Conversion Rate</p>
+          <div className="text-center mt-2 ">
+            <p className="text-lg font-semibold text-slate-600">{percentage}%</p>
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-600">Converted</span>
-              <span className="font-semibold text-gray-800">{converted}</span>
+              <span className="text-gray-600 text-sm">Converted</span>
+              <span className="font-semibold text-gray-800 text-sm">{converted}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Total Leads</span>
-              <span className="font-semibold text-gray-800">{total}</span>
+              <span className="text-gray-600 text-sm">Total Leads</span>
+              <span className="font-semibold text-gray-800 text-sm">{total}</span>
             </div>
           </div>
 
@@ -1292,13 +1456,13 @@ const Dashboard = () => {
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <h3 className="text sm:text  text-slate-600 flex items-center">
-            <span className="w-1 h-5 sm:h-6 bg-gradient-to-b from-blue-600 to-cyan-500 rounded-full mr-3"></span>
+            {/* <span className="w-1 h-5 sm:h-6 bg-gradient-to-b from-blue-600 to-cyan-500 rounded-full mr-3"></span> */}
             {title}
           </h3>
           {onViewAll && (
             <button
               onClick={onViewAll}
-              className="flex items-center text-blue-600 hover:text-blue-700 font-semibold text-sm transition duration-200 group"
+              className="flex items-center text-slate-600 hover:text-slate-700 font-semibold text-sm transition duration-200 group"
             >
               View All
               <svg
@@ -1322,73 +1486,135 @@ const Dashboard = () => {
     </div>
   );
 
-  // Enhanced ProgressBar with financial colors
-  const ProgressBar = ({ label, value, total, type, backgroundImage = "" }) => {
-    const percentage = total ? Math.round((value / total) * 100) : value;
-    
-    const getGradient = () => {
-      if (type === 'collection') {
-        return percentage >= 80 ? "from-green-500 to-emerald-600" :
-               percentage >= 60 ? "from-blue-500 to-cyan-600" :
-               percentage >= 40 ? "from-yellow-500 to-amber-600" :
-               "from-red-500 to-rose-600";
-      }
-      return percentage >= 80 ? "from-green-500 to-emerald-600" :
-             percentage >= 50 ? "from-blue-500 to-cyan-600" :
-             "from-amber-500 to-orange-500";
-    };
 
-    return (
-      <div className="p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl hover:shadow-md transition-shadow border border-gray-200 relative overflow-hidden">
-        {/* Background Image */}
-        {backgroundImage && (
-          <div 
-            className="absolute inset-0 bg-cover bg-center z-0"
-            style={{ backgroundImage: `url(${backgroundImage})` }}
+const ProgressBar = ({
+  label,
+  value,
+  type,
+  numerator,
+  denominator,
+}) => {
+  const percentage = denominator ? Math.round((numerator / denominator) * 100) : value;
+
+  const getColor = () => {
+    if (type === "collection") {
+      if (percentage >= 80) return "green";
+      if (percentage >= 60) return "blue";
+      if (percentage >= 40) return "yellow";
+      return "red";
+    }
+    if (type === "par") {
+      if (percentage <= 20) return "green";
+      if (percentage <= 40) return "yellow";
+      return "red";
+    }
+    return "gray";
+  };
+
+  const color = getColor();
+
+  const gradientMap = {
+    green: "from-green-500 to-emerald-600",
+    blue: "from-blue-500 to-cyan-600",
+    yellow: "from-yellow-500 to-amber-500",
+    red: "from-red-500 to-rose-600",
+    gray: "from-gray-400 to-gray-500"
+  };
+
+  const getStatus = () => {
+    if (type === "collection") {
+      if (percentage >= 80) return "Excellent";
+      if (percentage >= 60) return "Good";
+      if (percentage >= 40) return "Fair";
+      return "Poor";
+    }
+    if (type === "par") {
+      if (percentage <= 20) return "Excellent";
+      if (percentage <= 40) return "Good";
+      if (percentage <= 60) return "Fair";
+      return "Poor";
+    }
+    return "";
+  };
+
+  const formatNumber = (num, isCurrency = true) => {
+    if (isCurrency) {
+      return num?.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+    return num?.toLocaleString("en-US");
+  };
+
+  return (
+    <div
+      className="relative p-5 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 flex flex-col gap-4"
+      style={{
+        backgroundImage: "url('/bg1.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat"
+      }}
+    >
+      <div className="absolute inset-0 bg-black/10 rounded-2xl"></div>
+
+      <div className="relative z-10 flex flex-col gap-4">
+
+        {/* Numerator / Denominator */}
+        <div className="flex items-end gap-1 leading-tight">
+          <span className="text-lg font-extrabold text-slate-600">
+            {formatNumber(numerator)}
+          </span>
+          <span className="text-xs text-gray-700 font-medium">
+            /{formatNumber(denominator)}
+          </span>
+        </div>
+
+        {/* Label */}
+        <p className="text-gray-800 font-semibold text-sm tracking-tight">
+          {label}
+        </p>
+
+        {/* Progress Bar */}
+        <div className="relative bg-white rounded-full h-3 mt-6 overflow-hidden">
+          <div
+            className={`absolute top-0 left-0 h-full bg-gradient-to-r ${gradientMap[color]} rounded-full transition-all duration-700`}
+            style={{ width: `${Math.max(Math.min(percentage, 100), 4)}px` }}
+          ></div>
+        </div>
+
+        {/* Percentage + Status at bottom */}
+        <div className="flex justify-between items-center mt-2">
+          <span className="text-sm font-semibold text-gray-700">
+            {percentage}%
+          </span>
+
+          <span
+            className={`text-sm font-semibold px-3 py-1 rounded-full backdrop-blur-sm 
+              ${
+                color === "green"
+                  ? "bg-green-100 text-green-700"
+                  : color === "blue"
+                  ? "bg-blue-100 text-blue-700"
+                  : color === "yellow"
+                  ? "bg-yellow-100 text-yellow-700"
+                  : color === "red"
+                  ? "bg-red-100 text-red-700"
+                  : "bg-gray-100 text-gray-700"
+              }`}
           >
-            <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px]"></div>
-          </div>
-        )}
-        
-        <div className="relative z-10">
-          <div className="flex justify-between items-start mb-3">
-            <div>
-              <p className="text-2xl font-bold text-gray-800">
-                {total ? `Ksh ${value.toLocaleString()}` : `${value}%`}
-              </p>
-              {total && (
-                <p className="text-xs text-gray-500 mt-1">
-                  of Ksh {total.toLocaleString()}
-                </p>
-              )}
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-gray-700">{label}</p>
-              <p className="text-xs text-gray-500 mt-1">Target: {total ? 'Amount' : 'Percentage'}</p>
-            </div>
-          </div>
-          
-          <div className="relative bg-gray-200 rounded-full h-3 overflow-hidden">
-            <div
-              className={`absolute top-0 left-0 h-full bg-gradient-to-r ${getGradient()} rounded-full transition-all duration-700 ease-out`}
-              style={{ width: `${Math.min(percentage, 100)}%` }}
-            >
-              <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-            </div>
-          </div>
-          <div className="flex justify-between items-center mt-2">
-            <p className="text-xs font-semibold text-gray-600">
-              {percentage}% Complete
-            </p>
-            <div className="flex items-center">
-              <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${getGradient()} mr-1`}></div>
-              <span className="text-xs text-gray-500">Progress</span>
-            </div>
-          </div>
+            {getStatus()}
+          </span>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
+
+
+
+
 
 
   // Icons for different sections
@@ -1548,7 +1774,7 @@ const Dashboard = () => {
         >
           <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="text-center p-3 sm:p-5 bg-gradient-to-br from-green-50 to-emerald-100 rounded-xl border border-green-200 hover:shadow-md transition-shadow">
-              <p className="text-xl sm:text-3xl font-bold text-green-700">
+              <p className="text-lg sm:text-lg font-bold text-green-700">
                 {dashboardMetrics.customerOverview.activeCustomers.toLocaleString()}
               </p>
               <p className="text-xs text-green-600 mt-1 sm:mt-2 font-semibold uppercase tracking-wide">
@@ -1556,7 +1782,7 @@ const Dashboard = () => {
               </p>
             </div>
             <div className="text-center p-3 sm:p-5 bg-gradient-to-br from-red-50 to-rose-100 rounded-xl border border-red-200 hover:shadow-md transition-shadow">
-              <p className="text-xl sm:text-3xl font-bold text-red-700">
+              <p className="text-lg sm:text-lg font-bold text-red-700">
                 {dashboardMetrics.customerOverview.inactiveCustomers.toLocaleString()}
               </p>
               <p className="text-xs text-red-600 mt-1 sm:mt-2 font-semibold uppercase tracking-wide">
@@ -1564,7 +1790,7 @@ const Dashboard = () => {
               </p>
             </div>
             <div className="text-center p-3 sm:p-5 bg-gradient-to-br from-blue-50 to-cyan-100 rounded-xl border border-blue-200 hover:shadow-md transition-shadow">
-              <p className="text-xl sm:text-3xl font-bold text-blue-700">
+              <p className="text-lg sm:text-lg font-bold text-blue-700">
                 {dashboardMetrics.customerOverview.newCustomersToday}
               </p>
               <p className="text-xs text-blue-600 mt-1 sm:mt-2 font-semibold uppercase tracking-wide">
@@ -1575,7 +1801,7 @@ const Dashboard = () => {
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-amber-50 to-orange-100 rounded-xl border border-amber-200">
-              <p className="text-lg sm:text-2xl font-bold text-amber-700">
+              <p className="text-lg sm:text-lg font-bold text-amber-700">
                 {dashboardMetrics.customerOverview.leadsThisMonth}
               </p>
               <p className="text-xs text-amber-600 mt-1 font-semibold">
@@ -1583,7 +1809,7 @@ const Dashboard = () => {
               </p>
             </div>
             <div className="text-center p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-violet-100 rounded-xl border border-purple-200">
-              <p className="text-lg sm:text-2xl font-bold text-purple-700">
+              <p className="text-lg sm:text-lg font-bold text-purple-700">
                 {dashboardMetrics.customerOverview.leadsToday}
               </p>
               <p className="text-xs text-purple-600 mt-1 font-semibold">
@@ -1629,7 +1855,7 @@ const Dashboard = () => {
                 </span>
               </div>
               <div className="text-right">
-                <p className="text-lg sm:text-2xl font-bold text-blue-700">
+                <p className="text-lg sm:text-xl font-bold text-blue-700">
                   Ksh {dashboardMetrics.loanOverview.disbursedLoansAmount.toLocaleString()}
                 </p>
                 <p className="text-xs text-blue-600 font-medium">
@@ -1644,7 +1870,7 @@ const Dashboard = () => {
                   Disbursed Today
                 </span>
                 <div className="text-right">
-                  <p className="text-lg sm:text-xl font-bold text-green-700">
+                  <p className="text-lg sm:text-lg font-bold text-green-700">
                     {dashboardMetrics.loanOverview.disbursedLoansToday}
                   </p>
                   <p className="text-xs text-green-600 font-medium">loans</p>
@@ -1655,7 +1881,7 @@ const Dashboard = () => {
                   This Month
                 </span>
                 <div className="text-right">
-                  <p className="text-lg sm:text-xl font-bold text-teal-700">
+                  <p className="text-lg sm:text-lg font-bold text-teal-700">
                     {dashboardMetrics.loanOverview.disbursedLoansThisMonth}
                   </p>
                   <p className="text-xs text-teal-600 font-medium">loans</p>
@@ -1668,7 +1894,7 @@ const Dashboard = () => {
                 Loans Due Today
               </span>
               <div className="text-right">
-                <p className="text-lg sm:text-2xl font-bold text-amber-700">
+                <p className="text-lg sm:text-lg font-bold text-amber-700">
                   {dashboardMetrics.loanOverview.loansDueToday.toLocaleString()}
                 </p>
                 <p className="text-xs text-amber-600 font-medium">due today</p>
@@ -1681,7 +1907,7 @@ const Dashboard = () => {
                 Month to Date Arrears
               </span>
               <div className="text-right">
-                <p className="text-2xl font-bold text-red-700">
+                <p className="text-lg font-semibold text-red-700">
                   Ksh{" "}
                   {dashboardMetrics.loanOverview.monthToDateArrears.toLocaleString()}
                 </p>
@@ -1694,7 +1920,7 @@ const Dashboard = () => {
                 Total Arrears
               </span>
               <div className="text-right">
-                <p className="text-lg sm:text-2xl font-bold text-red-700">
+                <p className="text-lg sm:text-lg font-semibold text-red-700">
                   Ksh {dashboardMetrics.loanOverview.totalLoanArrears.toLocaleString()}
                 </p>
                 <p className="text-xs text-red-600 font-medium">outstanding</p>
@@ -1707,34 +1933,44 @@ const Dashboard = () => {
       {/* Bottom Grid */}
       <div className="space-y-6 sm:space-y-0 sm:grid sm:grid-cols-1 lg:grid-cols-2 sm:gap-6 mb-6 sm:mb-8">
         {/* Collections Performance with Background Image */}
-        <OverviewSection 
-          title="Collections Performance"
-          backgroundImage="/images/bg1.jpg"
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            <ProgressBar
-              label="Today's Collection"
-              value={dashboardMetrics.collectionOverview.todayCollectionAmount}
-              total={dashboardMetrics.outstandingBalance}
-              type="collection"
-            />
-            <ProgressBar
-              label="Monthly Collection"
-              value={dashboardMetrics.collectionOverview.monthlyCollectionRate}
-              type="collection"
-            />
-            <ProgressBar
-              label="Prepayment Rate"
-              value={dashboardMetrics.collectionOverview.prepaymentRate}
-              type="collection"
-            />
-            <ProgressBar
-              label="Portfolio at Risk"
-              value={dashboardMetrics.collectionOverview.par}
-              type="collection"
-            />
-          </div>
-        </OverviewSection>
+  {/* Collections Performance with Background Image */}
+       
+<OverviewSection title="Collections Performance" backgroundImage="/images/bg1.jpg">
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    {/* Today's Collection */}
+    <ProgressBar
+      label="Today's Collection"
+      type="collection"
+      numerator={dashboardMetrics.collectionOverview.todayCollectionAmount || 0}
+      denominator={dashboardMetrics.collectionOverview.todayCollectionDue || 0}
+    />
+
+    {/* Monthly Collection */}
+    <ProgressBar
+      label="Monthly Collection"
+      type="collection"
+      numerator={dashboardMetrics.collectionOverview.monthlyCollectionAmount || 0}
+      denominator={dashboardMetrics.collectionOverview.monthlyCollectionDue || 0}
+    />
+
+    {/* Prepayment Rate (Tomorrow's Collection) */}
+    <ProgressBar
+      label="Tomorrow's Collection"
+      type="collection"
+      numerator={dashboardMetrics.collectionOverview.tomorrowCollection || 0}
+      denominator={dashboardMetrics.collectionOverview.prepaymentDue || 0}
+    />
+
+    {/* Portfolio at Risk */}
+    <ProgressBar
+      label="Portfolio at Risk (PAR)"
+      type="par"
+      numerator={dashboardMetrics.loanOverview.totalLoanArrears || 0}  
+      denominator={dashboardMetrics.outstandingBalance || 0}            
+    />
+  </div>
+</OverviewSection>
+
 
         {/* Pending Actions with Background Image */}
         <OverviewSection 
