@@ -113,6 +113,10 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ViewDisbursedLoan from "./pages/loaning/ViewDisbursedLoan.jsx";
 import ViewLoansPendingDisbursement from "./pages/loaning/ViewLoansPendingDisbursement.jsx";
+import NewJournalEntry from "./pages/accounting/NewJournalEntry.jsx";
+import ViewJournal from "./pages/accounting/ViewJournal.jsx";
+import NewAccount from "./pages/accounting/NewAccount.jsx";
+import EditAccount from "./pages/accounting/EditAccount.jsx";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -293,6 +297,14 @@ const { user, profile, loading } = useAuth();
                     }
                   />
 
+
+                    <Route path="/journals/new" element={  <ProtectedRoute>
+                        <NewJournalEntry userRole={role} />
+                      </ProtectedRoute>} />
+      <Route path="/journals/:id" element={  <ProtectedRoute>
+                        <ViewJournal userRole={role} />
+                      </ProtectedRoute>} />
+
                   {/* Registry */}
                   <Route
                     path="/registry"
@@ -360,6 +372,22 @@ const { user, profile, loading } = useAuth();
                       </ProtectedRoute>
                     }
                   />
+
+
+                     <Route
+          path="/chart-of-accounts/new"
+          element={  <ProtectedRoute>
+                        <NewAccount userRole={role} />
+                      </ProtectedRoute>}
+        />
+
+        {/* Edit Existing Account */}
+        <Route
+          path="/chart-of-accounts/edit/:id"
+          element={  <ProtectedRoute>
+                        <EditAccount userRole={role} />
+                      </ProtectedRoute>}
+        />
 
                   {/* Relationship Officer Specific Routes */}
                   {role === 'relationship_officer' && (

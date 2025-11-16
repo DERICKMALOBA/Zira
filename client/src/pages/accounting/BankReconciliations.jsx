@@ -619,8 +619,8 @@ function BankReconciliations() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-lg sm:text-lg lg:text-lg font-semibold text-slate-600 text-center">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-sm sm:text-sm lg:text-sm font-semibold text-slate-600 text-start">
             Bank Reconciliation
           </h1>
         </div>
@@ -631,10 +631,7 @@ function BankReconciliations() {
               <h2 className="text-sm sm:text-sm font-semibold text-slate-600">
                 Import Payment Data
               </h2>
-              <p className="text-xs text-gray-500 mt-1">
-                Payments will be automatically matched to customers and applied
-                to their loans
-              </p>
+             
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex gap-2">
@@ -717,10 +714,7 @@ function BankReconciliations() {
             </div>
           )}
 
-          <div className="mt-3 text-xs text-gray-500">
-            Supported formats: CSV, XLSX, XLS. Required columns: Name, Mobile,
-            Amount, Reference
-          </div>
+         
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200">
