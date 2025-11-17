@@ -310,8 +310,8 @@ const CustomerVerification = () => {
         const bmAmount = bmRow?.branch_manager_loan_scored_amount || 0;
 
         // Extract CSO data (using correct column names)
-        const csoCommentValue = csoRow?.co_loan_comment || "";
-        const csoDecisionValue = csoRow?.co_final_decision || "";
+      const csoCommentValue = csoRow?.co_loan_comment || "";
+const csoDecisionValue = csoRow?.co_final_decision || "";
 
         console.log(" CA Verification Data Retrieved:");
         console.log("  - BM Scored Amount:", bmAmount);
@@ -321,8 +321,8 @@ const CustomerVerification = () => {
         console.log("  - CSO Row:", csoRow);
 
         setBmScoredAmount(bmAmount);
-        setCsoComment(csoCommentValue);
-        setCsoDecision(csoDecisionValue);
+     setCsoComment(csoCommentValue);
+setCsoDecision(csoDecisionValue);
 
         console.log(" State updated with CA verification data");
 
@@ -2152,7 +2152,7 @@ const handleVerificationChange = (
                           ) || "0"}
                         </p>
                         <p className="text-sm text-blue-600">
-                          Initial system assessment
+                          Ro Prequalified Amount
                         </p>
                       </div>
 
@@ -2265,7 +2265,8 @@ const handleVerificationChange = (
 
                               if (value > prequalified) {
                                 toast.warning(
-                                  "Scored amount cannot exceed the prequalified amount"
+                                  "The amount cannot exceed the prequalified amount of KES " +
+                                    prequalified.toLocaleString("en-US")
                                 );
                                 return; // Prevent update
                               }
