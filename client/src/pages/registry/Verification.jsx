@@ -28,7 +28,7 @@ import {
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 
-const Verification = ({  onClose }) => {
+const Verification = () => {
   const { customerId } = useParams();
     const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -396,10 +396,9 @@ const Verification = ({  onClose }) => {
       }
 
       toast.success("Verification submitted successfully!");
-      onClose();
+        navigate(-1);
     } catch (error) {
       console.error("Error submitting verification:", error);
-      toast.error("Error submitting verification");
     } finally {
       setLoading(false);
     }
