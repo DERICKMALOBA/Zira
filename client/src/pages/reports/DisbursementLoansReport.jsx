@@ -509,7 +509,7 @@ const DisbursementLoansReport = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-lg font-semibold" style={{ color: "#586ab1" }}>
+              <h1 className="text-sm font-semibold" style={{ color: "#586ab1" }}>
                 Disbursed Loan Report
               </h1>
               {/* <p className="text-sm text-gray-600 mt-1">
@@ -533,49 +533,68 @@ const DisbursementLoansReport = () => {
               </p> */}
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={toggleFilters}
-                className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
-                  showFilters
-                    ? "bg-blue-300 text-white shadow-md"
-                    : "bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50"
-                }`}
-              >
-                <Filter className="w-4 h-4" />
-                <span>Filters</span>
-              </button>
+           <div className="flex flex-wrap gap-3">
 
+  {/* Filter Button */}
+  <button
+    onClick={toggleFilters}
+    className={`px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
+      showFilters
+        ? "text-white shadow-md"
+        : "text-[#586] border-2 hover:bg-[#f0f1f8]"
+    }`}
+    style={{
+      backgroundColor: showFilters ? "#586ab1" : "white",
+      borderColor: "#f0f1f8"
+    }}
+  >
+    <Filter className="w-3 h-3" />
+    <span>Filters</span>
+  </button>
 
-              <div className="flex gap-2 items-center">
-                <select
-                  value={exportFormat}
-                  onChange={(e) => setExportFormat(e.target.value)}
-                  className="border-2 border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {exportFormatOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+  {/* Export Format + Button */}
+  <div className="flex gap-2 items-center">
 
-                <button
-                  onClick={handleExport}
-                  className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 font-medium"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Export</span>
-                </button>
-              </div>
-            </div>
+    {/* Select Export Format */}
+    <select
+      value={exportFormat}
+      onChange={(e) => setExportFormat(e.target.value)}
+      className="px-3 py-2 rounded-lg text-sm focus:outline-none"
+      style={{
+        border: "2px solid #586ab1",
+        color: "#586ab1"
+      }}
+    >
+      {exportFormatOptions.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+
+    {/* Export Button */}
+    <button
+      onClick={handleExport}
+      className="px-5 py-2.5 rounded-lg flex items-center gap-2 font-medium transition-all"
+      style={{
+        backgroundColor: "#586ab1",
+        color: "white"
+      }}
+    >
+      <Download className="w-3 h-3" />
+      <span>Export</span>
+    </button>
+  </div>
+
+</div>
+
           </div>
         </div>
 
         {/* Filter Section */}
         {showFilters && (
           <div className="bg-white p-6 border border-gray-200 rounded-lg shadow-sm space-y-4">
-            <h3 className="font-semibold text-gray-900">Filter Results</h3>
+            <h3 className=" text-slate-600 text-sm">Filter Results</h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <select

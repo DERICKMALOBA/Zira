@@ -91,16 +91,16 @@ const RejectedLoans = () => {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-sm  bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
+              <h2 className="text-sm  bg-gradient-to-r from-gray-600 to-gray-600 bg-clip-text text-transparent">
                 Rejected Loans 
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
+              </h2>
+              {/* <p className="text-sm text-gray-500 mt-1">
                 Role: {profile?.role?.replace(/_/g, " ").toUpperCase()} 
-              </p>
+              </p> */}
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-blue-100 border border-indigo-200">
-              <XCircleIcon className="h-5 w-5 text-indigo-600" />
-              <span className="font-medium text-indigo-700">
+              <XCircleIcon className="h-3 w-3 text-indigo-600" />
+              <span className="text-sm text-indigo-700">
                 {rejectedLoans.length} Rejected
               </span>
             </div>
@@ -113,7 +113,8 @@ const RejectedLoans = () => {
             <table className="min-w-full border-collapse">
               {/* Table Header */}
               <thead>
-                <tr className="text-sm bg-gray-600 text-gray-200">
+                <tr className="text-sm text-white"
+          style={{ backgroundColor: "#586ab1" }}>
                   <th className="px-6 py-3 text-left font-medium">Loan ID</th>
                   <th className="px-6 py-3 text-left font-medium">Customer</th>
                   {!isBranchManager && (
@@ -213,8 +214,8 @@ const RejectedLoans = () => {
           {/* Empty State */}
           {rejectedLoans.length === 0 && (
             <div className="text-center py-12 text-gray-500">
-              <XCircleIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">No rejected loans</h3>
+              <XCircleIcon className="h-10 w-10 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-sm font-semibold text-slate-600 mb-2">No rejected loans</h3>
               <p>
                 {isBranchManager 
                   ? "No loans have been rejected in your branch."

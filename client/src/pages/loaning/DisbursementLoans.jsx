@@ -177,8 +177,8 @@ if (searchTerm) {
              
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-50 border border-indigo-100">
-              <BanknotesIcon className="h-4 w-4 text-indigo-600" />
-              <span className="text-sm font-medium text-indigo-700">
+              <BanknotesIcon className="h-3 w-3 text-indigo-600" />
+              <span className="text-xs font-medium text-indigo-700">
                 {filteredLoans.length} Active Loans
               </span>
             </div>

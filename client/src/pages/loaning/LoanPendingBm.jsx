@@ -128,8 +128,8 @@ const LoanPendingBm = () => {
             </div>
 
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 border border-indigo-100">
-              <ClockIcon className="h-4 w-4 text-indigo-600" />
-              <span className="text-sm font-medium text-indigo-700">
+              <ClockIcon className="h-3 w-3 text-indigo-600" />
+              <span className="text-xs font-medium text-indigo-700">
                 {filteredLoans.length} Pending
               </span>
             </div>

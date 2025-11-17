@@ -146,14 +146,14 @@ const LoanPendingDisbursement = () => {
         <div className="mb-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-semibold text-slate-600">
+              <h1 className="text-sm font-semibold text-slate-600">
                 Loans Pending Disbursement
               </h1>
              
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-blue-100 border border-indigo-200">
               <ClockIcon className="h-3 w-3 text-indigo-600" />
-              <span className="font-small text-sm text-indigo-700">
+              <span className="font-small text-xs text-indigo-700">
                 {filteredLoans.length} Pending
               </span>
             </div>
@@ -328,7 +328,8 @@ const LoanPendingDisbursement = () => {
           <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
             <button
               onClick={() => handleViewLoan(loan.id)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-100 rounded-full hover:bg-blue-200 transition-all"
+style={{ backgroundColor: "#586ab1" }}
             >
               <EyeIcon className="h-4 w-4" />
               View Details

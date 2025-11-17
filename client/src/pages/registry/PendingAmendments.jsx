@@ -307,7 +307,8 @@ const PendingAmendments = () => {
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={() => handleViewChanges(customer)}
-                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 rounded-full hover:bg-blue-200 transition-all"
+className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-100 rounded-full hover:bg-blue-200 transition-all"
+style={{ backgroundColor: "#586ab1" }}
                       title="View Changes"
                     >
                       <EyeIcon className="w-4 h-4 mr-1" />
