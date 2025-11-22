@@ -1709,19 +1709,19 @@ const CustomerForm = ({leadData: propLeadData,  onClose }) => {
 
 
         {/* Navigation Tabs */}
-        <div className="bg-transparent rounded-lg shadow-lg p-6 mb-4 border border-indigo-100">
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8 border border-indigo-100">
           <div className="flex flex-wrap gap-2">
             {sections.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveSection(id)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${
                   activeSection === id
-                    ? "bg-gray-300 text-slate-600 text-sm shadow-lg"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-md"
+                    ? "bg-gradient-to-r from-gray-300 to-gray-300 text-slate-600 shadow-lg"
+                    : "bg-gray-100 text-slate-700 hover:bg-gray-200 hover:shadow-md"
                 }`}
               >
-                <Icon className="h-5 w-5" />
+                <Icon Icon className="h-5 w-5" />
                 {label}
               </button>
             ))}
