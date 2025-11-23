@@ -102,7 +102,7 @@ const ApproveLoan = ({ loan, onComplete }) => {
 
       // Calculate wallet balance
       const balance = walletTxns.reduce(
-        (sum, t) => sum + (t.type === "credit" ? t.amount : -t.amount),
+        (sum, t) => sum + (t.type === "credit" ? t.amount : t.amount),
         0
       );
 
